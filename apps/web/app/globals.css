@@ -169,15 +169,6 @@ input[type="checkbox"] {
 .main-shell {
   margin-left: 210px;
 }
-.topbar {
-  height: 78px;
-  border-bottom: 1px solid #edf0f0;
-  padding: 0 36px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-}
 .breadcrumb {
   display: flex;
   gap: 16px;
@@ -1369,9 +1360,6 @@ input[type="checkbox"] {
     gap: 22px;
     grid-template-columns: minmax(0, 1fr) 240px;
   }
-  .topbar {
-    padding: 0 24px;
-  }
   .top-actions {
     gap: 9px;
   }
@@ -1549,11 +1537,6 @@ input[type="checkbox"] {
   }
   .mobile-only {
     display: inline-flex;
-  }
-  .topbar {
-    height: 64px;
-    padding: 0 16px;
-    gap: 9px;
   }
   .breadcrumb {
     display: none;
@@ -1941,3 +1924,192 @@ input[type="checkbox"] {
     padding: 14px;
   }
 }
+
+/* Compact content heading: title, breadcrumb and actions share the page layout. */
+.workspace-content {
+  max-width: none;
+  margin: 0;
+  padding-top: 24px;
+  row-gap: 24px;
+}
+.page-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-width: 0;
+  gap: 24px;
+}
+.heading-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.heading-copy {
+  min-width: 0;
+}
+.page-heading h1 {
+  font-size: 24px;
+  margin: 0 0 9px;
+  letter-spacing: -0.6px;
+}
+.heading-dot {
+  margin-top: 5px;
+}
+.heading-context {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.heading-caption {
+  color: #a0aaa4;
+  font-size: 10px;
+}
+.page-heading .breadcrumb {
+  display: flex;
+  gap: 9px;
+  font-size: 10px;
+}
+.page-heading .breadcrumb strong {
+  font-size: 10px;
+  font-weight: 500;
+  color: #65776b;
+}
+.page-heading .top-actions {
+  flex-shrink: 0;
+}
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.brand-row .brand {
+  min-width: 0;
+  flex: 1;
+  gap: 8px;
+  font-size: 23px;
+}
+.brand-row .brand img {
+  flex-shrink: 0;
+}
+.brand-row .sidebar-toggle {
+  position: absolute;
+  top: 30px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #dfe7e2;
+  border-radius: 50%;
+  background: #fff;
+  color: #7e9286;
+  box-shadow: 0 2px 6px #173b3410;
+  z-index: 1;
+}
+.brand-row .sidebar-toggle:hover {
+  background: #eff7f2;
+  color: #087354;
+  border-color: #bad6c6;
+}
+.nav-dialog .sidebar-toggle {
+  display: none;
+}
+.sidebar {
+  transition: width 0.18s ease;
+}
+.main-shell {
+  transition: margin-left 0.18s ease;
+}
+.sidebar-collapsed .sidebar {
+  width: 76px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.sidebar-collapsed .main-shell {
+  margin-left: 76px;
+}
+.sidebar-collapsed .sidebar .brand-row {
+  flex-direction: column;
+  gap: 12px;
+}
+.sidebar-collapsed .sidebar .brand {
+  justify-content: center;
+}
+.sidebar-collapsed .sidebar .brand > span,
+.sidebar-collapsed .sidebar .workspace strong,
+.sidebar-collapsed .sidebar .workspace .demo-tag,
+.sidebar-collapsed .sidebar .nav-label,
+.sidebar-collapsed .sidebar .profile > div,
+.sidebar-collapsed .sidebar .profile .online-dot {
+  display: none;
+}
+.sidebar-collapsed .sidebar .workspace {
+  justify-content: center;
+  padding: 12px 0;
+  margin-top: 24px;
+}
+.sidebar-collapsed .sidebar nav button,
+.sidebar-collapsed .sidebar .nav-bottom > button {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.sidebar-collapsed .sidebar .profile {
+  justify-content: center;
+}
+@media (max-width: 1200px) and (min-width: 761px) {
+  .brand-row .brand {
+    font-size: 20px;
+    gap: 6px;
+  }
+  .brand-row .brand img {
+    width: 32px;
+  }
+  .heading-caption {
+    display: none;
+  }
+}
+@media (max-width: 1020px) {
+  .workspace-content {
+    max-width: none;
+  }
+  .page-heading {
+    margin-bottom: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .sidebar-collapsed .main-shell {
+    margin-left: 0;
+  }
+  .workspace-content {
+    padding-top: 20px;
+  }
+  .page-heading {
+    flex-wrap: wrap;
+    gap: 17px;
+    margin-bottom: 23px;
+  }
+  .page-heading h1 {
+    font-size: 23px;
+    margin: 0 0 8px;
+  }
+  .heading-caption {
+    display: none;
+  }
+  .page-heading .top-actions {
+    width: 100%;
+    flex: 0 0 100%;
+    gap: 7px;
+  }
+  .page-heading .search {
+    flex: 1;
+  }
+  .page-heading .breadcrumb {
+    display: flex;
+  }
+  .heading-start > .mobile-only {
+    margin-left: -8px;
+  }
+}
+
+.brand-expand { min-height: 40px; width: 100%; border-radius: 7px; }
+.brand-expand:hover { background: #e9f3ed; }

@@ -15,6 +15,7 @@ import {
   Menu,
   MessageCircle,
   Plus,
+  ChevronLeft,
   Search,
   Settings2,
   Terminal,
@@ -161,6 +162,16 @@ export default function Home() {
     [attention, setAttention] = useState(false),
     [onlyAttention, setOnlyAttention] = useState(false),
     [notice, setNotice] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  function toggleSidebar() {
+    setSidebarCollapsed((previous) => {
+      const next = !previous;
+      try {
+        localStorage.setItem("coflow-sidebar-collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  }
   const load = useCallback(async (initial = false) => {
     if (initial) setLoading(true);
     try {
@@ -181,6 +192,9 @@ export default function Home() {
     void load(true);
     try {
       setSeen(JSON.parse(localStorage.getItem("coflow-seen") || "{}"));
+      setSidebarCollapsed(
+        localStorage.getItem("coflow-sidebar-collapsed") === "true",
+      );
     } catch {}
     const timer = setInterval(() => void load(), 30000);
     return () => clearInterval(timer);
@@ -301,11 +315,23 @@ export default function Home() {
   );
   const navigation = (
     <>
-      <div className="brand">
-        <CoFlowLogo />
-        <span>CoFlow</span>
+      <div className="brand-row">
+        {sidebarCollapsed && !nav ? (
+          <button className="brand brand-expand" aria-label="点击 Logo 展开侧边栏"
+            title="展开侧边栏" aria-expanded={false} onClick={toggleSidebar}>
+            <CoFlowLogo />
+          </button>
+        ) : (
+          <div className="brand"><CoFlowLogo /><span>CoFlow</span></div>
+        )}
+        {!sidebarCollapsed && (
+          <Button className="sidebar-toggle" variant="ghost" size="icon"
+            aria-label="收起侧边栏" title="收起侧边栏" aria-expanded={true} onClick={toggleSidebar}>
+            <ChevronLeft />
+          </Button>
+        )}
       </div>
-      <div className="workspace">
+      <div className="workspace" title="共创团队">
         <Users size={17} />
         <strong>共创团队</strong>
         <span className="demo-tag">演示</span>
@@ -313,6 +339,8 @@ export default function Home() {
       <nav>
         <button
           className="nav-active"
+          aria-label="Timeline"
+          title="Timeline"
           onClick={() => {
             setFilters(initialFilters);
             setOnlyAttention(false);
@@ -321,27 +349,31 @@ export default function Home() {
           }}
         >
           <Clock3 size={18} />
-          Timeline
+          <span className="nav-label">Timeline</span>
         </button>
       </nav>
       <div className="nav-bottom">
         <button
+          aria-label="Agent 接入"
+          title="Agent 接入"
           onClick={() => {
             setAccess(true);
             setNav(false);
           }}
         >
           <Terminal size={18} />
-          Agent 接入
+          <span className="nav-label">Agent 接入</span>
         </button>
         <button
+          aria-label="团队设置"
+          title="团队设置"
           onClick={() => {
             setSettings(true);
             setNav(false);
           }}
         >
           <Settings2 size={18} />
-          团队设置
+          <span className="nav-label">团队设置</span>
         </button>
         <div className="profile">
           <Avatar member={member("chen")} small />
@@ -355,74 +387,74 @@ export default function Home() {
     </>
   );
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       <aside className="sidebar">{navigation}</aside>
       <main className="main-shell">
-        <header className="topbar">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mobile-only"
-            aria-label="打开导航"
-            onClick={() => setNav(true)}
-          >
-            <Menu />
-          </Button>
-          <div className="breadcrumb">
-            <span>工作空间</span>
-            <span>/</span>
-            <strong>Timeline</strong>
-          </div>
-          <div className="top-actions">
-            <label className="search">
-              <Search size={16} />
-              <input
-                aria-label="搜索动态"
-                placeholder="搜索动态、项目或成员…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query && (
-                <button aria-label="清空搜索" onClick={() => setQuery("")}>
-                  <X size={14} />
-                </button>
-              )}
-              <kbd>搜索</kbd>
-            </label>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="查看待关注事项"
-              className="bell"
-              onClick={() => {
-                setOnlyAttention((v) => !v);
-                setAttention(true);
-              }}
-            >
-              <Bell />
-              {needs.length > 0 && <i />}
-            </Button>
-            <Button onClick={() => setCompose(true)}>
-              <Plus />
-              <span>上报</span>
-            </Button>
-          </div>
-        </header>
         <div className="workspace-content">
-          <div className="feed-column">
-            <div className="page-heading">
-              <div>
-                <span className="eyebrow">TEAM ACTIVITY</span>
+          <header className="page-heading">
+            <div className="heading-start">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mobile-only"
+                aria-label="打开导航"
+                onClick={() => setNav(true)}
+              >
+                <Menu />
+              </Button>
+              <div className="heading-copy">
                 <h1>
                   团队动态
                   <span className="heading-dot" />
                 </h1>
-                <p>每一次推进，都在这里汇合。</p>
+                <div className="heading-context">
+                  <nav className="breadcrumb" aria-label="面包屑">
+                    <span>工作空间</span>
+                    <span aria-hidden="true">/</span>
+                    <strong>Timeline</strong>
+                  </nav>
+                  <span className="heading-caption">
+                    每一次推进，都在这里汇合。
+                  </span>
+                </div>
               </div>
-              <span className="live-label">
-                <i />每 30 秒同步
-              </span>
             </div>
+            <div className="top-actions">
+              <label className="search">
+                <Search size={16} />
+                <input
+                  aria-label="搜索动态"
+                  placeholder="搜索动态、项目或成员…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {query && (
+                  <button aria-label="清空搜索" onClick={() => setQuery("")}>
+                    <X size={14} />
+                  </button>
+                )}
+                <kbd>搜索</kbd>
+              </label>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="查看待关注事项"
+                className="bell"
+                onClick={() => {
+                  setOnlyAttention((v) => !v);
+                  setAttention(true);
+                }}
+              >
+                <Bell />
+                {needs.length > 0 && <i />}
+              </Button>
+              <Button onClick={() => setCompose(true)}>
+                <Plus />
+                <span>上报</span>
+              </Button>
+            </div>
+          </header>
+          <div className="feed-column">
             <div className="viewbar">
               <div className="view-tabs">
                 <button
