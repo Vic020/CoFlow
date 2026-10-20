@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+apps/api/.data/
+coverage/
+*.tsbuildinfo
+# Derived from skills/ and docs/ by web predev/prebuild.
+apps/web/public/agent/

@@ -1,0 +1,17 @@
+{
+  "name": "coflow",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace @coflow/web",
+    "dev:api": "cd apps/api && COFLOW_DEMO=true go run ./cmd/server",
+    "build": "npm run build --workspace @coflow/web",
+    "typecheck": "npm run typecheck --workspace @coflow/web",
+    "test:api": "cd apps/api && go test ./...",
+    "version:check": "node scripts/check-version.mjs"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/cli"
+  ],
+  "version": "0.1.0"
+}

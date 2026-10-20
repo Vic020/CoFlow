@@ -1,0 +1,20 @@
+name: coflow-dev
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: coflow
+      POSTGRES_PASSWORD: coflow_dev
+      POSTGRES_DB: coflow
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - coflow_db:/var/lib/postgresql/data
+      - ./apps/api/db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coflow -d coflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  coflow_db:

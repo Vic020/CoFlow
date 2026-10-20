@@ -1,0 +1,12 @@
+{
+  "name": "@coflow/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "coflow": "./coflow.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

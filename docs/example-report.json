@@ -1,0 +1,11 @@
+{
+  "source_id": "coflow-integration-example",
+  "title": "完成 Agent 上报链路联调",
+  "body": "CLI 已成功将简报同步到 Timeline。相同 source_id 重试会更新原简报，不会新增重复记录。",
+  "project_id": "website",
+  "domain": "研发",
+  "agent": "Codex",
+  "status": "delivered",
+  "links": [{"title": "协议说明示例", "url": "https://www.openapis.org"}],
+  "mentions": []
+}
