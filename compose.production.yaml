@@ -1,0 +1,67 @@
+name: coflow
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coflow
+      POSTGRES_DB: coflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=20", "-c", "work_mem=4MB"]
+    volumes: ["database:/var/lib/postgresql/data"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coflow -d coflow"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+  api:
+    image: coflow-api:0.1.0
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://coflow:${POSTGRES_PASSWORD}@db:5432/coflow?sslmode=disable
+      COFLOW_ADDR: 0.0.0.0:8080
+      COFLOW_SECURE_COOKIES: "true"
+      COFLOW_WEB_ORIGIN: https://${COFLOW_DOMAIN:?Set COFLOW_DOMAIN in .env.production}
+      GOMEMLIMIT: 192MiB
+    depends_on:
+      db: {condition: service_healthy}
+    mem_limit: 256m
+    logging: *logging
+  web:
+    image: coflow-web:0.1.0
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_OPTIONS: --max-old-space-size=256
+    depends_on: [api]
+    mem_limit: 512m
+    logging: *logging
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      COFLOW_DOMAIN: ${COFLOW_DOMAIN}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - caddy_config:/config
+    depends_on: [web, api]
+    mem_limit: 128m
+    logging: *logging
+volumes:
+  database:
+  certificates:
+  caddy_config:

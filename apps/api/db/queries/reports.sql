@@ -2,9 +2,9 @@
 SELECT * FROM reports WHERE team_id = $1 ORDER BY created_at DESC, id DESC;
 
 -- name: UpsertReport :one
-INSERT INTO reports (id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-ON CONFLICT (team_id, author_id, source_id) DO UPDATE SET title=EXCLUDED.title, body=EXCLUDED.body, project_id=EXCLUDED.project_id, domain=EXCLUDED.domain, agent=EXCLUDED.agent, model=EXCLUDED.model, status=EXCLUDED.status, links=EXCLUDED.links, mentions=EXCLUDED.mentions, updated_at=EXCLUDED.updated_at
+INSERT INTO reports (id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+ON CONFLICT (team_id, author_id, source_id) DO UPDATE SET title=EXCLUDED.title, body=EXCLUDED.body, project_id=EXCLUDED.project_id, domain=EXCLUDED.domain, agent=EXCLUDED.agent, model=EXCLUDED.model, status=EXCLUDED.status, links=EXCLUDED.links, mentions=EXCLUDED.mentions, updated_at=EXCLUDED.updated_at, domains=EXCLUDED.domains, classification_input=EXCLUDED.classification_input, classification_locked=EXCLUDED.classification_locked
 RETURNING *;
 
 -- name: GetReport :one

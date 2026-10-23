@@ -10,7 +10,6 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - coflow_db:/var/lib/postgresql/data
-      - ./apps/api/db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U coflow -d coflow"]
       interval: 5s

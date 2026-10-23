@@ -31,5 +31,6 @@
     "@types/react-dom": "latest",
     "tailwindcss": "latest",
     "@tailwindcss/postcss": "latest"
-  }
+  },
+  "license": "MIT"
 }

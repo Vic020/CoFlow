@@ -38,7 +38,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) er
 }
 
 const getReport = `-- name: GetReport :one
-SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at FROM reports WHERE id=$1 AND team_id=$2
+SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked FROM reports WHERE id=$1 AND team_id=$2
 `
 
 type GetReportParams struct {
@@ -65,6 +65,9 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (Report, e
 		&i.Mentions,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Domains,
+		&i.ClassificationInput,
+		&i.ClassificationLocked,
 	)
 	return i, err
 }
@@ -100,7 +103,7 @@ func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, e
 }
 
 const listReports = `-- name: ListReports :many
-SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at FROM reports WHERE team_id = $1 ORDER BY created_at DESC, id DESC
+SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked FROM reports WHERE team_id = $1 ORDER BY created_at DESC, id DESC
 `
 
 func (q *Queries) ListReports(ctx context.Context, teamID string) ([]Report, error) {
@@ -128,6 +131,9 @@ func (q *Queries) ListReports(ctx context.Context, teamID string) ([]Report, err
 			&i.Mentions,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Domains,
+			&i.ClassificationInput,
+			&i.ClassificationLocked,
 		); err != nil {
 			return nil, err
 		}
@@ -140,28 +146,31 @@ func (q *Queries) ListReports(ctx context.Context, teamID string) ([]Report, err
 }
 
 const upsertReport = `-- name: UpsertReport :one
-INSERT INTO reports (id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-ON CONFLICT (team_id, author_id, source_id) DO UPDATE SET title=EXCLUDED.title, body=EXCLUDED.body, project_id=EXCLUDED.project_id, domain=EXCLUDED.domain, agent=EXCLUDED.agent, model=EXCLUDED.model, status=EXCLUDED.status, links=EXCLUDED.links, mentions=EXCLUDED.mentions, updated_at=EXCLUDED.updated_at
-RETURNING id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at
+INSERT INTO reports (id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+ON CONFLICT (team_id, author_id, source_id) DO UPDATE SET title=EXCLUDED.title, body=EXCLUDED.body, project_id=EXCLUDED.project_id, domain=EXCLUDED.domain, agent=EXCLUDED.agent, model=EXCLUDED.model, status=EXCLUDED.status, links=EXCLUDED.links, mentions=EXCLUDED.mentions, updated_at=EXCLUDED.updated_at, domains=EXCLUDED.domains, classification_input=EXCLUDED.classification_input, classification_locked=EXCLUDED.classification_locked
+RETURNING id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked
 `
 
 type UpsertReportParams struct {
-	ID        string             `json:"id"`
-	TeamID    string             `json:"team_id"`
-	AuthorID  string             `json:"author_id"`
-	SourceID  string             `json:"source_id"`
-	Title     string             `json:"title"`
-	Body      string             `json:"body"`
-	ProjectID string             `json:"project_id"`
-	Domain    string             `json:"domain"`
-	Agent     string             `json:"agent"`
-	Model     string             `json:"model"`
-	Status    string             `json:"status"`
-	Links     []byte             `json:"links"`
-	Mentions  []byte             `json:"mentions"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID                   string             `json:"id"`
+	TeamID               string             `json:"team_id"`
+	AuthorID             string             `json:"author_id"`
+	SourceID             string             `json:"source_id"`
+	Title                string             `json:"title"`
+	Body                 string             `json:"body"`
+	ProjectID            string             `json:"project_id"`
+	Domain               string             `json:"domain"`
+	Agent                string             `json:"agent"`
+	Model                string             `json:"model"`
+	Status               string             `json:"status"`
+	Links                []byte             `json:"links"`
+	Mentions             []byte             `json:"mentions"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	Domains              []string           `json:"domains"`
+	ClassificationInput  []byte             `json:"classification_input"`
+	ClassificationLocked bool               `json:"classification_locked"`
 }
 
 func (q *Queries) UpsertReport(ctx context.Context, arg UpsertReportParams) (Report, error) {
@@ -181,6 +190,9 @@ func (q *Queries) UpsertReport(ctx context.Context, arg UpsertReportParams) (Rep
 		arg.Mentions,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.Domains,
+		arg.ClassificationInput,
+		arg.ClassificationLocked,
 	)
 	var i Report
 	err := row.Scan(
@@ -199,6 +211,9 @@ func (q *Queries) UpsertReport(ctx context.Context, arg UpsertReportParams) (Rep
 		&i.Mentions,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Domains,
+		&i.ClassificationInput,
+		&i.ClassificationLocked,
 	)
 	return i, err
 }

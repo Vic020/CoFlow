@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth-gate";
 
-export const skillPath = "/agent/coflow-report/SKILL.md";
-export function reportPrompt(origin: string) {
-  return `读一下 ${origin}${skillPath}，服务地址是 ${origin}，按照要求上报一下当前项目的进展、交付链接和阻塞。目前是本地演示模式，无需凭证。`;
-}
+import { reportPrompt, skillPath } from "@/lib/report-prompt";
+export { reportPrompt, skillPath } from "@/lib/report-prompt";
 
 /** Shared by the one-click sidebar card and the full integration dialog. */
 export function useAgentPrompt() {
+  const { mode, credential, me, tokenStatus } = useAuth();
+  const demo = mode === "local-demo";
+  const needsCredential = !demo && !credential && tokenStatus === "missing";
+  const checkingCredential = !demo && !credential && tokenStatus === "loading";
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
@@ -17,10 +20,19 @@ export function useAgentPrompt() {
     const timer = setTimeout(() => setCopied(false), 2500);
     return () => clearTimeout(timer);
   }, [copied]);
-  const prompt = origin ? reportPrompt(origin) : "正在生成接入地址…";
+  const prompt = !origin
+    ? "正在生成接入地址…"
+    : needsCredential
+      ? "请先创建或选择自己的 Agent 凭证，再复制上报 Prompt。"
+      : reportPrompt(
+          origin,
+          credential,
+          demo,
+          me ? { team: me.current_team, member: me.user.id } : undefined,
+        );
   async function copyPrompt() {
     try {
-      if (!origin) return;
+      if (!origin || needsCredential) return;
       await navigator.clipboard.writeText(prompt);
       setCopyError("");
       setCopied(true);
@@ -28,5 +40,14 @@ export function useAgentPrompt() {
       setCopyError("无法访问剪贴板，请打开更多接入方式，手动复制 Prompt。");
     }
   }
-  return { origin, prompt, copied, copyError, copyPrompt };
+  return {
+    origin,
+    prompt,
+    copied,
+    copyError,
+    copyPrompt,
+    demo,
+    needsCredential,
+    checkingCredential,
+  };
 }

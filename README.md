@@ -19,7 +19,7 @@
 
 CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过 Codex、Claude Code 等工具上报简报和交付链接，团队在统一的 Timeline 中浏览、评论并讨论阻塞。
 
-> **当前版本：0.1.0，本地开发预览。** 上报、筛选、日报和评论已可使用；登录、成员邀请与个人凭证尚未实现，所有写入归属演示成员。当前版本仅用于本地验证，不支持正式公网团队部署。
+> **当前版本：0.1.0，本地开发预览。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网部署与邮件能力仍需后续完成；独立演示模式继续保留。
 
 ## 界面预览
 
@@ -28,11 +28,17 @@ CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过
 ## 功能
 
 - **统一 Timeline**：按日期汇集团队简报，展示上报人、Agent、进展状态与交付链接。
-- **组合筛选**：按项目、领域、成员、Agent 和日期分类查看，支持与我相关和本地未读筛选。
+- **组合筛选**：按项目、领域、成员、Agent 和日期分类查看，支持与我相关、我的待办协作和跨设备未读筛选。
 - **日报汇总**：按日期与成员整理原始上报，保留详情和讨论入口。
-- **交付与讨论**：附带文档、PR、设计稿或视频链接，在简报下评论，标记本人事项已解决。
-- **Agent 接入**：一键复制上报 Prompt，提供可下载的 Skill、REST API 与 CLI；相同来源标识更新原记录，避免重复上报。
+- **交付与讨论**：支持最多 20 个交付链接、评论与多人提醒；作者和网页管理员可编辑简报，保留来源、讨论及修订历史，过期编辑会提示冲突。协作请求明确负责人、状态与后续进展。
+- **灵活分类**：项目名称／别名匹配，未知项进入待整理；多领域分类、审核、归档、合并历史简报和人工归属保护。
+- **持续跟进**：站内评论／协作提醒、服务端已读状态、简报修订与分类历史。
+- **多团队**：创建与切换团队，分类、简报、协作和消息按团队隔离。
+- **团队身份**：邮箱密码登录、一次性邀请、成员权限与绑定成员/团队的个人凭证。
+- **Agent 接入**：一键复制上报 Prompt，提供可下载的 Skill 与 REST API；相同来源标识更新原记录，避免重复上报。
 - **响应式界面**：桌面侧栏与信息流，手机抽屉导航、筛选面板与单列阅读。
+
+协作闭环截图：[分类整理](docs/design/catalog-management-preview.png)、[协作进展](docs/design/collaboration-detail-preview.png)、[移动端](docs/design/collaboration-mobile-preview.png)。截图使用独立验收数据。
 
 ## 技术栈
 
@@ -42,7 +48,7 @@ CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过
 | 界面 | Tailwind CSS、shadcn/ui 组件模式、Radix、Lucide   |
 | 后端 | Go、Gin                                           |
 | 数据 | PostgreSQL、pgx、sqlc；本地演示可使用 JSON 持久化 |
-| 接入 | HTTP API、OpenAPI、Node.js CLI、Agent Skill       |
+| 接入 | HTTP API、OpenAPI、Agent Skill；CLI／MCP 未来支持       |
 
 ## 快速开始
 
@@ -58,12 +64,13 @@ CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过
 
 ```sh
 npm ci
+docker compose up -d db
 ```
 
-启动后端：
+启动团队模式后端（首次启动自动迁移数据库）：
 
 ```sh
-npm run dev:api
+DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable' npm run dev:api
 ```
 
 另开一个终端启动前端：
@@ -72,18 +79,22 @@ npm run dev:api
 npm run dev
 ```
 
-打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。演示上报和评论保存在 `apps/api/.data/demo.json`，不会进入版本控制。
+打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)，创建首个管理员和工作空间，再到团队设置邀请成员。
+
+只体验原有示例数据可运行 `npm run dev:demo`；此模式不要求 PostgreSQL，简报保存在被忽略的 `apps/api/.data/demo.json`。
 
 修改端口、使用 PostgreSQL、配置环境变量与重新生成 SQL 查询，见[开发指南](docs/DEVELOPMENT.md)。
 
 ## Agent 接入
 
-在 Timeline 右侧点击 **复制上报 Prompt**，粘贴给正在工作的 Agent，即可让它读取规范并上报。**更多接入方式**打开完整说明，支持下载 Skill 与查看 CLI / API 示例。
+Agent 凭证可在侧栏或 `/credentials` 页面创建与管理，支持权限、有效期、撤销，以及复制上报 Prompt。完整凭证只在创建时弹窗明文显示，关闭或离开页面后清除。团队设置提供成员、邀请、项目与领域四个管理分类；项目与领域支持拖拽排序（手机可上下移动，键盘可使用 Alt + ↑ / ↓），顺序保存到团队并同步 Timeline。Timeline 也保留分类快捷编辑入口。左上角可切换或新建团队，各团队可以使用不同称呼。首次在 Agent 中配置凭证后，可反复复制不含密钥的上报 Prompt；Agent 会复用已有配置并校验团队与成员。
+
+在 Timeline 右侧点击 **创建接入凭证**，创建绑定自己的 Token；之后点击 **复制上报 Prompt**，粘贴给正在工作的 Agent，即可让它读取规范并上报。顶部 **上报**打开统一弹窗，可切换手动或 Agent 等上报方式。支持直接复制提示词、下载 Skill、查看 API 命令与 JSON 示例；切换页签保留手动草稿。CLI、MCP 页签位于末尾，标记为暂未提供。
 
 默认本地 Prompt：
 
 ```text
-读一下 http://127.0.0.1:3000/agent/coflow-report/SKILL.md，服务地址是 http://127.0.0.1:3000，按照要求上报一下当前项目的进展、交付链接和阻塞。目前是本地演示模式，无需凭证。
+读一下 http://127.0.0.1:3000/agent/coflow-report/SKILL.md，服务地址是 http://127.0.0.1:3000，我的凭证是 <个人凭证>，按照要求上报一下当前项目的进展、交付链接和阻塞。
 ```
 
 | 接入资源     | 位置                                                           |
@@ -94,15 +105,9 @@ npm run dev
 | 协议源文件   | [docs/openapi.yaml](docs/openapi.yaml)                         |
 | 示例简报     | [docs/example-report.json](docs/example-report.json)           |
 
-也可以从项目目录使用 CLI：
+CLI 与 MCP 标记为未来支持，当前请使用 Agent Prompt、Skill 或 HTTP API。仓库中的 CLI 原型暂不作为正式接入方式。
 
-```sh
-node apps/cli/coflow.mjs --version
-node apps/cli/coflow.mjs list
-node apps/cli/coflow.mjs report --file docs/example-report.json
-```
-
-当前本机 URL 仅供能访问这台电脑的 Agent 使用；其他电脑或云端 Agent 需要可访问的部署地址。演示不使用个人凭证。
+当前本机 URL 仅供能访问这台电脑的 Agent 使用；其他电脑或云端 Agent 需要可访问的部署地址。团队模式使用个人 Bearer 凭证，可限制权限、设置有效期并撤销，完整值仅在创建时返回。独立演示模式不使用个人凭证。
 
 ## 项目结构
 
@@ -111,7 +116,7 @@ CoFlow/
 ├── apps/
 │   ├── web/          # Next.js 响应式界面
 │   ├── api/          # Go API、存储实现、SQL 与测试
-│   └── cli/          # Agent 可调用的 Node.js CLI
+│   └── cli/          # CLI 原型，未来支持
 ├── skills/           # Agent 上报规范
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
@@ -135,15 +140,19 @@ npm run version:check
 
 - [x] Timeline、组合筛选、日报汇总与响应式布局
 - [x] 简报、交付链接、评论与上报去重
-- [x] 一键复制上报 Prompt、Skill 下载、API 与 CLI
-- [ ] 正式登录、邀请加入与团队权限
-- [ ] 个人 Agent 凭证及撤销
-- [ ] 项目与领域管理
-- [ ] 跨设备未读与站内通知
-- [ ] PostgreSQL 集成验证、迁移与团队部署
-- [ ] MCP 接入
+- [x] 一键复制上报 Prompt、Skill 下载、HTTP API
+- [x] 网页编辑简报、多人关注与多链接表单
+- [x] 正式登录、邀请加入与团队权限
+- [x] 个人 Agent 凭证及撤销
+- [x] 项目与领域管理
+- [x] 跨设备未读与站内通知
+- [x] PostgreSQL 迁移与身份/隔离集成验证
+- [ ] 正式团队部署与备份
+- [ ] CLI／MCP 正式接入
 
-详细范围见[产品定义](docs/PRODUCT.md)。
+后续版本：**0.2 Todo 看板**，支持自定义列及人与 Agent 共同管理；**0.3 Calendar**，支持项目／领域日历、甘特排期、Big Day 与版本节点。
+
+实施顺序与验收标准见[版本工作计划](docs/ROADMAP.md)，现有功能范围见[产品定义](docs/PRODUCT.md)。
 
 ## 贡献
 
@@ -153,4 +162,8 @@ npm run version:check
 
 ## 许可证
 
-当前尚未指定开源许可证。公开发布前需由维护者确认并补充 `LICENSE`；本 README 不授予额外的软件使用许可。
+本项目采用 [MIT License](LICENSE)。
+
+## 部署与备份
+
+参见[部署指南](docs/DEPLOYMENT.md)：Docker 多阶段镜像、Caddy HTTPS、2C2G 资源预算与数据库备份／恢复演练。当前仍是本地开发版本，未发布公网环境。

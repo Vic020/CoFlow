@@ -5,6 +5,41 @@ export type Project = {
   domains: string[];
   status: string;
 };
+export type Category = {
+  id: string;
+  kind: "project" | "domain";
+  name: string;
+  aliases: string[];
+  state: "active" | "pending" | "archived" | "merged";
+  merged_into: string;
+};
+export type Collaboration = {
+  id: string;
+  report_id: string;
+  author_id: string;
+  assignee_id: string;
+  title: string;
+  body: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  updates: {
+    id: string;
+    actor_id: string;
+    status: string;
+    body: string;
+    created_at: string;
+  }[];
+};
+export type Notification = {
+  id: string;
+  report_id: string;
+  request_id: string;
+  title: string;
+  kind: string;
+  created_at: string;
+  read_at: string | null;
+};
 export type Link = { title: string; url: string };
 export type Comment = {
   id: string;
@@ -22,6 +57,14 @@ export type Report = {
   body: string;
   project_id: string;
   domain: string;
+  domains: string[];
+  classification_input?: {
+    project_id?: string;
+    project_name?: string;
+    domain?: string;
+    domains?: string[];
+  };
+  classification_locked?: boolean;
   agent: string;
   model: string;
   status: string;
@@ -38,7 +81,20 @@ export type Meta = {
   current_user: string;
   mode: string;
   timezone: string;
+  role: string;
+  team: { id: string; name: string };
+  catalog?: Category[];
 };
+export const collaborationStatuses: Record<string, string> = {
+  open: "待接手",
+  in_progress: "进行中",
+  blocked: "有阻塞",
+  done: "已完成",
+  cancelled: "已取消",
+};
+export function reportDomains(r: Report) {
+  return r.domains?.length ? r.domains : r.domain ? [r.domain] : [];
+}
 export const statuses: Record<string, { label: string; className: string }> = {
   progress: { label: "进展", className: "neutral" },
   review: { label: "待反馈", className: "amber" },
@@ -46,6 +102,14 @@ export const statuses: Record<string, { label: string; className: string }> = {
   delivered: { label: "已交付", className: "green" },
   resolved: { label: "已解决", className: "green" },
 };
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/v1${path}`, {
     ...init,
@@ -56,7 +120,15 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       message = (await res.json()).error || message;
     } catch {}
-    throw new Error(message);
+    if (
+      res.status === 401 &&
+      !path.startsWith("/auth/") &&
+      !init?.headers &&
+      typeof window !== "undefined"
+    ) {
+      window.dispatchEvent(new Event("coflow:unauthorized"));
+    }
+    throw new ApiError(message, res.status);
   }
   return res.json();
 }

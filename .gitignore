@@ -7,6 +7,7 @@ node_modules/
 .DS_Store
 apps/api/.data/
 coverage/
+backups/
 *.tsbuildinfo
 # Derived from skills/ and docs/ by web predev/prebuild.
 apps/web/public/agent/

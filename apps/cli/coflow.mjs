@@ -17,7 +17,7 @@ async function main() {
   }
   if (!command || command === "help") {
     console.log(
-      "CoFlow local development CLI\n\n  report --file report.json    Create/update a report using a stable source_id\n  list                         List reports and comments\n  comment --id ID --body TEXT   Reply to a report\n\nEnvironment: COFLOW_URL (default http://127.0.0.1:8080)\nCurrent milestone: explicit local demo only; all writes belong to demo member 陈一.",
+      "CoFlow CLI\n\n  report --file report.json    Create/update a report using a stable source_id\n  list                         List reports and comments\n  comment --id ID --body TEXT   Reply to a report\n\nEnvironment: COFLOW_URL (default http://127.0.0.1:8080), COFLOW_TOKEN (personal Agent credential in team mode).",
     );
     return;
   }
@@ -43,7 +43,13 @@ async function main() {
   } else if (command !== "list") throw new Error(`Unknown command: ${command}`);
   const res = await fetch(base + path, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(process.env.COFLOW_TOKEN
+        ? { Authorization: `Bearer ${process.env.COFLOW_TOKEN}` }
+        : {}),
+    },
+    redirect: "error",
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();

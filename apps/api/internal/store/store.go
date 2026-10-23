@@ -28,22 +28,26 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 type Report struct {
-	ID        string    `json:"id"`
-	TeamID    string    `json:"team_id"`
-	AuthorID  string    `json:"author_id"`
-	SourceID  string    `json:"source_id"`
-	Title     string    `json:"title"`
-	Body      string    `json:"body"`
-	ProjectID string    `json:"project_id"`
-	Domain    string    `json:"domain"`
-	Agent     string    `json:"agent"`
-	Model     string    `json:"model"`
-	Status    string    `json:"status"`
-	Links     []Link    `json:"links"`
-	Mentions  []string  `json:"mentions"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Comments  []Comment `json:"comments"`
+	ID                   string          `json:"id"`
+	TeamID               string          `json:"team_id"`
+	AuthorID             string          `json:"author_id"`
+	SourceID             string          `json:"source_id"`
+	Title                string          `json:"title"`
+	Body                 string          `json:"body"`
+	ProjectID            string          `json:"project_id"`
+	Domain               string          `json:"domain"`
+	Domains              []string        `json:"domains"`
+	ProjectName          string          `json:"project_name,omitempty"`
+	ClassificationInput  json.RawMessage `json:"classification_input,omitempty"`
+	ClassificationLocked bool            `json:"classification_locked"`
+	Agent                string          `json:"agent"`
+	Model                string          `json:"model"`
+	Status               string          `json:"status"`
+	Links                []Link          `json:"links"`
+	Mentions             []string        `json:"mentions"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+	Comments             []Comment       `json:"comments"`
 }
 type Member struct {
 	ID    string `json:"id"`

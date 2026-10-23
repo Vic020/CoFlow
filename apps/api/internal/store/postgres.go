@@ -26,9 +26,10 @@ func NewPostgres(ctx context.Context, url string) (*Postgres, error) {
 	}
 	return &Postgres{p, db.New(p)}, nil
 }
-func (p *Postgres) Close() { p.pool.Close() }
-func fromDB(v db.Report) Report {
-	r := Report{ID: v.ID, TeamID: v.TeamID, AuthorID: v.AuthorID, SourceID: v.SourceID, Title: v.Title, Body: v.Body, ProjectID: v.ProjectID, Domain: v.Domain, Agent: v.Agent, Model: v.Model, Status: v.Status, CreatedAt: v.CreatedAt.Time, UpdatedAt: v.UpdatedAt.Time, Links: []Link{}, Mentions: []string{}, Comments: []Comment{}}
+func (p *Postgres) Pool() *pgxpool.Pool { return p.pool }
+func (p *Postgres) Close()              { p.pool.Close() }
+func FromDB(v db.Report) Report {
+	r := Report{ID: v.ID, TeamID: v.TeamID, AuthorID: v.AuthorID, SourceID: v.SourceID, Title: v.Title, Body: v.Body, ProjectID: v.ProjectID, Domain: v.Domain, Agent: v.Agent, Model: v.Model, Status: v.Status, CreatedAt: v.CreatedAt.Time, UpdatedAt: v.UpdatedAt.Time, Links: []Link{}, Mentions: []string{}, Comments: []Comment{}, Domains: v.Domains, ClassificationInput: v.ClassificationInput, ClassificationLocked: v.ClassificationLocked}
 	_ = json.Unmarshal(v.Links, &r.Links)
 	_ = json.Unmarshal(v.Mentions, &r.Mentions)
 	return r
@@ -44,7 +45,7 @@ func (p *Postgres) List(ctx context.Context, team string) ([]Report, error) {
 	}
 	out := []Report{}
 	for _, r := range rows {
-		v := fromDB(r)
+		v := FromDB(r)
 		for _, c := range cs {
 			if c.ReportID == v.ID {
 				v.Comments = append(v.Comments, Comment{c.ID, c.ReportID, c.AuthorID, c.Body, c.CreatedAt.Time})
@@ -62,16 +63,26 @@ func (p *Postgres) Get(ctx context.Context, team, id string) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	return fromDB(r), nil
+	return FromDB(r), nil
 }
-func (p *Postgres) Save(ctx context.Context, r Report) (Report, error) {
+func (p *Postgres) Save(ctx context.Context, r Report) (Report, error) { return SaveWith(ctx, p.q, r) }
+func SaveWith(ctx context.Context, q *db.Queries, r Report) (Report, error) {
 	links, _ := json.Marshal(r.Links)
 	mentions, _ := json.Marshal(r.Mentions)
-	v, err := p.q.UpsertReport(ctx, db.UpsertReportParams{ID: r.ID, TeamID: r.TeamID, AuthorID: r.AuthorID, SourceID: r.SourceID, Title: r.Title, Body: r.Body, ProjectID: r.ProjectID, Domain: r.Domain, Agent: r.Agent, Model: r.Model, Status: r.Status, Links: links, Mentions: mentions, CreatedAt: pgtype.Timestamptz{Time: r.CreatedAt, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: r.UpdatedAt, Valid: true}})
+	if r.Domains == nil {
+		r.Domains = []string{}
+		if r.Domain != "" {
+			r.Domains = []string{r.Domain}
+		}
+	}
+	if len(r.ClassificationInput) == 0 {
+		r.ClassificationInput = []byte(`{}`)
+	}
+	v, err := q.UpsertReport(ctx, db.UpsertReportParams{ID: r.ID, TeamID: r.TeamID, AuthorID: r.AuthorID, SourceID: r.SourceID, Title: r.Title, Body: r.Body, Domains: r.Domains, ClassificationInput: r.ClassificationInput, ClassificationLocked: r.ClassificationLocked, ProjectID: r.ProjectID, Domain: r.Domain, Agent: r.Agent, Model: r.Model, Status: r.Status, Links: links, Mentions: mentions, CreatedAt: pgtype.Timestamptz{Time: r.CreatedAt, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: r.UpdatedAt, Valid: true}})
 	if err != nil {
 		return Report{}, err
 	}
-	return fromDB(v), nil
+	return FromDB(v), nil
 }
 func (p *Postgres) Comment(ctx context.Context, team string, c Comment) (Comment, error) {
 	if _, err := p.Get(ctx, team, c.ReportID); err != nil {

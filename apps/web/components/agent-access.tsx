@@ -1,108 +1,221 @@
 "use client";
-
-import { Check, Copy, Download, ExternalLink, Terminal } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Check, Copy, Download, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
-
 import { skillPath, useAgentPrompt } from "@/lib/agent-prompt";
+import { Meta } from "@/lib/types";
+import type { ReportTab } from "@/components/report-hub";
 
-export function AgentAccess() {
-  const { origin, prompt, copied, copyError, copyPrompt } = useAgentPrompt();
-  const skillURL = origin ? `${origin}${skillPath}` : "";
-
+function CopyBlock({
+  value,
+  label,
+  rows = 4,
+}: {
+  value: string;
+  label: string;
+  rows?: number;
+}) {
+  const id = useId();
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2500);
+    return () => clearTimeout(timer);
+  }, [copied]);
   return (
-    <>
-      <DialogTitle className="modal-title">
-        <Terminal size={22} />
-        Agent 接入
-      </DialogTitle>
-      <DialogDescription className="modal-description">
-        把下面这句话交给 Agent，即可读取规范并上报当前进展。
-      </DialogDescription>
-      <div className="agent-skill-card">
-        <div className="agent-skill-heading">
-          <span className="agent-file-icon">
-            <Terminal size={20} />
-          </span>
-          <div>
-            <strong>CoFlow 上报 Skill</strong>
-            <small>SKILL.md · 适用于 Codex、Claude Code 等 Agent</small>
-          </div>
-        </div>
-        <a
-          className="agent-skill-url"
-          href={skillPath}
-          target="_blank"
-          rel="noopener noreferrer"
+    <div className="report-copy-block">
+      <div className="report-copy-heading">
+        <label htmlFor={id}>{label}</label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              setCopied(true);
+              setError("");
+            } catch {
+              setError("请选中内容手动复制。");
+            }
+          }}
         >
-          <span>{skillURL || skillPath}</span>
-          <ExternalLink size={14} />
-        </a>
-        <div className="agent-download-actions">
-          <Button asChild variant="outline" size="sm">
+          {copied ? <Check /> : <Copy />}
+          {copied ? "已复制" : "复制"}
+        </Button>
+      </div>
+      <textarea
+        id={id}
+        readOnly
+        rows={rows}
+        spellCheck={false}
+        value={value}
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      {error && (
+        <p className="error-text" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
+
+export function AgentAccess({
+  method,
+  meta,
+  onSelect,
+  onClose,
+}: {
+  method: Exclude<ReportTab, "manual">;
+  meta: Meta;
+  onSelect: (tab: ReportTab) => void;
+  onClose: () => void;
+}) {
+  const {
+    origin,
+    prompt,
+    copied,
+    copyError,
+    copyPrompt,
+    demo,
+    needsCredential,
+    checkingCredential,
+  } = useAgentPrompt();
+  const service = origin || "<服务地址>";
+  const skillURL = `${service}${skillPath}`;
+  const project = meta.projects.find((p) => p.status !== "archived")?.id || "";
+  const domain = meta.domains.includes("研发") ? "研发" : meta.domains[0] || "";
+  const sample = JSON.stringify(
+    {
+      source_id: "project-work-unit-id",
+      title: "完成本轮工作",
+      body: "结果、交付链接和下一步。",
+      project_id: project,
+      ...(demo ? { domain } : { domains: domain ? [domain] : [] }),
+      agent: "你的 Agent",
+      status: "progress",
+      links: [],
+    },
+    null,
+    2,
+  );
+  const apiCommand = `export COFLOW_URL=${shellQuote(service)}\ncurl --fail-with-body "$COFLOW_URL/api/v1/reports" \\\n  -H 'Content-Type: application/json' \\\n${demo ? "" : '  -H "Authorization: Bearer $COFLOW_TOKEN" \\\n'}  --data-binary @report.json`;
+
+  if (method === "agent")
+    return (
+      <section className="report-method">
+        <div className="report-method-heading">
+          <h3>把提示词交给 Agent</h3>
+          <Button
+            size="sm"
+            onClick={() => void copyPrompt()}
+            disabled={!origin || needsCredential || checkingCredential}
+          >
+            {copied ? <Check /> : <Copy />}
+            {copied ? "已复制" : "复制提示词"}
+          </Button>
+        </div>
+        <label className="sr-only" htmlFor="agent-report-prompt">
+          上报 Prompt
+        </label>
+        <textarea
+          id="agent-report-prompt"
+          className="agent-prompt"
+          readOnly
+          rows={7}
+          value={prompt}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <p className="report-method-note" role="status">
+          {copyError ||
+            (copied
+              ? "已复制，粘贴给 Agent 即可上报。"
+              : demo
+                ? "演示模式无需凭证。"
+                : "首次配置凭证，之后复用已有配置。")}
+        </p>
+        {!demo && (
+          <Link
+            href="/credentials"
+            className="report-text-link"
+            onClick={onClose}
+          >
+            {needsCredential ? "创建 Agent 凭证" : "管理 Agent 凭证"}
+            <ExternalLink size={12} />
+          </Link>
+        )}
+      </section>
+    );
+
+  if (method === "skill")
+    return (
+      <section className="report-method">
+        <h3>CoFlow 上报 Skill</h3>
+        <p className="report-method-note">
+          下载使用，或让 Agent 直接读取链接。
+        </p>
+        <CopyBlock value={skillURL} label="Skill 链接" rows={2} />
+        <div className="report-method-actions">
+          <Button asChild size="sm" variant="outline">
             <a href={skillPath} download="SKILL.md">
               <Download />
-              下载 Skill
+              下载 SKILL.md
             </a>
           </Button>
           <a
-            href="/agent/openapi.yaml"
+            href={skillPath}
             target="_blank"
             rel="noopener noreferrer"
-            className="agent-contract-link"
+            className="report-text-link"
           >
-            查看 API 协议
+            查看规范
             <ExternalLink size={12} />
           </a>
         </div>
-      </div>
-      <div className="agent-prompt-heading">
-        <h3>一句话让 Agent 上报</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void copyPrompt()}
-          disabled={!origin}
-        >
-          {copied ? <Check /> : <Copy />}
-          {copied ? "已复制" : "复制 Prompt"}
-        </Button>
-      </div>
-      <label className="sr-only" htmlFor="agent-report-prompt">
-        上报 Prompt
-      </label>
-      <textarea
-        id="agent-report-prompt"
-        className="agent-prompt"
-        readOnly
-        value={prompt}
-        rows={5}
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <p className="agent-copy-status" role="status">
-        {copyError ||
-          (copied
-            ? "已复制，可直接粘贴给正在工作的 Agent。"
-            : "无需先安装 CLI，Agent 可直接通过 HTTP 上报。")}
-      </p>
-      <div className="info-callout">
-        当前为本地演示，所有上报归属陈一，暂不支持个人凭证。此本机地址仅供能访问当前电脑的
-        Agent 使用，团队共享需部署后使用站点地址。
-      </div>
-      <details className="agent-advanced">
-        <summary>其他接入方式：CLI / API</summary>
-        <h3>CLI 上报</h3>
-        <pre>
-          <code>{`COFLOW_URL=${origin || "<站点地址>"} node apps/cli/coflow.mjs report --file report.json`}</code>
-        </pre>
-        <h3>API 上报</h3>
-        <pre>
-          <code>{`POST ${origin || "<站点地址>"}/api/v1/reports\nContent-Type: application/json\n\n{\n  "source_id": "stable-work-unit-id",\n  "title": "完成首页移动端适配",\n  "body": "预览已更新，等待设计确认。",\n  "project_id": "website",\n  "domain": "研发",\n  "agent": "Codex",\n  "status": "review",\n  "links": []\n}`}</code>
-        </pre>
-        <p className="muted text-sm">
-          相同 source_id 更新已有简报；新的工作使用新的标识。
+      </section>
+    );
+
+  if (method === "mcp" || method === "cli")
+    return (
+      <section className="report-method report-mcp-state">
+        <h3>{method === "mcp" ? "MCP" : "CLI"} 暂未提供</h3>
+        <p className="report-method-note">
+          未来支持。目前可通过 Skill 或 API 上报。
         </p>
+        <Button size="sm" variant="outline" onClick={() => onSelect("skill")}>
+          使用 Skill 上报
+        </Button>
+      </section>
+    );
+
+  return (
+    <section className="report-method">
+      <h3>HTTP API</h3>
+      <p className="report-method-note">
+        将示例保存为 report.json，再发送请求。
+        {!demo && "凭证从环境变量 COFLOW_TOKEN 读取。"}
+      </p>
+      <CopyBlock label="API 请求" rows={5} value={apiCommand} />
+      <details className="report-json-example">
+        <summary>report.json 示例</summary>
+        <CopyBlock label="上报 JSON" value={sample} rows={12} />
       </details>
-    </>
+      <p className="report-method-note">
+        同一工作沿用 source_id 更新，新工作使用新的标识。
+      </p>
+      <a
+        href="/agent/openapi.yaml"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="report-text-link"
+      >
+        查看 API 协议
+        <ExternalLink size={12} />
+      </a>
+    </section>
   );
 }

@@ -8,6 +8,55 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AgentToken struct {
+	ID         string             `json:"id"`
+	TeamID     string             `json:"team_id"`
+	UserID     string             `json:"user_id"`
+	Name       string             `json:"name"`
+	TokenHash  string             `json:"token_hash"`
+	Prefix     string             `json:"prefix"`
+	Scopes     []string           `json:"scopes"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type Classification struct {
+	TeamID     string             `json:"team_id"`
+	Kind       string             `json:"kind"`
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Normalized string             `json:"normalized"`
+	Aliases    []string           `json:"aliases"`
+	State      string             `json:"state"`
+	MergedInto string             `json:"merged_into"`
+	CreatedBy  string             `json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type CollaborationRequest struct {
+	ID         string             `json:"id"`
+	TeamID     string             `json:"team_id"`
+	ReportID   string             `json:"report_id"`
+	AuthorID   string             `json:"author_id"`
+	AssigneeID string             `json:"assignee_id"`
+	Title      string             `json:"title"`
+	Body       string             `json:"body"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CollaborationUpdate struct {
+	ID        string             `json:"id"`
+	RequestID string             `json:"request_id"`
+	ActorID   string             `json:"actor_id"`
+	Status    string             `json:"status"`
+	Body      string             `json:"body"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Comment struct {
 	ID        string             `json:"id"`
 	ReportID  string             `json:"report_id"`
@@ -16,20 +65,111 @@ type Comment struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
-type Report struct {
+type Domain struct {
+	TeamID   string `json:"team_id"`
+	Name     string `json:"name"`
+	Position int32  `json:"position"`
+}
+
+type Invite struct {
 	ID        string             `json:"id"`
 	TeamID    string             `json:"team_id"`
-	AuthorID  string             `json:"author_id"`
-	SourceID  string             `json:"source_id"`
-	Title     string             `json:"title"`
-	Body      string             `json:"body"`
-	ProjectID string             `json:"project_id"`
-	Domain    string             `json:"domain"`
-	Agent     string             `json:"agent"`
-	Model     string             `json:"model"`
-	Status    string             `json:"status"`
-	Links     []byte             `json:"links"`
-	Mentions  []byte             `json:"mentions"`
+	Email     string             `json:"email"`
+	TokenHash string             `json:"token_hash"`
+	CreatedBy string             `json:"created_by"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Membership struct {
+	TeamID      string             `json:"team_id"`
+	UserID      string             `json:"user_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	DisplayName string             `json:"display_name"`
+}
+
+type Notification struct {
+	ID        string             `json:"id"`
+	TeamID    string             `json:"team_id"`
+	UserID    string             `json:"user_id"`
+	ReportID  string             `json:"report_id"`
+	RequestID string             `json:"request_id"`
+	Kind      string             `json:"kind"`
+	Title     string             `json:"title"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ReadAt    pgtype.Timestamptz `json:"read_at"`
+}
+
+type Project struct {
+	ID      string   `json:"id"`
+	TeamID  string   `json:"team_id"`
+	Name    string   `json:"name"`
+	Domains []string `json:"domains"`
+	Status  string   `json:"status"`
+}
+
+type Report struct {
+	ID                   string             `json:"id"`
+	TeamID               string             `json:"team_id"`
+	AuthorID             string             `json:"author_id"`
+	SourceID             string             `json:"source_id"`
+	Title                string             `json:"title"`
+	Body                 string             `json:"body"`
+	ProjectID            string             `json:"project_id"`
+	Domain               string             `json:"domain"`
+	Agent                string             `json:"agent"`
+	Model                string             `json:"model"`
+	Status               string             `json:"status"`
+	Links                []byte             `json:"links"`
+	Mentions             []byte             `json:"mentions"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	Domains              []string           `json:"domains"`
+	ClassificationInput  []byte             `json:"classification_input"`
+	ClassificationLocked bool               `json:"classification_locked"`
+}
+
+type ReportHistory struct {
+	ID         string             `json:"id"`
+	TeamID     string             `json:"team_id"`
+	ReportID   string             `json:"report_id"`
+	ActorID    string             `json:"actor_id"`
+	Action     string             `json:"action"`
+	BeforeData []byte             `json:"before_data"`
+	AfterData  []byte             `json:"after_data"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type ReportRead struct {
+	TeamID   string             `json:"team_id"`
+	UserID   string             `json:"user_id"`
+	ReportID string             `json:"report_id"`
+	SeenAt   pgtype.Timestamptz `json:"seen_at"`
+}
+
+type Session struct {
+	TokenHash string             `json:"token_hash"`
+	UserID    string             `json:"user_id"`
+	TeamID    string             `json:"team_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Team struct {
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Timezone  string             `json:"timezone"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type User struct {
+	ID           string             `json:"id"`
+	Email        string             `json:"email"`
+	Name         string             `json:"name"`
+	PasswordHash string             `json:"password_hash"`
+	Color        string             `json:"color"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
