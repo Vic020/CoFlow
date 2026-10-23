@@ -5,21 +5,23 @@
 <p align="center">让团队看见每一次 Agent 推进。</p>
 <p align="center">
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.0-087354" alt="Version 0.1.0" /></a>
-  <img src="https://img.shields.io/badge/status-local_preview-e5a53e" alt="Local preview" />
+  <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
   <img src="https://img.shields.io/badge/Next.js-TypeScript-17212d" alt="Next.js and TypeScript" />
   <img src="https://img.shields.io/badge/backend-Go-00ADD8" alt="Go backend" />
 </p>
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
   <a href="#agent-接入">Agent 接入</a> ·
-  <a href="docs/PRODUCT.md">产品路线图</a> ·
+  <a href="https://github.com/users/Vic020/projects/1">产品路线图</a> ·
+  <a href="https://github.com/Vic020/CoFlow/wiki">使用指南</a> ·
+  <a href="https://github.com/Vic020/CoFlow/releases">Releases</a> ·
   <a href="CHANGELOG.md">更新日志</a> ·
   <a href="docs/DEVELOPMENT.md">开发指南</a>
 </p>
 
 CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过 Codex、Claude Code 等工具上报简报和交付链接，团队在统一的 Timeline 中浏览、评论并讨论阻塞。
 
-> **当前版本：0.1.0，本地开发预览。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网部署与邮件能力仍需后续完成；独立演示模式继续保留。
+> **当前版本：0.1.0，早期自托管版本。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网体验与容量仍需验收，邮件能力尚未提供；独立演示模式继续保留。
 
 ## 界面预览
 
@@ -40,7 +42,7 @@ CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过
 - **Agent 接入**：一键复制上报 Prompt，提供可下载的 Skill 与 REST API；相同来源标识更新原记录，避免重复上报。
 - **响应式界面**：桌面侧栏与信息流，手机抽屉导航、筛选面板与单列阅读。
 
-协作闭环截图：[分类整理](docs/design/catalog-management-preview.png)、[协作进展](docs/design/collaboration-detail-preview.png)、[移动端](docs/design/collaboration-mobile-preview.png)。截图使用独立验收数据。
+更多操作见 [Wiki 使用指南](https://github.com/Vic020/CoFlow/wiki)，验证范围见 [验收记录](docs/VERIFICATION.md)。
 
 ## 技术栈
 
@@ -89,7 +91,7 @@ npm run dev
 
 ## Agent 接入
 
-Agent 凭证可在侧栏或 `/credentials` 页面创建与管理，支持权限、有效期、撤销，以及复制上报 Prompt。完整凭证只在创建时弹窗明文显示，关闭或离开页面后清除。团队设置提供成员、邀请、项目与领域四个管理分类；项目与领域支持拖拽排序（手机可上下移动，键盘可使用 Alt + ↑ / ↓），顺序保存到团队并同步 Timeline。Timeline 也保留分类快捷编辑入口。左上角可切换或新建团队，各团队可以使用不同称呼。首次在 Agent 中配置凭证后，可反复复制不含密钥的上报 Prompt；Agent 会复用已有配置并校验团队与成员。
+Agent 凭证可在侧栏或 `/credentials` 页面创建与管理，支持权限、有效期、撤销，以及复制上报 Prompt。完整凭证只在创建时弹窗明文显示，关闭或离开页面后清除。团队设置提供成员、邀请、项目与领域四个管理分类；项目与领域支持拖拽排序（手机可上下移动，键盘可使用 Alt + ↑ / ↓），顺序保存到团队并同步 Timeline。Timeline 也保留分类快捷编辑入口。左上角可切换或新建团队，各团队可以使用不同称呼。首次复制「配置 Prompt」交给 Agent，校验身份后保存到本机用户目录；之后复制不含密钥的上报 Prompt，优先读取 COFLOW_TOKEN，否则读取指定文件，并校验团队与成员。
 
 在 Timeline 右侧点击 **创建接入凭证**，创建绑定自己的 Token；之后点击 **复制上报 Prompt**，粘贴给正在工作的 Agent，即可让它读取规范并上报。顶部 **上报**打开统一弹窗，可切换手动或 Agent 等上报方式。支持直接复制提示词、下载 Skill、查看 API 命令与 JSON 示例；切换页签保留手动草稿。CLI、MCP 页签位于末尾，标记为暂未提供。
 
@@ -106,6 +108,22 @@ Agent 凭证可在侧栏或 `/credentials` 页面创建与管理，支持权限�
 | 在线 OpenAPI | `/agent/openapi.yaml`                                          |
 | 协议源文件   | [docs/openapi.yaml](docs/openapi.yaml)                         |
 | 示例简报     | [docs/example-report.json](docs/example-report.json)           |
+
+### 本机凭证配置
+
+创建凭证后，复制一次性的「配置 Prompt」交给 Agent，明确授权它校验身份并保存凭证。保存路径由页面生成：
+
+```text
+~/.coflow/credentials/<编码后的服务 origin>/<编码后的 team_id>/<编码后的 member_id>.token
+```
+
+站点标识使用 `encodeURIComponent(new URL(service).origin)`；团队／成员 ID 同样编码，并将 `.` 额外编码为 `%2E`。例如服务 `http://127.0.0.1:3000` 的目录名为 `http%3A%2F%2F127.0.0.1%3A3000`。使用提示词给出的完整路径，无需人工拼接。
+
+- 每台电脑可创建自己的凭证，名称建议包含设备名，例如「MacBook」。同一电脑的多个 Agent 可共用该文件。
+- 文件只保存 token，POSIX 目录权限为 `700`、文件为 `600`；Windows 使用仅当前用户可访问的 ACL。明文文件的安全性低于系统钥匙串，应保护本机账号。
+- 首次配置先校验服务、团队和成员，再保存；已有不同凭证须确认后替换。无保存指令时，凭证仅用于当前请求。
+- 日常提示词不含密钥，指定读取路径；环境变量或文件凭证无效、身份不符时停止，不扫描其他路径或聊天记录寻找替代品。
+- 浏览器不写入本机文件，不持久保存密钥。文件由获得授权的 Agent 创建在用户目录中，不进入项目或 Git；设备丢失或停用时在凭证页撤销，删除本机文件不等于撤销。
 
 CLI 与 MCP 标记为未来支持，当前请使用 Agent Prompt、Skill 或 HTTP API。仓库中的 CLI 原型暂不作为正式接入方式。
 
@@ -170,4 +188,13 @@ npm run version:check
 
 ## 部署与备份
 
-参见[部署指南](docs/DEPLOYMENT.md)：Docker 多阶段镜像、Caddy HTTPS、2C2G 资源预算与数据库备份／恢复演练。当前仍是本地开发版本，未发布公网环境。
+参见[部署指南](docs/DEPLOYMENT.md)：Docker 多阶段镜像、Caddy HTTPS、2C2G 资源预算与数据库备份／恢复演练。本次发布源码与自托管配置，未提供公共托管环境。
+
+## 社区与项目入口
+
+- [Release](https://github.com/Vic020/CoFlow/releases)：版本说明与源码下载。
+- [Projects](https://github.com/users/Vic020/projects/1)：0.2 Todo、0.3 Calendar 产品计划。
+- [Wiki](https://github.com/Vic020/CoFlow/wiki)：基本使用指南。
+- [Issues](https://github.com/Vic020/CoFlow/issues/new/choose)：Bug 与功能建议。
+- [Actions](https://github.com/Vic020/CoFlow/actions)：自动验证；新工作流运行结果以 GitHub 实际状态为准。
+- [安全说明](SECURITY.md) · [获取帮助](SUPPORT.md) · [贡献约定](CONTRIBUTING.md)。

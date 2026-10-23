@@ -27,7 +27,8 @@ const date = (value: string) => new Date(value).toLocaleDateString("zh-CN");
 
 export function TokenManager() {
   const { me, credential, setCredential, refreshTokens } = useAuth();
-  const { copyPrompt, copied, copyError, origin } = useAgentPrompt();
+  const { copyPrompt, copied, copyError, origin, credentialPath } =
+    useAgentPrompt();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Codex");
   const [days, setDays] = useState("90");
@@ -203,7 +204,7 @@ export function TokenManager() {
         <DialogContent className="credential-secret-dialog info-dialog">
           <DialogTitle className="modal-title">保存你的凭证</DialogTitle>
           <DialogDescription className="modal-description">
-            仅展示一次，关闭后无法再次查看。
+            仅展示一次。复制配置 Prompt，让 Agent 保存到本机。
           </DialogDescription>
           <label className="sr-only" htmlFor="issued-token">
             Agent 凭证明文
@@ -217,6 +218,12 @@ export function TokenManager() {
             spellCheck={false}
             onFocus={(e) => e.currentTarget.select()}
           />
+          {credentialPath && (
+            <p className="credential-local-path">
+              <span>本机保存位置</span>
+              <code>{credentialPath}</code>
+            </p>
+          )}
           <div className="credential-dialog-actions">
             <Button
               size="sm"
@@ -232,7 +239,7 @@ export function TokenManager() {
               disabled={!origin}
             >
               {copied ? <Check /> : <Copy />}
-              {copied ? "已复制" : "复制上报 Prompt"}
+              {copied ? "已复制" : "复制配置 Prompt"}
             </Button>
           </div>
           {copyError && (

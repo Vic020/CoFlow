@@ -2,7 +2,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-gate";
 
-import { reportPrompt, skillPath } from "@/lib/report-prompt";
+import {
+  credentialFilePath,
+  reportPrompt,
+  skillPath,
+} from "@/lib/report-prompt";
 export { reportPrompt, skillPath } from "@/lib/report-prompt";
 
 /** Shared by the one-click sidebar card and the full integration dialog. */
@@ -20,6 +24,13 @@ export function useAgentPrompt() {
     const timer = setTimeout(() => setCopied(false), 2500);
     return () => clearTimeout(timer);
   }, [copied]);
+  const credentialPath =
+    origin && me && !demo
+      ? credentialFilePath(origin, {
+          team: me.current_team,
+          member: me.user.id,
+        })
+      : null;
   const prompt = !origin
     ? "正在生成接入地址…"
     : needsCredential
@@ -37,11 +48,14 @@ export function useAgentPrompt() {
       setCopyError("");
       setCopied(true);
     } catch {
-      setCopyError("无法访问剪贴板，请打开更多接入方式，手动复制 Prompt。");
+      setCopyError(
+        "无法访问剪贴板，请打开顶部上报的 Agent 页签手动复制 Prompt。",
+      );
     }
   }
   return {
     origin,
+    credentialPath,
     prompt,
     copied,
     copyError,

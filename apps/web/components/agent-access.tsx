@@ -136,7 +136,7 @@ export function AgentAccess({
               ? "已复制，粘贴给 Agent 即可上报。"
               : demo
                 ? "演示模式无需凭证。"
-                : "首次配置凭证，之后复用已有配置。")}
+                : "首次用配置 Prompt 保存凭证，之后读取指定本机文件。")}
         </p>
         {!demo && (
           <Link

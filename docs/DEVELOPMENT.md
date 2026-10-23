@@ -40,24 +40,19 @@ npm run dev
 
 ## 个人 Agent 凭证
 
-打开 Agent 接入，为当前成员和团队创建凭证。可选权限：只读、读取与上报、读取/上报/评论；有效期 1–365 天，默认 90 天。
+打开侧栏的 Agent 凭证，为当前成员和团队创建凭证。可选权限：只读、读取与上报、读取/上报/评论；有效期 1–365 天，默认 90 天。
 
-完整凭证仅创建时返回。数据库仅存 SHA-256 哈希、前缀和管理元数据。页面只在当前内存会话内暂存凭证以复制 Prompt，不写入浏览器本地存储。退出、刷新或切换团队后清除。已保存的凭证可在接入弹窗中重新验证使用。
+完整凭证仅创建时返回。数据库仅存 SHA-256 哈希、前缀和管理元数据。页面只在当前内存会话内暂存凭证以复制 Prompt，不写入浏览器本地存储。退出、刷新或切换团队后清除。已保存的凭证可在凭证页面重新验证；首次复制配置 Prompt 授权 Agent 保存到用户目录，之后只读取明确指定的凭证文件。
 
 ```text
 读一下 http://127.0.0.1:3000/agent/coflow-report/SKILL.md，服务地址是 http://127.0.0.1:3000，我的凭证是 <个人凭证>，按照要求上报一下当前项目的进展、交付链接和阻塞。
 ```
 
-HTTP 使用 `Authorization: Bearer <个人凭证>`。CLI 通过进程环境 `COFLOW_TOKEN` 读取凭证：
+HTTP 使用 `Authorization: Bearer <个人凭证>`。日常 Prompt 优先读取 `COFLOW_TOKEN`，否则读取按站点／团队／成员隔离的 `~/.coflow/credentials/.../*.token`。具体规则见 README 的本机凭证配置与 canonical Skill。CLI、MCP 暂未正式支持。
 
-```sh
-node apps/cli/coflow.mjs list
-node apps/cli/coflow.mjs report --file docs/example-report.json
-```
+不要把真实凭证写进示例文件、源码或日志。Agent 身份来自 Token，不采信请求体的作者或团队字段；Agent 无权管理账号、邀请和凭证，管理员 Token 也不获得管理他人简报的权限。
 
-同时设置 `COFLOW_URL` 为实际服务地址。不要把真实凭证写进示例文件、源码或日志。Agent 的成员和团队从 Token 确定，不采信请求体中的 author_id 或 team_id；Agent 无权管理账号、邀请或凭证。管理员的 Agent Token 也不能修改其他成员的上报。
-
-新的团队默认创建“团队协作”项目（ID `general`）和初始领域，正式项目/领域管理为下一阶段。
+新的团队默认创建“团队协作”项目（ID `general`）和初始领域，项目／领域管理、别名、归档、合并及排序已支持。
 
 ## 独立演示模式
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   reportPrompt,
+  credentialFilePath,
   hasActiveReportToken,
 } from "../apps/web/lib/report-prompt.ts";
 
@@ -45,4 +46,67 @@ test("only unexpired, unrevoked reporting tokens enable quick reporting", () => 
   ])
     assert.equal(hasActiveReportToken([token], now), false);
   assert.equal(hasActiveReportToken([], now), false);
+});
+
+test("local paths isolate origin, port, team and member and cannot traverse parents", () => {
+  const target = { team: "team-a", member: "member-a" };
+  const path = credentialFilePath("https://COFLOW.example.test:443/", target);
+  assert.equal(
+    path,
+    "~/.coflow/credentials/https%3A%2F%2Fcoflow.example.test/team-a/member-a.token",
+  );
+  assert.notEqual(
+    path,
+    credentialFilePath("http://coflow.example.test", target),
+  );
+  assert.notEqual(
+    path,
+    credentialFilePath("https://coflow.example.test:8443", target),
+  );
+  assert.notEqual(
+    path,
+    credentialFilePath("https://coflow.example.test", {
+      ...target,
+      team: "team-b",
+    }),
+  );
+  assert.notEqual(
+    path,
+    credentialFilePath("https://coflow.example.test", {
+      ...target,
+      member: "member-b",
+    }),
+  );
+  const unusual = credentialFilePath("http://[::1]:3000", {
+    team: "../team",
+    member: "../../member",
+  });
+  assert.ok(!unusual.includes("../"));
+  assert.ok(unusual.includes("%2E%2E%2Fteam"));
+  assert.equal(credentialFilePath("https://coflow.example.test"), null);
+  assert.throws(() => credentialFilePath("file:///tmp/service", target));
+  assert.throws(() =>
+    credentialFilePath("https://user:secret@coflow.example.test", target),
+  );
+});
+
+test("first-time and daily prompts share an exact path but only setup contains the secret", () => {
+  const target = { team: "team-a", member: "member-a" };
+  const origin = "http://127.0.0.1:3000";
+  const path = credentialFilePath(origin, target);
+  const setup = reportPrompt(origin, "cf_test_setup_only", false, target);
+  const daily = reportPrompt(origin, "", false, target);
+  assert.ok(setup.includes(path) && daily.includes(path));
+  assert.ok(setup.includes("cf_test_setup_only"));
+  assert.ok(setup.includes("先校验") && setup.includes("校验成功后"));
+  assert.ok(
+    setup.includes("700") &&
+      setup.includes("600") &&
+      setup.includes("不直接覆盖"),
+  );
+  assert.ok(
+    !daily.includes("cf_test_setup_only") && !daily.includes("此前提供"),
+  );
+  assert.ok(daily.includes("不搜索其他目录或聊天记录"));
+  assert.ok(!reportPrompt(origin, "", true, target).includes(".token"));
 });

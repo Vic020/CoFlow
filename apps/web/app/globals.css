@@ -4190,3 +4190,19 @@ input[type="checkbox"] {
   color: #84958b;
   font-size: 11px;
 }
+.credential-local-path {
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #84958b;
+}
+.credential-local-path > span {
+  display: block;
+  margin-bottom: 4px;
+}
+.credential-local-path code {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #53745f;
+  font-size: 11px;
+}

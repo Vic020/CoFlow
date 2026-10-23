@@ -1,0 +1,32 @@
+name: Bug 报告
+description: 帮助我们复现并修复问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: 请使用虚拟示例，勿粘贴凭证、Cookie、有效邀请链接、真实成员邮箱或团队数据。安全漏洞请参见 SECURITY.md。
+  - type: input
+    id: version
+    attributes:
+      label: 版本与环境
+      placeholder: v0.1.0，macOS，Chrome，团队模式
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 写出最短操作路径。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏截图或错误信息
+      description: 只附必要信息；提交前检查图片及日志内容。
