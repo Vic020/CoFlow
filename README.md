@@ -23,7 +23,9 @@ CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过
 
 ## 界面预览
 
-![CoFlow Timeline](docs/design/desktop-preview.png)
+![CoFlow Timeline（虚拟示例数据）](docs/design/public-preview.png)
+
+预览使用隔离测试库中的虚拟团队与示例交付链接，不含真实成员数据。
 
 ## 功能
 
@@ -155,6 +157,8 @@ npm run version:check
 实施顺序与验收标准见[版本工作计划](docs/ROADMAP.md)，现有功能范围见[产品定义](docs/PRODUCT.md)。
 
 ## 贡献
+
+提交前请遵循[贡献与公开内容约定](CONTRIBUTING.md)，不要上传真实团队数据、凭证或本机验收记录。
 
 欢迎提出问题、讨论方案与提交改进。提交变更时请说明解决的问题、界面或接口变化，以及实际完成的验证；涉及界面时附桌面或手机截图。
 

@@ -10,3 +10,10 @@ backups
 docs/design
 **/*.tsbuildinfo
 **/*.log
+.local
+**/.local
+test-results
+playwright-report
+**/*.dump
+**/*.har
+**/*.trace.zip

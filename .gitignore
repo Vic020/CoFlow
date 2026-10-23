@@ -11,3 +11,20 @@ backups/
 *.tsbuildinfo
 # Derived from skills/ and docs/ by web predev/prebuild.
 apps/web/public/agent/
+
+# Local verification state and exports must never become public artifacts.
+.local/
+**/.local/
+test-results/
+playwright-report/
+*.dump
+*.sql.gz
+*.har
+*.trace.zip
+# QA screenshots are local; only reviewed, synthetic public previews are tracked.
+docs/design/*
+!docs/design/timeline-desktop.png
+!docs/design/logo-preview.png
+!docs/design/public-preview.png
+# Ephemeral browser verification harness.
+apps/api/internal/httpapi/local_browser_pilot_test.go

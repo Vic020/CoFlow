@@ -8,3 +8,5 @@
 - Team mode uses PostgreSQL-backed accounts, invitations and personal Agent Tokens; explicit COFLOW_DEMO=true remains a separate local demo. Keep those modes and their data boundaries distinct.
 
 - UI design language: concise, direct, and focused on information. Prefer one clear prompt/action, remove duplicate labels and explanations, use restrained motion and spacing to establish hierarchy.
+
+- This is a public open-source repository. Keep real team data, account/session/token material, database dumps, backup files and local QA outputs out of Git and external uploads. Use isolated disposable test schemas and synthetic identities. Only reviewed synthetic screenshots on the docs/design allowlist may be tracked; verify staged content before committing or pushing. Never rewrite published history without explicit user authorization.
