@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
+import { publicDemo } from "@/lib/runtime";
 import { Button } from "@/components/ui/button";
 import {
   ApiError,
@@ -318,7 +319,7 @@ export function ReportCompose({
           role={error ? "alert" : undefined}
         >
           {error ||
-            `以${meta.members.find((m) => m.id === meta.current_user)?.name || "当前成员"}的身份${report ? "保存" : "发布"}${meta.mode === "local-demo" ? " · 本地演示" : ""}`}
+            `以${meta.members.find((m) => m.id === meta.current_user)?.name || "当前成员"}的身份${report ? "保存" : "发布"}${publicDemo ? " · 仅当前页面" : meta.mode === "local-demo" ? " · 本地演示" : ""}`}
         </span>
         <div className="compose-submit-actions">
           {onCancel && (

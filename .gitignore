@@ -28,3 +28,7 @@ docs/design/*
 !docs/design/public-preview.png
 # Ephemeral browser verification harness.
 apps/api/internal/httpapi/local_browser_pilot_test.go
+
+# Static GitHub Pages build artifacts.
+apps/web/.next-pages/
+apps/web/out/

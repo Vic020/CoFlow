@@ -45,6 +45,7 @@ import {
 } from "@/components/collaboration-panel";
 import { useAuth } from "@/components/auth-gate";
 import { CoFlowLogo } from "@/components/coflow-logo";
+import { publicDemo, repositoryURL } from "@/lib/runtime";
 import {
   Dialog,
   DialogContent,
@@ -542,7 +543,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           }
           role={
             auth.mode === "local-demo"
-              ? "本地演示身份"
+              ? publicDemo ? "演示体验者" : "本地演示身份"
               : meta?.role === "admin"
                 ? "团队管理员"
                 : "团队成员"
@@ -551,7 +552,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       </div>
     </>
   );
-  if (newTeamPage)
+  if (newTeamPage && !publicDemo)
     return (
       <>
         {children}
@@ -577,6 +578,10 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       {children}
       <aside className="sidebar">{navigation}</aside>
       <main className="main-shell">
+        {publicDemo && <div className="public-demo-banner" role="note">
+          <span><strong>公开演示</strong>虚拟团队 · 操作仅本页有效，刷新后重置</span>
+          <a href={repositoryURL} target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        </div>}
         <div
           className={`workspace-content${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
@@ -676,7 +681,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           ) : credentialsPage ? (
             <div className="credentials-content">
               {auth.mode === "local-demo" ? (
-                <p className="muted">演示模式无需凭证。</p>
+                <p className="muted">{publicDemo ? "公开演示不签发凭证。请在自己的 CoFlow 实例中配置 Agent。" : "演示模式无需凭证。"}</p>
               ) : (
                 <TokenManager key={auth.me?.current_team} />
               )}
@@ -1126,9 +1131,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <p className="demo-note">
                   {meta?.mode === "local-demo" ? (
                     <>
-                      本地演示 · 示例人物与交付链接
+                      {publicDemo ? "公开演示 · 全部为虚拟数据" : "本地演示 · 示例人物与交付链接"}
                       <br />
-                      上报及评论会保存在本机
+                      {publicDemo ? "不连接真实服务，不保存到服务器" : "上报及评论会保存在本机"}
                     </>
                   ) : (
                     <>

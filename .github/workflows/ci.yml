@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run version:check
       - run: npm run test:agent
+      - run: npm run test:demo
       - run: npm run typecheck
       - run: npm run build
         env:

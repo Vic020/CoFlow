@@ -1,3 +1,4 @@
+import { publicDemo } from "./runtime";
 export type Member = { id: string; name: string; role: string; color: string };
 export type Project = {
   id: string;
@@ -111,6 +112,10 @@ export class ApiError extends Error {
   }
 }
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (publicDemo) {
+    const { publicDemoRequest } = await import("./public-demo");
+    return (await publicDemoRequest(path, init)) as T;
+  }
   const res = await fetch(`/api/v1${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },

@@ -4,6 +4,7 @@ import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { skillPath, useAgentPrompt } from "@/lib/agent-prompt";
+import { publicDemo, repositoryURL } from "@/lib/runtime";
 import { Meta } from "@/lib/types";
 import type { ReportTab } from "@/components/report-hub";
 
@@ -105,6 +106,13 @@ export function AgentAccess({
   );
   const apiCommand = `export COFLOW_URL=${shellQuote(service)}\ncurl --fail-with-body "$COFLOW_URL/api/v1/reports" \\\n  -H 'Content-Type: application/json' \\\n${demo ? "" : '  -H "Authorization: Bearer $COFLOW_TOKEN" \\\n'}  --data-binary @report.json`;
 
+  if (publicDemo) return (
+    <section className="report-method">
+      <h3>{method === "cli" || method === "mcp" ? "未来支持" : "在自有实例中接入 Agent"}</h3>
+      <p className="muted">公开演示没有上报接口，也不接收凭证。</p>
+      <Button variant="outline" asChild><a href={`${repositoryURL}/wiki/Agent-Reporting`} target="_blank" rel="noopener noreferrer">查看接入指南 ↗</a></Button>
+    </section>
+  );
   if (method === "agent")
     return (
       <section className="report-method">

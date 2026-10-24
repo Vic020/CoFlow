@@ -4206,3 +4206,8 @@ input[type="checkbox"] {
   color: #53745f;
   font-size: 11px;
 }
+
+.public-demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 36px; background: #edf7f2; border-bottom: 1px solid #dcebe3; color: #6d837a; font-size: 12px; }
+.public-demo-banner strong { color: #08664f; margin-right: 12px; font-weight: 600; }
+.public-demo-banner a { flex-shrink: 0; color: #08664f; }
+@media (max-width: 700px) { .public-demo-banner { padding: 9px 16px; font-size: 11px; } .public-demo-banner span { max-width: 260px; } }

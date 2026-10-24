@@ -3,6 +3,7 @@
 </p>
 <h1 align="center">CoFlow</h1>
 <p align="center">让团队看见每一次 Agent 推进。</p>
+<p align="center"><a href="https://vic020.github.io/CoFlow/">在线演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.0-087354" alt="Version 0.1.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
@@ -188,7 +189,7 @@ npm run version:check
 
 ## 部署与备份
 
-参见[部署指南](docs/DEPLOYMENT.md)：Docker 多阶段镜像、Caddy HTTPS、2C2G 资源预算与数据库备份／恢复演练。本次发布源码与自托管配置，未提供公共托管环境。
+参见[部署指南](docs/DEPLOYMENT.md)：Docker 多阶段镜像、Caddy HTTPS、2C2G 资源预算与数据库备份／恢复演练。提供源码、自托管配置与独立的静态演示；不提供公共真实团队服务。
 
 ## 社区与项目入口
 
@@ -198,3 +199,11 @@ npm run version:check
 - [Issues](https://github.com/Vic020/CoFlow/issues/new/choose)：Bug 与功能建议。
 - [Actions](https://github.com/Vic020/CoFlow/actions)：自动验证；新工作流运行结果以 GitHub 实际状态为准。
 - [安全说明](SECURITY.md) · [获取帮助](SUPPORT.md) · [贡献约定](CONTRIBUTING.md)。
+
+## 公开演示与自用部署
+
+[GitHub Pages 演示站](https://vic020.github.io/CoFlow/)展示虚拟的 Flow Studio 团队。可筛选、查看日报与详情、试填简报和评论；操作只在当前页面内存中有效，刷新恢复示例，不向服务器上传。无需登录，不连接 Go、数据库或真实团队。请勿输入真实项目或个人信息。
+
+**购买的服务器用于维护者自用的真实团队，与 GitHub 公开演示无关。** 自托管用户使用自己的服务和凭证；公开 Pages 不依赖、不代理或访问这些服务器。
+
+Pages 使用独立构建标记静态导出；普通构建仍为 Next.js standalone + Go。详见 [Pages 部署说明](docs/GITHUB_PAGES.md)。

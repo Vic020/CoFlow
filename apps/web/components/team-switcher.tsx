@@ -4,6 +4,7 @@ import { Check, ChevronDown, Loader2, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-gate";
+import { publicDemo } from "@/lib/runtime";
 import { request } from "@/lib/types";
 
 export function TeamSwitcher({
@@ -82,7 +83,7 @@ export function TeamSwitcher({
       {open && (
         <div className="team-switch-menu" role="group" aria-label="团队切换">
           {auth.mode === "local-demo" ? (
-            <p className="muted">本地演示团队</p>
+            <p className="muted">{publicDemo ? "公开演示 · Flow Studio" : "本地演示团队"}</p>
           ) : (
             <>
               {auth.me?.teams.map((t) => (
