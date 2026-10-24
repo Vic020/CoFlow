@@ -2,7 +2,7 @@
 
 公开入口：https://vic020.github.io/CoFlow/
 
-2026-10-24：Pages [构建与部署已通过](https://github.com/Vic020/CoFlow/actions/runs/40090413102)，但此入口继承账号个人主页的 `vicyu.com` 自定义域名并重定向到 `vicyu.com/CoFlow/`，目前该地址返回 404。公开访问验收尚未通过，需维护者决定独立子域名或个人主页域名绑定方案；不自动修改其他仓库或 DNS。
+2026-10-24：Pages [构建与部署已通过](https://github.com/Vic020/CoFlow/actions/runs/40090413102)。经维护者明确授权，已解除个人主页的旧自定义域名绑定，恢复默认 github.io 地址；浏览器已验证 HTTPS 演示团队加载成功。若曾访问过旧跳转，浏览器可能缓存重定向，可清除缓存或使用无痕窗口。DNS 记录未改动。
 
 演示使用合成的 Flow Studio 团队、Alice／Bob／Carol／Dan、公开 Wiki 和仓库链接。展示 Timeline、筛选、日报、详情、手动上报与评论；修改仅在当前标签页内存中有效，刷新重置。不是多人共享的真实服务，不提供账号、邀请、凭证或 Agent 上报接口。浏览器不向后端上传内容，也不将试填内容保存到 localStorage。
 
