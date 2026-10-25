@@ -130,6 +130,12 @@ Never claim a failed or unverified write succeeded. Keep the same work-unit `sou
 
 A concise failure response should state: the failed step, whether a report is saved / not saved / uncertain, and the single action needed next. For example: “The credential was rejected (401); nothing was reported. Open Agent credentials, install a valid credential for this team, then say ‘上报 CoFlow’ again.” Do not persist failed report bodies in project files; keep only the already authorized private minimal mapping/checkpoint.
 
+## Deleted reports and share links
+
+A browser author or team administrator can soft-delete and restore reports/comments. Agent tokens cannot delete, restore or read trash. When a POST using an existing `source_id` returns 409 because the report was deleted, stop and ask the user to review the web trash and restore it if appropriate. Do not retry or invent a new source ID to bypass deletion.
+
+The report detail offers **Copy link** and **Copy source_id**. A `?report=<id>` link locates an active report after sign-in within the current team; it is not a public share or access grant. Never infer access to another team from such a link.
+
 ## Collaboration and follow-up
 
 When the user asks to request help, `GET /api/v1/collaborations` returns team requests and progress. With `comments:write`, POST `/api/v1/collaborations` using `report_id`, `assignee_id` (existing member), `title`, and optional `body`. This notifies the assignee. With the same permission, the creator or assignee may PATCH `/api/v1/collaborations/<id>` with `status` (`open`, `in_progress`, `blocked`, `done`, `cancelled`) and a progress `body`. Read a successful response before claiming success. Ordinary authorization to report does not by itself authorize creating assignments or acting on requests.

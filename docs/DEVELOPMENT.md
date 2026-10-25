@@ -1,6 +1,6 @@
 # 开发指南
 
-CoFlow 0.1.3 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
+CoFlow 0.1.4 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
 
 ## 环境
 
@@ -26,7 +26,7 @@ npm run dev
 
 打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。首次访问使用 `http://127.0.0.1:3000/?token=<本机初始化 token>`，校验通过后创建管理员和工作空间；这是一次性初始化，数据库已有账号后不能再次创建管理员。无效链接不展示初始化表单。随后新成员只能通过邀请加入。
 
-默认监听本机。部署前先完成工作空间初始化，配置实际站点 `COFLOW_WEB_ORIGIN`、HTTPS 和 `COFLOW_SECURE_COOKIES=true`，更换开发数据库口令，并安排备份。服务器、域名和正式部署仍需单独落实。
+默认监听本机。部署前先完成工作空间初始化，配置实际站点 `COFLOW_WEB_ORIGIN`、HTTPS 和 `COFLOW_SECURE_COOKIES=true`，更换开发数据库口令，并安排备份。每个实例的服务器、域名和正式部署独立配置，不写入公开仓库。默认前端为 3000、API 为 8080；端口被占用时，修改 Go 的 `COFLOW_ADDR`，同时设置 Next.js 的 `API_BASE_URL`。后者用于构建／开发时的同源转发，生产镜像默认使用 Compose 内网的 `http://api:8080`。
 
 ## 会话、邀请与权限
 
@@ -36,20 +36,16 @@ npm run dev
 - 邀请原文只在生成时返回；链接使用 `/#invite=...`，不把邀请放入服务端 URL 查询参数。
 - 已有账号接受邀请时需匹配当前登录账号或验证原密码，不会通过邀请重置密码。
 - 管理员可移除普通成员；不能移除管理员。移除同时撤销该团队下的会话和全部 Agent 凭证，重新加入不会恢复旧凭证。
-- 多团队账号可以在团队设置中切换。成员、项目、简报和评论读取都以当前团队为边界。
+- 多团队账号可以在侧栏左上角的团队菜单中切换或新建团队。成员、项目、简报和评论读取都以当前团队为边界。
 - 暂无邮箱验证、找回密码或管理员转让界面；不要把邀请当作密码重置入口。
 
 ## 个人 Agent 凭证
 
 打开侧栏的 Agent 凭证，为当前成员和团队创建凭证。可选权限：只读、读取与上报、读取/上报/评论；有效期 1–365 天，默认 90 天。
 
-完整凭证仅创建时返回。数据库仅存 SHA-256 哈希、前缀和管理元数据。页面只在当前内存会话内暂存凭证以复制 Prompt，不写入浏览器本地存储。退出、刷新或切换团队后清除。已保存的凭证可在凭证页面重新验证；首次复制配置 Prompt 授权 Agent 保存到用户目录，之后只读取明确指定的凭证文件。
+完整凭证仅创建时返回，数据库只存哈希、前缀和管理元数据。一次性弹窗提供安装提示词，关闭后清除内存中的密钥，不写入浏览器本地存储。Agent 校验服务与目标身份后安装用户级 Skill、保存本机凭证并关联当前项目；日常通过「上报 CoFlow」或页面复制的简短指令复用。同一工作沿用 source_id。
 
-```text
-读一下 http://127.0.0.1:3000/agent/coflow-report/SKILL.md，服务地址是 http://127.0.0.1:3000，我的凭证是 <个人凭证>，按照要求上报一下当前项目的进展、交付链接和阻塞。
-```
-
-HTTP 使用 `Authorization: Bearer <个人凭证>`。日常 Prompt 优先读取 `COFLOW_TOKEN`，否则读取按站点／团队／成员隔离的 `~/.coflow/credentials/.../*.token`。保存路径与规则见 [Agent Skill](../skills/coflow-report/SKILL.md)。CLI、MCP 暂未正式支持。
+HTTP 使用 `Authorization: Bearer <个人凭证>`。本机路径、权限、调度建议和失败恢复见 [Agent 接入](AGENT_REPORTING.md) 与[规范 Skill](../skills/coflow-report/SKILL.md)。不要在开发文档中粘贴安装提示词中的真实密钥。CLI、MCP 暂未正式支持。
 
 不要把真实凭证写进示例文件、源码或日志。Agent 身份来自 Token，不采信请求体的作者或团队字段；Agent 无权管理账号、邀请和凭证，管理员 Token 也不获得管理他人简报的权限。
 
@@ -80,10 +76,13 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 generate
 ## 验证
 
 ```sh
-npm run typecheck
-npm run build
 npm run version:check
+npm run typecheck
+npm run test:agent
+npm run test:i18n
+npm run test:demo
 npm run test:api
+npm run build --workspace @coflow/web -- --webpack
 ```
 
 完整身份集成测试（在 `apps/api`）：
@@ -108,4 +107,21 @@ COFLOW_TEST_DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?ssl
 
 ## 界面语言
 
-默认英文，支持简体中文；个人设置保存账号语言。字典、扩展规范与本地验证见[多语言说明](I18N.md)。用户写入的业务内容保持原文。
+默认英文，支持简体中文；账号菜单直接切换并保存账号语言。字典、扩展规范与本地验证见[多语言说明](I18N.md)。用户写入的业务内容保持原文。
+
+## 代码与数据入口
+
+| 目录 | 责任 |
+| --- | --- |
+| `apps/web` | 页面、交互、多语言与同源 API 转发 |
+| `apps/api/internal/identity` | 账号、团队、会话、邀请、个人资料与 Agent 凭证 |
+| `apps/api/internal/workspace` | 分类、简报修订、协作、通知等团队业务 |
+| `apps/api/db/migrations` | 内嵌数据库迁移；新增文件，不修改已应用内容 |
+| `apps/api/db/queries` | sqlc 查询源文件 |
+| `skills/coflow-report`、`docs/openapi.yaml` | Agent 与 HTTP 协议规范源文件 |
+
+迁移 006–008 分别增加个人语言偏好、头像与展示时区。昵称使用成员关系中的 display_name，头像与语言／展示时区属于账号；修改密码撤销其他网页会话，不自动撤销 Agent Token。身份与授权逻辑在 Go 中完成，不依赖隐藏前端按钮。
+
+新增个人资料或日期界面时遵循 [I18N.md](I18N.md)。个人偏好 PATCH 支持部分字段更新，缺省字段不能覆盖现有值；时间戳保持原值，日期分组使用展示时区。
+
+测试只使用合成身份和独立测试 schema。不要把生产 DATABASE_URL 传给测试，也不要提交 `.local/`、数据库导出、浏览器会话或 QA 截图。完成前检查 `git diff --check` 和拟提交内容；验收事实与限制记录到 [VERIFICATION.md](VERIFICATION.md)，功能变化写入 CHANGELOG 的 Unreleased。

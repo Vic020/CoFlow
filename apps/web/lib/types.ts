@@ -50,6 +50,7 @@ export type Notification = {
 };
 export type Link = { title: string; url: string };
 export type Comment = {
+  deleted_at?: string;
   id: string;
   report_id: string;
   author_id: string;
@@ -57,6 +58,7 @@ export type Comment = {
   created_at: string;
 };
 export type Report = {
+  deleted_at?: string;
   id: string;
   team_id: string;
   source_id: string;

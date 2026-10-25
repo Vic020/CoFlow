@@ -63,7 +63,7 @@ func notify(ctx context.Context, tx pgx.Tx, p identity.Principal, ids []string, 
 	return nil
 }
 func (s *Service) Collaborations(ctx context.Context, p identity.Principal) ([]Collaboration, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,author_id,assignee_id,title,body,status,created_at,updated_at FROM collaboration_requests WHERE team_id=$1 ORDER BY updated_at DESC`, p.TeamID)
+	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,author_id,assignee_id,title,body,status,created_at,updated_at FROM collaboration_requests WHERE team_id=$1 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) ORDER BY updated_at DESC`, p.TeamID)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (s *Service) Collaborations(ctx context.Context, p identity.Principal) ([]C
 	if err != nil {
 		return nil, err
 	}
-	updates, err := s.Pool.Query(ctx, `SELECT u.request_id,u.id,u.actor_id,u.status,u.body,u.created_at FROM collaboration_updates u JOIN collaboration_requests c ON c.id=u.request_id WHERE c.team_id=$1 ORDER BY u.created_at,u.id`, p.TeamID)
+	updates, err := s.Pool.Query(ctx, `SELECT u.request_id,u.id,u.actor_id,u.status,u.body,u.created_at FROM collaboration_updates u JOIN collaboration_requests c ON c.id=u.request_id WHERE c.team_id=$1 AND c.report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) ORDER BY u.created_at,u.id`, p.TeamID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,10 @@ func (s *Service) Collaborations(ctx context.Context, p identity.Principal) ([]C
 		if err = updates.Scan(&id, &v.ID, &v.ActorID, &v.Status, &v.Body, &v.CreatedAt); err != nil {
 			return nil, err
 		}
-		i := index[id]
+		i, ok := index[id]
+		if !ok {
+			continue
+		}
 		out[i].Updates = append(out[i].Updates, v)
 	}
 	return out, updates.Err()
@@ -116,7 +119,7 @@ func (s *Service) CreateCollaboration(ctx context.Context, p identity.Principal,
 	v.Updates = []Update{}
 	err := s.transaction(ctx, p, func(tx pgx.Tx) error {
 		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND id=$2)`, p.TeamID, v.ReportID).Scan(&exists); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND id=$2 AND deleted_at IS NULL)`, p.TeamID, v.ReportID).Scan(&exists); err != nil {
 			return err
 		}
 		if !exists {
@@ -151,7 +154,7 @@ func (s *Service) UpdateCollaboration(ctx context.Context, p identity.Principal,
 	}
 	return s.transaction(ctx, p, func(tx pgx.Tx) error {
 		var v Collaboration
-		err := tx.QueryRow(ctx, `SELECT report_id,author_id,assignee_id,title,status FROM collaboration_requests WHERE team_id=$1 AND id=$2 FOR UPDATE`, p.TeamID, id).Scan(&v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Status)
+		err := tx.QueryRow(ctx, `SELECT report_id,author_id,assignee_id,title,status FROM collaboration_requests WHERE team_id=$1 AND id=$2 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) FOR UPDATE`, p.TeamID, id).Scan(&v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Status)
 		if err == pgx.ErrNoRows {
 			return store.ErrNotFound
 		}
@@ -179,7 +182,7 @@ func (s *Service) UpdateCollaboration(ctx context.Context, p identity.Principal,
 func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Comment, mentions []string) (store.Comment, error) {
 	err := s.transaction(ctx, p, func(tx pgx.Tx) error {
 		var author, title string
-		err := tx.QueryRow(ctx, `SELECT author_id,title FROM reports WHERE team_id=$1 AND id=$2`, p.TeamID, c.ReportID).Scan(&author, &title)
+		err := tx.QueryRow(ctx, `SELECT author_id,title FROM reports WHERE team_id=$1 AND id=$2 AND deleted_at IS NULL`, p.TeamID, c.ReportID).Scan(&author, &title)
 		if err == pgx.ErrNoRows {
 			return store.ErrNotFound
 		}
@@ -202,7 +205,7 @@ func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Com
 			return err
 		}
 		ids := append([]string{author}, mentions...)
-		rs, err := tx.Query(ctx, `SELECT DISTINCT author_id FROM comments WHERE report_id=$1`, c.ReportID)
+		rs, err := tx.Query(ctx, `SELECT DISTINCT author_id FROM comments WHERE report_id=$1 AND deleted_at IS NULL`, c.ReportID)
 		if err != nil {
 			return err
 		}
@@ -219,12 +222,16 @@ func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Com
 		if err != nil {
 			return err
 		}
-		return notify(ctx, tx, p, ids, c.ReportID, "", "comment", "新评论："+title)
+		if err := notify(ctx, tx, p, ids, c.ReportID, "", "comment", "新评论："+title); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE notifications SET comment_id=$3 WHERE team_id=$1 AND report_id=$2 AND kind='comment' AND comment_id='' AND created_at=now()`, p.TeamID, c.ReportID, c.ID)
+		return err
 	})
 	return c, err
 }
 func (s *Service) Inbox(ctx context.Context, p identity.Principal) ([]Notification, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,request_id,kind,title,created_at,read_at FROM notifications WHERE team_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 200`, p.TeamID, p.UserID)
+	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,request_id,kind,title,created_at,read_at FROM notifications WHERE team_id=$1 AND user_id=$2 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) AND (comment_id='' OR EXISTS(SELECT 1 FROM comments WHERE id=notifications.comment_id AND deleted_at IS NULL)) ORDER BY created_at DESC LIMIT 200`, p.TeamID, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +250,7 @@ func (s *Service) MarkRead(ctx context.Context, p identity.Principal, id string,
 	if seen.IsZero() {
 		return identity.Invalid("缺少已展示的更新时间")
 	}
-	tag, err := s.Pool.Exec(ctx, `INSERT INTO report_reads(team_id,user_id,report_id,seen_at) SELECT $1,$2,id,LEAST($4,updated_at) FROM reports WHERE team_id=$1 AND id=$3
+	tag, err := s.Pool.Exec(ctx, `INSERT INTO report_reads(team_id,user_id,report_id,seen_at) SELECT $1,$2,id,LEAST($4,updated_at) FROM reports WHERE team_id=$1 AND id=$3 AND deleted_at IS NULL
  ON CONFLICT(team_id,user_id,report_id) DO UPDATE SET seen_at=GREATEST(report_reads.seen_at,EXCLUDED.seen_at)`, p.TeamID, p.UserID, id, seen)
 	if err != nil {
 		return err
@@ -276,7 +283,7 @@ func (s *Service) ReadNotification(ctx context.Context, p identity.Principal, id
 }
 func (s *Service) History(ctx context.Context, p identity.Principal, report string) ([]History, error) {
 	var exists bool
-	if err := s.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND id=$2)`, p.TeamID, report).Scan(&exists); err != nil {
+	if err := s.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND id=$2 AND deleted_at IS NULL)`, p.TeamID, report).Scan(&exists); err != nil {
 		return nil, err
 	}
 	if !exists {

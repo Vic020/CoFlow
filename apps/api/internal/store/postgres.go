@@ -30,6 +30,9 @@ func (p *Postgres) Pool() *pgxpool.Pool { return p.pool }
 func (p *Postgres) Close()              { p.pool.Close() }
 func FromDB(v db.Report) Report {
 	r := Report{ID: v.ID, TeamID: v.TeamID, AuthorID: v.AuthorID, SourceID: v.SourceID, Title: v.Title, Body: v.Body, ProjectID: v.ProjectID, Domain: v.Domain, Agent: v.Agent, Model: v.Model, Status: v.Status, CreatedAt: v.CreatedAt.Time, UpdatedAt: v.UpdatedAt.Time, Links: []Link{}, Mentions: []string{}, Comments: []Comment{}, Domains: v.Domains, ClassificationInput: v.ClassificationInput, ClassificationLocked: v.ClassificationLocked}
+	if v.DeletedAt.Valid {
+		r.DeletedAt = &v.DeletedAt.Time
+	}
 	_ = json.Unmarshal(v.Links, &r.Links)
 	_ = json.Unmarshal(v.Mentions, &r.Mentions)
 	return r
@@ -48,7 +51,7 @@ func (p *Postgres) List(ctx context.Context, team string) ([]Report, error) {
 		v := FromDB(r)
 		for _, c := range cs {
 			if c.ReportID == v.ID {
-				v.Comments = append(v.Comments, Comment{c.ID, c.ReportID, c.AuthorID, c.Body, c.CreatedAt.Time})
+				v.Comments = append(v.Comments, Comment{ID: c.ID, ReportID: c.ReportID, AuthorID: c.AuthorID, Body: c.Body, CreatedAt: c.CreatedAt.Time})
 			}
 		}
 		out = append(out, v)

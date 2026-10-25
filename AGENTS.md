@@ -18,3 +18,5 @@
 - This is a public open-source repository. Keep real team data, account/session/token material, database dumps, backup files and local QA outputs out of Git and external uploads. Use isolated disposable test schemas and synthetic identities. Only reviewed synthetic screenshots on the docs/design allowlist may be tracked; verify staged content before committing or pushing. Never rewrite published history without explicit user authorization.
 
 - GitHub Pages is a public, offline demo using synthetic team data only. It is separate from the owner’s purchased server, which is for private/self-use real teams, not a public GitHub demo backend. Never connect the Pages build to real APIs, accounts, credentials or databases.
+
+- Documentation and GitHub maintenance: follow `docs/MAINTENANCE.md` and `docs/wiki-map.json`. Repository docs and canonical protocols are the source; keep README/Wiki language pairs aligned, track Projects acceptance separately from releases, and report local versus remote sync status accurately. Run `npm run docs:check` for documentation changes; checks never authorize publishing, changing project status, releases or deployments.

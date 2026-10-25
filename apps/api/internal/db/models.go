@@ -64,6 +64,7 @@ type Comment struct {
 	AuthorID  string             `json:"author_id"`
 	Body      string             `json:"body"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Domain struct {
@@ -102,6 +103,7 @@ type Notification struct {
 	Title     string             `json:"title"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	ReadAt    pgtype.Timestamptz `json:"read_at"`
+	CommentID string             `json:"comment_id"`
 }
 
 type Project struct {
@@ -131,6 +133,7 @@ type Report struct {
 	Domains              []string           `json:"domains"`
 	ClassificationInput  []byte             `json:"classification_input"`
 	ClassificationLocked bool               `json:"classification_locked"`
+	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type ReportHistory struct {

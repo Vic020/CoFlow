@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.3-087354" alt="Version 0.1.3" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.4-087354" alt="Version 0.1.4" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,9 +30,11 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.1.3。**
+> **当前版本：0.1.4。**
 
 ## 功能
+
+- **删除、恢复与分享**：作者与团队管理员可将简报／评论移至回收站并恢复；复制简报链接或 source_id 定位工作，分享沿用团队权限。
 
 - **统一 Timeline**：按日期汇集团队简报，展示上报人、Agent、进展状态与交付链接。
 - **组合筛选**：按项目、领域、成员、Agent 和日期分类查看，支持与我相关、我的待办协作和跨设备未读筛选。
@@ -59,11 +61,11 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识。**
 
-当前源码版本 **0.1.3**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
+当前源码版本 **0.1.4**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 源码可用（0.1.3） | 团队简报、交付链接与协作跟进 |
+| **0.1 · Timeline** | 源码可用（0.1.4） | 团队简报、交付链接与协作跟进 |
 | **0.2 · Todo** | 规划中 | 自定义看板，人工与 Agent 共同管理任务 |
 | **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
@@ -127,7 +129,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.1.3
+├── VERSION           # 当前版本：0.1.4
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 
@@ -152,6 +154,7 @@ npm run version:check
 
 ## 社区与项目入口
 
+- [文档导航](docs/README.zh-CN.md)：使用、Agent 接入、开发、部署与排障。
 - [Release](https://github.com/Vic020/CoFlow/releases)：版本说明与源码下载。
 - [路线图](docs/ROADMAP.md)：0.2 Todo、0.3 Calendar、0.4 AI 助手、0.5 Context 的版本范围与验收标准。
 - [Projects](https://github.com/users/Vic020/projects/1)：产品事项跟踪，版本规划以路线图文档为准。

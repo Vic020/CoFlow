@@ -110,6 +110,20 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		}
 		c.JSON(200, gin.H{"items": out})
 	})
+	protected.GET("/api/v1/reports/:id", requireScope("reports:read"), func(c *gin.Context) {
+		rows, err := repo.List(c.Request.Context(), principal(c).TeamID)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		for _, r := range rows {
+			if r.ID == c.Param("id") {
+				c.JSON(200, r)
+				return
+			}
+		}
+		fail(c, store.ErrNotFound)
+	})
 	protected.POST("/api/v1/reports", requireScope("reports:write"), func(c *gin.Context) {
 		var v store.Report
 		if !decode(c, &v) {

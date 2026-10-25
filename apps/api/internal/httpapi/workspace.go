@@ -16,6 +16,50 @@ func webMember(c *gin.Context) {
 	c.Next()
 }
 func registerWorkspace(r *gin.RouterGroup, s *workspace.Service) {
+	r.GET("/api/v1/reports/trash", webMember, func(c *gin.Context) {
+		v, e := s.Trash(c.Request.Context(), principal(c), "")
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, gin.H{"items": v})
+	})
+	r.GET("/api/v1/reports/:id/comments/trash", webMember, func(c *gin.Context) {
+		v, e := s.Trash(c.Request.Context(), principal(c), c.Param("id"))
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, gin.H{"items": v})
+	})
+	for _, comment := range []bool{false, true} {
+		route := "/api/v1/reports/:id"
+		if comment {
+			route += "/comments/:comment"
+		}
+		handler := func(restore bool) gin.HandlerFunc {
+			return func(c *gin.Context) {
+				var input struct {
+					Expected time.Time `json:"expected_updated_at"`
+				}
+				if !restore && !comment && !decode(c, &input) {
+					return
+				}
+				target := ""
+				if comment {
+					target = c.Param("comment")
+				}
+				if e := s.DeleteOrRestore(c.Request.Context(), principal(c), c.Param("id"), target, restore, input.Expected); e != nil {
+					fail(c, e)
+					return
+				}
+				c.JSON(200, gin.H{"ok": true})
+			}
+		}
+		r.DELETE(route, webMember, handler(false))
+		r.POST(route+"/restore", webMember, handler(true))
+	}
+
 	r.GET("/api/v1/catalog", requireScope("reports:read"), func(c *gin.Context) {
 		v, e := s.Catalog(c.Request.Context(), principal(c))
 		if e != nil {

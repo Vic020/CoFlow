@@ -27,3 +27,7 @@ CoFlow 是公开开源项目。问题报告、提交、PR、截图及附件都�
 ## 提交前
 
 检查 `git status`、暂存文件列表及 `git diff --cached`；确认没有真实数据或敏感材料，截图使用虚拟内容，文档与代码一致。运行与改动相称的检查和 `npm run version:check`，普通提交不自动递增版本号或创建发布标签。
+
+## 文档与 GitHub 同步
+
+按[维护流程](docs/MAINTENANCE.md)更新受影响的仓库文档及中英入口，运行 `npm run docs:check`。PR 中列出受影响的 Wiki 页面与 Projects 事项，分别记录本地与远端状态；发版、部署和公开同步按各自授权执行。

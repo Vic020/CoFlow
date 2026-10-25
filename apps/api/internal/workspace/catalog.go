@@ -202,6 +202,13 @@ func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.
 	r.ClassificationLocked = false // Only the browser correction endpoint may set this flag.
 	err := s.transaction(ctx, p, func(tx pgx.Tx) error {
 		var old store.Report
+		var deleted bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND author_id=$2 AND source_id=$3 AND deleted_at IS NOT NULL)`, p.TeamID, p.UserID, r.SourceID).Scan(&deleted); err != nil {
+			return err
+		}
+		if deleted {
+			return &identity.Error{Status: 409, Message: "简报已删除，请先在网页回收站恢复"}
+		}
 		q := db.New(tx)
 		rows, err := q.ListReports(ctx, p.TeamID)
 		if err != nil {
@@ -253,7 +260,7 @@ func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.
 		recipients := append([]string{}, out.Mentions...)
 		// Follow-up changes notify previous commenters and collaborators as well.
 		if old.ID != "" {
-			rs, e := tx.Query(ctx, `SELECT author_id FROM comments WHERE report_id=$1 UNION SELECT assignee_id FROM collaboration_requests WHERE report_id=$1 UNION SELECT author_id FROM collaboration_requests WHERE report_id=$1`, out.ID)
+			rs, e := tx.Query(ctx, `SELECT author_id FROM comments WHERE report_id=$1 AND deleted_at IS NULL UNION SELECT assignee_id FROM collaboration_requests WHERE report_id=$1 UNION SELECT author_id FROM collaboration_requests WHERE report_id=$1`, out.ID)
 			if e != nil {
 				return e
 			}

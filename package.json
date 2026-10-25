@@ -11,12 +11,13 @@
     "test:api": "cd apps/api && go test ./...",
     "version:check": "node scripts/check-version.mjs",
     "dev:demo": "cd apps/api && COFLOW_DEMO=true go run ./cmd/server",
-    "test:i18n": "node --test scripts/i18n.test.mjs"
+    "test:i18n": "node --test scripts/i18n.test.mjs",
+    "docs:check": "node scripts/check-docs.mjs"
   },
   "workspaces": [
     "apps/web",
     "apps/cli"
   ],
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT"
 }

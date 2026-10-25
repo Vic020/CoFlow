@@ -3604,6 +3604,15 @@ input[type="checkbox"] {
   outline: 2px solid #228e71;
   outline-offset: 3px;
 }
+.account-version {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #edf1ee;
+  color: #98a69d;
+  font-size: 10px;
+}
 .sidebar-collapsed .sidebar .profile-chevron {
   display: none;
 }
@@ -4312,3 +4321,20 @@ input[type="checkbox"] {
 .timezone-picker-list > button svg { flex-shrink: 0; }
 .timezone-picker-list > button[data-active="true"] { background: #edf7f2; color: #08674f; }
 .timezone-picker-list > p { padding: 10px 8px; font-size: 12px; color: #84958b; }
+
+/* Content actions stay secondary; deleted content has a single recovery entry. */
+.trash-toggle, .delete-action { display: inline-flex; align-items: center; gap: 6px; }
+.trash-toggle { margin-left: auto; color: #82958a; font-size: 11px; padding: 8px 0; }
+.delete-action { flex-wrap: wrap; font-size: 11px; }
+.delete-action button { color: #ad6558; }
+.detail-status { flex-wrap: wrap; }
+.trash-dialog { width: min(620px, calc(100vw - 32px)); max-height: 80vh; overflow-y: auto; }
+.trash-list { margin-top: 16px; }
+.trash-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid #edf1ee; }
+.trash-row > div { flex: 1; min-width: 0; }
+.trash-row p { margin: 0 0 6px; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: auto; }
+.trash-row small { color: #98a69d; font-size: 10px; }
+.trash-row button { flex-shrink: 0; }
+.deleted-comments { padding: 16px 28px; border-top: 1px solid #edf1ee; }
+.deleted-comments summary { color: #82958a; cursor: pointer; font-size: 11px; }
+.comment-source { flex-wrap: wrap; }

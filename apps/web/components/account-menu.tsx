@@ -6,6 +6,7 @@ import { ChevronUp, Loader2, LogOut, UserRound } from "lucide-react";
 import { PersonalProfile } from "@/components/personal-profile";
 import { AccountLanguage } from "@/components/account-language";
 import { useAuth } from "@/components/auth-gate";
+import appPackage from "@/package.json";
 export function AccountMenu({
   avatar,
   name,
@@ -103,6 +104,10 @@ export function AccountMenu({
               {tr(error)}
             </p>
           )}
+          <div className="account-version">
+            <span>CoFlow</span>
+            <span>v{appPackage.version}</span>
+          </div>
         </div>
       )}
     </div>

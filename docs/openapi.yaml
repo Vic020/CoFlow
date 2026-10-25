@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.1.3
+  version: 0.1.4
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -113,7 +113,7 @@ paths:
     post:
       operationId: upsertReport
       description: Requires reports:write. Upserts for the current member/team; creation time and comments are preserved.
-        Author/team fields in input cannot override identity.
+        Author/team fields in input cannot override identity. A deleted source_id returns 409 and cannot be recreated by upsert; restore requires an authorized web session.
       requestBody:
         required: true
         content:
@@ -136,6 +136,46 @@ paths:
         '401':
           $ref: '#/components/responses/Error'
   /reports/{id}:
+    get:
+      operationId: getReport
+      description: Read an active report with visible comments in the authenticated current team. Used for locating shared reports; grants no additional access.
+      security:
+      - agentBearer: []
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Active report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      operationId: deleteReport
+      description: Session-only author or team administrator soft-deletes a report. Requires latest updated_at; stale requests return 409. Repeated deletion is idempotent. Preserves content/history and hides report, discussion, collaboration and notifications from normal reads. Agent tokens are rejected.
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_updated_at]
+              properties:
+                expected_updated_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Moved to trash
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
     parameters:
     - name: id
       in: path
@@ -1229,6 +1269,103 @@ paths:
                   description: Optional team-specific name for the creating member. Defaults to the account name.
               required:
               - name
+  /reports/trash:
+    get:
+      operationId: listDeletedReports
+      description: Session-only. Lists deleted reports authored by the current member, or all in the current team for its administrator. Does not grant access to other teams.
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Deleted reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+        '403':
+          $ref: '#/components/responses/Error'
+  /reports/{id}/restore:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    post:
+      operationId: restoreReport
+      description: Session-only author or team administrator restores the original report and its existing associations. Separately deleted comments stay deleted. Idempotent; no new source_id or duplicate report.
+      security:
+      - sessionCookie: []
+      responses:
+        '200': {description: Restored}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /reports/{id}/comments/trash:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    get:
+      operationId: listDeletedComments
+      description: Session-only. Lists own deleted comments on an active current-team report, or all its deleted comments for a team administrator.
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Deleted comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '403': {$ref: '#/components/responses/Error'}
+  /reports/{id}/comments/{comment}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    - name: comment
+      in: path
+      required: true
+      schema: {type: string}
+    delete:
+      operationId: deleteComment
+      description: Session-only comment author or team administrator soft-deletes a comment on an active report. Idempotent; records the actor and comment ID without exposing deleted text in history.
+      security:
+      - sessionCookie: []
+      responses:
+        '200': {description: Moved to trash}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /reports/{id}/comments/{comment}/restore:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    - name: comment
+      in: path
+      required: true
+      schema: {type: string}
+    post:
+      operationId: restoreComment
+      description: Session-only comment author or team administrator restores a comment on an active report. Idempotent; deleted parent reports must be restored separately.
+      security:
+      - sessionCookie: []
+      responses:
+        '200': {description: Restored}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
 components:
   responses:
     Error:
@@ -1362,6 +1499,11 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/Comment'
+          deleted_at:
+            type: string
+            format: date-time
+            readOnly: true
+            description: Present only in session-authorized trash results.
           classification_input:
             type: object
             description: Original classification supplied by the Agent. Preserved by human correction and merges.
@@ -1372,6 +1514,11 @@ components:
     Comment:
       type: object
       properties:
+        deleted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Present only in session-authorized trash results.
         id:
           type: string
         report_id:

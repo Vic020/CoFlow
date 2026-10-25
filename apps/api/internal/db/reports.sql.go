@@ -38,7 +38,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) er
 }
 
 const getReport = `-- name: GetReport :one
-SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked FROM reports WHERE id=$1 AND team_id=$2
+SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked, deleted_at FROM reports WHERE id=$1 AND team_id=$2 AND deleted_at IS NULL
 `
 
 type GetReportParams struct {
@@ -68,12 +68,49 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (Report, e
 		&i.Domains,
 		&i.ClassificationInput,
 		&i.ClassificationLocked,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getReportIncludingDeleted = `-- name: GetReportIncludingDeleted :one
+SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked, deleted_at FROM reports WHERE id=$1 AND team_id=$2 FOR UPDATE
+`
+
+type GetReportIncludingDeletedParams struct {
+	ID     string `json:"id"`
+	TeamID string `json:"team_id"`
+}
+
+func (q *Queries) GetReportIncludingDeleted(ctx context.Context, arg GetReportIncludingDeletedParams) (Report, error) {
+	row := q.db.QueryRow(ctx, getReportIncludingDeleted, arg.ID, arg.TeamID)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.AuthorID,
+		&i.SourceID,
+		&i.Title,
+		&i.Body,
+		&i.ProjectID,
+		&i.Domain,
+		&i.Agent,
+		&i.Model,
+		&i.Status,
+		&i.Links,
+		&i.Mentions,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Domains,
+		&i.ClassificationInput,
+		&i.ClassificationLocked,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const listComments = `-- name: ListComments :many
-SELECT comments.id, comments.report_id, comments.author_id, comments.body, comments.created_at FROM comments JOIN reports ON reports.id=comments.report_id WHERE reports.team_id=$1 ORDER BY comments.created_at
+SELECT comments.id, comments.report_id, comments.author_id, comments.body, comments.created_at, comments.deleted_at FROM comments JOIN reports ON reports.id=comments.report_id WHERE reports.team_id=$1 AND reports.deleted_at IS NULL AND comments.deleted_at IS NULL ORDER BY comments.created_at
 `
 
 func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, error) {
@@ -91,6 +128,7 @@ func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, e
 			&i.AuthorID,
 			&i.Body,
 			&i.CreatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -103,7 +141,7 @@ func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, e
 }
 
 const listReports = `-- name: ListReports :many
-SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked FROM reports WHERE team_id = $1 ORDER BY created_at DESC, id DESC
+SELECT id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked, deleted_at FROM reports WHERE team_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC, id DESC
 `
 
 func (q *Queries) ListReports(ctx context.Context, teamID string) ([]Report, error) {
@@ -134,6 +172,7 @@ func (q *Queries) ListReports(ctx context.Context, teamID string) ([]Report, err
 			&i.Domains,
 			&i.ClassificationInput,
 			&i.ClassificationLocked,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -149,7 +188,8 @@ const upsertReport = `-- name: UpsertReport :one
 INSERT INTO reports (id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 ON CONFLICT (team_id, author_id, source_id) DO UPDATE SET title=EXCLUDED.title, body=EXCLUDED.body, project_id=EXCLUDED.project_id, domain=EXCLUDED.domain, agent=EXCLUDED.agent, model=EXCLUDED.model, status=EXCLUDED.status, links=EXCLUDED.links, mentions=EXCLUDED.mentions, updated_at=EXCLUDED.updated_at, domains=EXCLUDED.domains, classification_input=EXCLUDED.classification_input, classification_locked=EXCLUDED.classification_locked
-RETURNING id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked
+WHERE reports.deleted_at IS NULL
+RETURNING id, team_id, author_id, source_id, title, body, project_id, domain, agent, model, status, links, mentions, created_at, updated_at, domains, classification_input, classification_locked, deleted_at
 `
 
 type UpsertReportParams struct {
@@ -214,6 +254,7 @@ func (q *Queries) UpsertReport(ctx context.Context, arg UpsertReportParams) (Rep
 		&i.Domains,
 		&i.ClassificationInput,
 		&i.ClassificationLocked,
+		&i.DeletedAt,
 	)
 	return i, err
 }

@@ -21,13 +21,15 @@ type Link struct {
 	URL   string `json:"url"`
 }
 type Comment struct {
-	ID        string    `json:"id"`
-	ReportID  string    `json:"report_id"`
-	AuthorID  string    `json:"author_id"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	ID        string     `json:"id"`
+	ReportID  string     `json:"report_id"`
+	AuthorID  string     `json:"author_id"`
+	Body      string     `json:"body"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 type Report struct {
+	DeletedAt            *time.Time      `json:"deleted_at,omitempty"`
 	ID                   string          `json:"id"`
 	TeamID               string          `json:"team_id"`
 	AuthorID             string          `json:"author_id"`

@@ -3,6 +3,8 @@
 import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Copy,
+  Trash2,
   ArrowDownWideNarrow,
   ArrowRight,
   ArrowUpRight,
@@ -28,6 +30,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
+import { DeleteAction, TrashList } from "@/components/content-actions";
 import { ReportCompose } from "@/components/report-compose";
 import { ReportHub, type ReportTab } from "@/components/report-hub";
 import Link from "next/link";
@@ -199,6 +202,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     [notice, setNotice] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const linkedTeam = useRef<string | null>(null);
   useEffect(() => {
     const user = auth.me?.user;
     if (!user) return;
@@ -263,6 +268,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     setUnread(false);
     setDetail(null);
     setCatalogOpen(false);
+    setTrashOpen(false);
     setSeen({});
     setReports([]);
     setMeta(null);
@@ -282,6 +288,15 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
+  useEffect(() => {
+    if (loading || !meta || credentialsPage || settingsPage || newTeamPage || linkedTeam.current === meta.team.id) return;
+    linkedTeam.current = meta.team.id;
+    const id = new URL(window.location.href).searchParams.get("report");
+    if (!id) return;
+    const found = reports.find(r => r.id === id);
+    if (found) setDetail(id);
+    else setNotice("简报不存在、已删除或不属于当前团队");
+  }, [loading, meta, reports, credentialsPage, settingsPage, newTeamPage]);
   const member = (id: string) => meta?.members.find((m) => m.id === id);
   const project = (id: string) => meta?.projects.find((p) => p.id === id);
   const markRead = (r: Report) => {
@@ -768,6 +783,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                       {tr("日报汇总")}
                     </button>
                   </div>
+                  {auth.mode !== "local-demo" && <button type="button" className="trash-toggle" onClick={() => setTrashOpen(true)}><Trash2 size={14}/>{tr("回收站")}</button>}
                 </div>
                 <div className="desktop-filters">
                   {filtersContent}
@@ -1298,6 +1314,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
+        <DialogContent className="info-dialog trash-dialog">
+          <DialogTitle className="modal-title">{tr("已删除简报")}</DialogTitle>
+          <DialogDescription className="sr-only">{tr("恢复自己或有权管理的简报")}</DialogDescription>
+          {trashOpen && <TrashList key={meta?.team.id} onRestored={() => { void load(); setNotice("简报已恢复"); }}/>}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!detail}
         onOpenChange={(open) => {
@@ -1315,6 +1338,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               meta={meta}
               onChange={() => void load()}
               onSaved={setNotice}
+              onDeleted={() => { setDetail(null); void load(); setNotice("简报已移至回收站"); }}
             />
           )}
         </DialogContent>
@@ -1356,12 +1380,14 @@ function Detail({
   meta,
   onChange,
   onSaved,
+  onDeleted,
 }: {
   report: Report;
   collaborations: Collaboration[];
   meta: Meta;
   onChange: () => void;
   onSaved: (s: string) => void;
+  onDeleted: () => void;
 }) {
   const { t: tr, locale, timeZone } = useI18n();
   const [body, setBody] = useState(""),
@@ -1461,6 +1487,13 @@ function Detail({
               {tr("编辑")}
             </Button>
           )}
+          <Button variant="ghost" size="sm" onClick={async () => {
+            try { const url = new URL(window.location.href); url.search = ""; url.hash = ""; url.searchParams.set("report", r.id); await navigator.clipboard.writeText(url.toString()); onSaved("链接已复制"); } catch { setError("复制失败，请重试"); }
+          }}><Link2 size={14}/>{tr("复制链接")}</Button>
+          <Button variant="ghost" size="sm" onClick={async () => {
+            try { await navigator.clipboard.writeText(r.source_id); onSaved("source_id 已复制"); } catch { setError("复制失败，请重试"); }
+          }}><Copy size={14}/>{tr("复制 source_id")}</Button>
+          {meta.mode !== "local-demo" && canEdit && <DeleteAction path={`/reports/${r.id}`} updatedAt={r.updated_at} onDeleted={onDeleted}/>}
           <Status value={r.status} />
           {(r.author_id === meta.current_user ||
             (meta.mode !== "local-demo" && meta.role === "admin")) &&
@@ -1528,6 +1561,7 @@ function Detail({
                   <div className="comment-source">
                     <strong>{m?.name}</strong>
                     <time>{clock(c.created_at, locale, timeZone)}</time>
+                    {meta.mode !== "local-demo" && (c.author_id === meta.current_user || meta.role === "admin") && <DeleteAction path={`/reports/${r.id}/comments/${c.id}`} onDeleted={() => { onChange(); onSaved("评论已移至回收站"); }}/>}
                   </div>
                   <Markdown>{c.body}</Markdown>
                 </div>
@@ -1540,6 +1574,7 @@ function Detail({
           </p>
         )}
       </div>
+      {meta.mode !== "local-demo" && <details className="deleted-comments"><summary>{tr("已删除评论")}</summary><TrashList key={r.updated_at} reportId={r.id} onRestored={() => { onChange(); onSaved("评论已恢复"); }}/></details>}
       <form className="comment-form" onSubmit={comment}>
         <label htmlFor="comment-body">
           {tr("以")}
