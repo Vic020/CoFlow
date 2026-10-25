@@ -232,6 +232,56 @@ func registerIdentity(r *gin.Engine, cfg Config) {
 	})
 	own := r.Group("/api/v1")
 	own.Use(requirePrincipal(cfg), sessionOnly)
+	own.PATCH("/auth/profile", func(c *gin.Context) {
+		var in identity.ProfileInput
+		if !decode(c, &in) {
+			return
+		}
+		if err := s.UpdateProfile(c.Request.Context(), principal(c), in); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
+	own.POST("/auth/password", authLimiter(), func(c *gin.Context) {
+		var in struct {
+			Current string `json:"current_password"`
+			Next    string `json:"new_password"`
+		}
+		if !decode(c, &in) {
+			return
+		}
+		raw, _ := c.Cookie(sessionCookie)
+		if err := s.ChangePassword(c.Request.Context(), principal(c), raw, in.Current, in.Next); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
+	own.GET("/auth/preferences", func(c *gin.Context) {
+		v, err := s.Preferences(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, v)
+	})
+	own.PATCH("/auth/preferences", func(c *gin.Context) {
+		var v identity.PreferencesInput
+		if !decode(c, &v) {
+			return
+		}
+		if err := s.SetPreferences(c.Request.Context(), principal(c), v); err != nil {
+			fail(c, err)
+			return
+		}
+		saved, err := s.Preferences(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, saved)
+	})
 	own.POST("/teams", func(c *gin.Context) {
 		var in struct {
 			Name        string `json:"name"`

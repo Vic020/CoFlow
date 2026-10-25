@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useAuth } from "@/components/auth-gate";
 
 import {
@@ -11,6 +12,7 @@ export { reportPrompt, skillPath } from "@/lib/report-prompt";
 
 /** Shared by the one-click sidebar card and the full integration dialog. */
 export function useAgentPrompt() {
+  const { locale, t } = useI18n();
   const { mode, credential, me, tokenStatus } = useAuth();
   const demo = mode === "local-demo";
   const needsCredential = !demo && !credential && tokenStatus === "missing";
@@ -34,12 +36,13 @@ export function useAgentPrompt() {
   const prompt = !origin
     ? "正在生成接入地址…"
     : needsCredential
-      ? "请先创建或选择自己的 Agent 凭证，再复制上报 Prompt。"
+      ? "请先在 Agent 凭证中安装 CoFlow。"
       : reportPrompt(
           origin,
           credential,
           demo,
           me ? { team: me.current_team, member: me.user.id } : undefined,
+          locale,
         );
   async function copyPrompt() {
     try {
@@ -49,14 +52,14 @@ export function useAgentPrompt() {
       setCopied(true);
     } catch {
       setCopyError(
-        "无法访问剪贴板，请打开顶部上报的 Agent 页签手动复制 Prompt。",
+        "无法访问剪贴板，请选中提示词手动复制。",
       );
     }
   }
   return {
     origin,
     credentialPath,
-    prompt,
+    prompt: t(prompt),
     copied,
     copyError,
     copyPrompt,

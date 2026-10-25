@@ -50,10 +50,11 @@ type Report struct {
 	Comments             []Comment       `json:"comments"`
 }
 type Member struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Role  string `json:"role"`
-	Color string `json:"color"`
+	AvatarData string `json:"avatar_data,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Role       string `json:"role"`
+	Color      string `json:"color"`
 }
 type Project struct {
 	ID      string   `json:"id"`
@@ -62,7 +63,7 @@ type Project struct {
 	Status  string   `json:"status"`
 }
 
-var Members = []Member{{"chen", "陈一", "研发", "mint"}, {"lin", "林悦", "运营", "rose"}, {"zhou", "周可", "视频制作", "blue"}, {"xu", "许然", "产品", "lime"}, {"wang", "王霖", "设计", "violet"}}
+var Members = []Member{{ID: "chen", Name: "陈一", Role: "研发", Color: "mint"}, {ID: "lin", Name: "林悦", Role: "运营", Color: "rose"}, {ID: "zhou", Name: "周可", Role: "视频制作", Color: "blue"}, {ID: "xu", Name: "许然", Role: "产品", Color: "lime"}, {ID: "wang", Name: "王霖", Role: "设计", Color: "violet"}}
 var Projects = []Project{{"website", "官网改版", []string{"产品", "研发", "设计"}, "进行中"}, {"launch", "新品发布", []string{"运营", "视频制作", "内容"}, "进行中"}, {"brand", "品牌内容建设", []string{"内容", "运营"}, "规划中"}}
 var Domains = []string{"产品", "研发", "设计", "运营", "内容", "视频制作"}
 

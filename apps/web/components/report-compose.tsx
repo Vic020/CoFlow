@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { publicDemo } from "@/lib/runtime";
@@ -11,7 +13,6 @@ import {
   request,
   statuses,
 } from "@/lib/types";
-
 export function ReportCompose({
   meta,
   onDone,
@@ -25,6 +26,7 @@ export function ReportCompose({
   onCancel?: () => void;
   onStale?: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [title, setTitle] = useState(report?.title || ""),
     [body, setBody] = useState(report?.body || ""),
     [project, setProject] = useState(
@@ -45,9 +47,18 @@ export function ReportCompose({
     [busy, setBusy] = useState(false);
   const [expectedUpdatedAt] = useState(report?.updated_at);
   const [links, setLinks] = useState(() =>
-    (report?.links.length ? report.links : [{ title: "", url: "" }]).map(
-      (l) => ({ ...l, key: crypto.randomUUID() }),
-    ),
+    (report?.links.length
+      ? report.links
+      : [
+          {
+            title: "",
+            url: "",
+          },
+        ]
+    ).map((l) => ({
+      ...l,
+      key: crypto.randomUUID(),
+    })),
   );
   const [sourceId] = useState(() => crypto.randomUUID());
   async function submit(e: React.FormEvent) {
@@ -105,35 +116,39 @@ export function ReportCompose({
     <form onSubmit={submit}>
       <div className="compose-fields">
         <label>
-          简报标题 <span>*</span>
+          <span className="compose-field-title">
+            {tr("简报标题")}<span aria-hidden="true">*</span>
+          </span>
           <input
             autoFocus
             required
             maxLength={150}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="这次完成了什么？"
+            placeholder={tr("这次完成了什么？")}
           />
         </label>
         <label>
-          进展说明
+          {tr("进展说明")}
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
             maxLength={15000}
-            placeholder="结果、关键变化，以及需要团队协助的地方… 支持 Markdown"
+            placeholder={tr(
+              "结果、关键变化，以及需要团队协助的地方… 支持 Markdown",
+            )}
           />
         </label>
         <div className="form-grid">
           <label>
-            所属项目
+            {tr("所属项目")}
             {meta.mode === "local-demo" ? (
               <select
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
               >
-                <option value="">未归属</option>
+                <option value="">{tr("未归属")}</option>
                 {meta.projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -146,7 +161,7 @@ export function ReportCompose({
                   value={project}
                   onChange={(e) => setProject(e.target.value)}
                   list="compose-projects"
-                  placeholder="选择或输入新项目，可留空"
+                  placeholder={tr("选择或输入新项目，可留空")}
                   maxLength={40}
                 />
                 <datalist id="compose-projects">
@@ -160,13 +175,13 @@ export function ReportCompose({
             )}
           </label>
           <label>
-            工作领域
+            {tr("工作领域")}
             {meta.mode === "local-demo" ? (
               <select
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
               >
-                <option value="">未分类</option>
+                <option value="">{tr("未分类")}</option>
                 {meta.domains.map((d) => (
                   <option key={d}>{d}</option>
                 ))}
@@ -177,7 +192,7 @@ export function ReportCompose({
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   list="compose-domains"
-                  placeholder="如：研发，产品"
+                  placeholder={tr("如：研发，产品")}
                   maxLength={500}
                 />
                 <datalist id="compose-domains">
@@ -189,17 +204,17 @@ export function ReportCompose({
             )}
           </label>
           <label>
-            进展状态
+            {tr("进展状态")}
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
               {Object.entries(statuses).map(([s, o]) => (
                 <option key={s} value={s}>
-                  {o.label}
+                  {tr(o.label)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            来源 Agent
+            {tr("来源 Agent")}
             <select
               disabled={!!report}
               value={agent}
@@ -214,40 +229,54 @@ export function ReportCompose({
                   "其他 Agent",
                 ]),
               ).map((a) => (
-                <option key={a}>{a}</option>
+                <option key={a} value={a}>
+                  {["手动上报", "其他 Agent"].includes(a) ? tr(a) : a}
+                </option>
               ))}
             </select>
           </label>
         </div>
         <fieldset className="report-links-editor">
-          <legend>交付链接</legend>
+          <legend>{tr("交付链接")}</legend>
           {links.map((entry, index) => (
             <div className="report-link-row" key={entry.key}>
               <div className="report-link-fields">
                 <input
                   type="url"
-                  aria-label={`链接 ${index + 1} 地址`}
+                  aria-label={tr("链接 {0} 地址", {
+                    0: index + 1,
+                  })}
                   placeholder="https://…"
                   value={entry.url}
                   required={!!entry.title.trim()}
                   onChange={(e) =>
                     setLinks(
                       links.map((l) =>
-                        l.key === entry.key ? { ...l, url: e.target.value } : l,
+                        l.key === entry.key
+                          ? {
+                              ...l,
+                              url: e.target.value,
+                            }
+                          : l,
                       ),
                     )
                   }
                 />
                 <input
-                  aria-label={`链接 ${index + 1} 名称`}
-                  placeholder="链接名称（可选）"
+                  aria-label={tr("链接 {0} 名称", {
+                    0: index + 1,
+                  })}
+                  placeholder={tr("链接名称（可选）")}
                   maxLength={100}
                   value={entry.title}
                   onChange={(e) =>
                     setLinks(
                       links.map((l) =>
                         l.key === entry.key
-                          ? { ...l, title: e.target.value }
+                          ? {
+                              ...l,
+                              title: e.target.value,
+                            }
                           : l,
                       ),
                     )
@@ -258,7 +287,9 @@ export function ReportCompose({
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={`移除链接 ${index + 1}`}
+                aria-label={tr("移除链接 {0}", {
+                  0: index + 1,
+                })}
                 onClick={() =>
                   setLinks(links.filter((l) => l.key !== entry.key))
                 }
@@ -275,19 +306,24 @@ export function ReportCompose({
             onClick={() =>
               setLinks([
                 ...links,
-                { key: crypto.randomUUID(), title: "", url: "" },
+                {
+                  key: crypto.randomUUID(),
+                  title: "",
+                  url: "",
+                },
               ])
             }
           >
             <Plus />
-            添加链接{links.length >= 20 ? "（最多 20 个）" : ""}
+            {tr("添加链接")}
+            {links.length >= 20 ? tr("（最多 20 个）") : ""}
           </Button>
         </fieldset>
         {meta.members.some(
           (m) => m.id !== meta.current_user || mentions.includes(m.id),
         ) && (
           <fieldset className="report-mentions-editor">
-            <legend>需要谁关注</legend>
+            <legend>{tr("需要谁关注")}</legend>
             <div className="report-mention-options">
               {meta.members
                 .filter(
@@ -318,8 +354,18 @@ export function ReportCompose({
           className={error ? "error-text" : "compose-author"}
           role={error ? "alert" : undefined}
         >
-          {error ||
-            `以${meta.members.find((m) => m.id === meta.current_user)?.name || "当前成员"}的身份${report ? "保存" : "发布"}${publicDemo ? " · 仅当前页面" : meta.mode === "local-demo" ? " · 本地演示" : ""}`}
+          {tr(error) ||
+            tr("以{0}的身份{1}{2}", {
+              0:
+                meta.members.find((m) => m.id === meta.current_user)?.name ||
+                tr("当前成员"),
+              1: report ? tr("保存") : tr("发布"),
+              2: publicDemo
+                ? tr(" · 仅当前页面")
+                : meta.mode === "local-demo"
+                  ? tr(" · 本地演示")
+                  : "",
+            })}
         </span>
         <div className="compose-submit-actions">
           {onCancel && (
@@ -329,12 +375,12 @@ export function ReportCompose({
               disabled={busy}
               onClick={onCancel}
             >
-              取消
+              {tr("取消")}
             </Button>
           )}
           <Button type="submit" disabled={busy || !title.trim()}>
             {busy ? <Loader2 className="animate-spin" /> : <Plus />}
-            {report ? "保存修改" : "发布进展"}
+            {report ? tr("保存修改") : tr("发布进展")}
           </Button>
         </div>
       </div>

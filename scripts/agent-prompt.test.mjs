@@ -107,6 +107,23 @@ test("first-time and daily prompts share an exact path but only setup contains t
   assert.ok(
     !daily.includes("cf_test_setup_only") && !daily.includes("此前提供"),
   );
-  assert.ok(daily.includes("不搜索其他目录或聊天记录"));
+  assert.ok(daily.includes("按 Skill") && daily.includes("source_id"));
+  assert.ok(daily.length < setup.length);
   assert.ok(!reportPrompt(origin, "", true, target).includes(".token"));
+});
+
+test("installation and reporting have separate authorization in both languages", () => {
+  const target = { team: "synthetic-team", member: "synthetic-member" };
+  for (const locale of ["en", "zh-CN"]) {
+    const setup = reportPrompt("https://coflow.example.test", "cf_synthetic_install", false, target, locale);
+    const daily = reportPrompt("https://coflow.example.test", "", false, target, locale);
+    assert.ok(setup.includes("binding.json") && setup.includes("source_id"));
+    assert.ok(setup.includes("team_id=synthetic-team") && setup.includes("member_id=synthetic-member"));
+    assert.ok(daily.includes(credentialFilePath("https://coflow.example.test", target)));
+    assert.ok(!daily.includes("cf_synthetic_install"));
+    assert.ok(locale === "en" ? setup.includes("Do not report during installation") : setup.includes("本次只安装，不上报"));
+    assert.ok(locale === "en" ? daily.includes("Report to CoFlow") : daily.includes("上报 CoFlow"));
+    const incomplete = reportPrompt("https://coflow.example.test", "cf_synthetic_install", false, undefined, locale);
+    assert.ok(!incomplete.includes("binding.json"));
+  }
 });

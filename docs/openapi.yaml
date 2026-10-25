@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.1.1
+  version: 0.1.3
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -387,7 +387,7 @@ paths:
   /auth/me:
     get:
       operationId: currentAccount
-      description: Returns the current user without password hash, memberships and selected team.
+      description: Returns the current user without password hash, memberships, selected team, timezone and account-level preferences (locale). The user includes avatar_data, a local JPEG/PNG data URL or an empty string; user.name is the current team nickname.
       security:
       - sessionCookie: []
       responses:
@@ -398,6 +398,115 @@ paths:
         '409': *id001
         '410': *id001
         '429': *id001
+  /auth/profile:
+    patch:
+      operationId: updatePersonalProfile
+      description: Saves the authenticated member's nickname in the current team and optionally their account-wide avatar. Agent credentials cannot modify profiles. Ownership comes from the browser session.
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Current team nickname, 1–120 UTF-8 bytes.
+                avatar_data:
+                  type: string
+                  maxLength: 90000
+                  description: Empty string removes the avatar. Otherwise a PNG or JPEG base64 data URL, decoded size up to 65536 bytes and dimensions up to 256 x 256. External URLs and SVG are rejected. Omit to keep the existing avatar.
+      responses:
+        '200': *id002
+        '400': *id001
+        '401': *id001
+        '403': *id001
+  /auth/password:
+    post:
+      operationId: changeOwnPassword
+      description: Verifies the current password, changes the account password and revokes other browser sessions atomically. The current session and existing Agent credentials are retained. Requires a browser session and is rate limited.
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  writeOnly: true
+                new_password:
+                  type: string
+                  writeOnly: true
+                  description: 8–72 UTF-8 bytes and different from the current password.
+      responses:
+        '200': *id002
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '429': *id001
+  /auth/preferences:
+    get:
+      operationId: getPersonalPreferences
+      description: Returns the current account language (en by default) and display_timezone (Asia/Shanghai by default). Shared across the account's teams and sessions.
+        Requires a browser session; Agent credentials cannot access personal preferences.
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Personal preferences.
+          content:
+            application/json:
+              schema: &preferences
+                type: object
+                required: [locale, display_timezone]
+                properties:
+                  locale:
+                    type: string
+                    enum: [en, zh-CN]
+                    default: en
+                  display_timezone:
+                    type: string
+                    default: Asia/Shanghai
+                    description: Valid IANA time zone or UTC. Controls display and day grouping only; does not change team time zone or stored timestamps.
+        '401': *id001
+        '403': *id001
+    patch:
+      operationId: setPersonalPreferences
+      description: Updates the authenticated account's language and/or display_timezone; omitted fields are preserved. Invalid or Local time zones are rejected. No user or team ID is accepted as an ownership selector.
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              anyOf:
+              - required: [locale]
+              - required: [display_timezone]
+              properties:
+                locale:
+                  type: string
+                  enum: [en, zh-CN]
+                display_timezone:
+                  type: string
+                  maxLength: 100
+      responses:
+        '200':
+          description: Saved preferences.
+          content:
+            application/json:
+              schema: *preferences
+        '400': *id001
+        '401': *id001
+        '403': *id001
   /auth/team:
     post:
       operationId: selectTeam
@@ -426,7 +535,7 @@ paths:
   /auth/invite-info:
     post:
       operationId: invitationInfo
-      description: Reads valid invitation target email, team name and expiry. Full invitation links use a URL fragment,
+      description: Reads a valid invitation's target email, email_domain, inviter_name (team display name), team_name and expiry. Inviter email and account ID are not exposed. Full invitation links use a URL fragment,
         not a server query parameter.
       security: []
       responses:

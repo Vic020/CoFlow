@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Explore the demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.1-087354" alt="Version 0.1.1" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.3-087354" alt="Version 0.1.3" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,7 +28,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.1.1 — early self-hosted release.**
+> **Current version: 0.1.3.**
 
 ## Features
 
@@ -39,8 +39,10 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 - **Editable reports**: preserve authorship, discussion, and revision history, with conflict checks for stale edits.
 - **Flexible categories**: projects, multiple domains, aliases, review, archiving, and merging.
 - **Team boundaries**: account sign-in, invitations, multiple teams, member permissions, and personal Agent credentials.
-- **Agent reporting**: Skill and HTTP API support; a stable source ID updates the same report instead of creating duplicates.
+- **Agent reporting**: Skill and HTTP API support; install once, then say “Report to CoFlow”. A stable source ID keeps updates in the same report.
 - **Ongoing follow-up**: notifications and read state across devices.
+- **English and Chinese**: localized interfaces with a language preference saved to your account.
+- **Personal profile**: avatars, team-specific nicknames, password changes, and a searchable display time zone.
 - **Responsive layout**: desktop and mobile views.
 
 ## Preview
@@ -53,11 +55,11 @@ The preview uses synthetic identities and example delivery links.
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge.**
 
-Version **0.1.1** is released. Versions 0.2–0.5 are planned, with no fixed release dates.
+Version **0.1.3** is available in source. Versions 0.2–0.5 are planned, with no fixed release dates.
 
 | Version | Status | Focus |
 | --- | --- | --- |
-| **0.1 · Timeline** | Released (0.1.1) | Team reports, delivery links, and collaboration |
+| **0.1 · Timeline** | Available (0.1.3) | Team reports, delivery links, and collaboration |
 | **0.2 · Todo** | Planned | Customizable boards, with tasks managed by people and Agents |
 | **0.3 · Calendar** | Planned | Calendar and Gantt scheduling, Big Days, and version milestones |
 | **0.4 · AI Assistant** | Planned | Manage modules through conversation; custom APIs, with DeepSeek first |
@@ -82,7 +84,7 @@ In another terminal:
 npm run dev
 ```
 
-Open [localhost:3000](http://127.0.0.1:3000). For real teams, see the [development guide](docs/DEVELOPMENT.md) and [deployment guide](docs/DEPLOYMENT.md).
+Open [127.0.0.1:3000](http://127.0.0.1:3000). For real teams, see the [development guide](docs/DEVELOPMENT.md) and [deployment guide](docs/DEPLOYMENT.md).
 
 ## Agent integration
 

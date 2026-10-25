@@ -202,7 +202,7 @@ func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, e
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users(id,email,name,password_hash,color) VALUES ($1,$2,$3,$4,$5) RETURNING id, email, name, password_hash, color, created_at
+INSERT INTO users(id,email,name,password_hash,color) VALUES ($1,$2,$3,$4,$5) RETURNING id, email, name, password_hash, color, created_at, avatar_data
 `
 
 type CreateUserParams struct {
@@ -229,6 +229,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.Color,
 		&i.CreatedAt,
+		&i.AvatarData,
 	)
 	return i, err
 }
@@ -274,20 +275,21 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash string) error {
 }
 
 const inviteByHash = `-- name: InviteByHash :one
-SELECT invites.id, invites.team_id, invites.email, invites.token_hash, invites.created_by, invites.expires_at, invites.used_at, invites.revoked_at, invites.created_at,teams.name AS team_name FROM invites JOIN teams ON teams.id=invites.team_id WHERE token_hash=$1
+SELECT invites.id, invites.team_id, invites.email, invites.token_hash, invites.created_by, invites.expires_at, invites.used_at, invites.revoked_at, invites.created_at,teams.name AS team_name,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS inviter_name FROM invites JOIN teams ON teams.id=invites.team_id JOIN users ON users.id=invites.created_by LEFT JOIN memberships ON memberships.team_id=invites.team_id AND memberships.user_id=invites.created_by WHERE token_hash=$1
 `
 
 type InviteByHashRow struct {
-	ID        string             `json:"id"`
-	TeamID    string             `json:"team_id"`
-	Email     string             `json:"email"`
-	TokenHash string             `json:"token_hash"`
-	CreatedBy string             `json:"created_by"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	UsedAt    pgtype.Timestamptz `json:"used_at"`
-	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	TeamName  string             `json:"team_name"`
+	ID          string             `json:"id"`
+	TeamID      string             `json:"team_id"`
+	Email       string             `json:"email"`
+	TokenHash   string             `json:"token_hash"`
+	CreatedBy   string             `json:"created_by"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	UsedAt      pgtype.Timestamptz `json:"used_at"`
+	RevokedAt   pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	TeamName    string             `json:"team_name"`
+	InviterName string             `json:"inviter_name"`
 }
 
 func (q *Queries) InviteByHash(ctx context.Context, tokenHash string) (InviteByHashRow, error) {
@@ -304,6 +306,7 @@ func (q *Queries) InviteByHash(ctx context.Context, tokenHash string) (InviteByH
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.TeamName,
+		&i.InviterName,
 	)
 	return i, err
 }
@@ -580,14 +583,15 @@ func (q *Queries) TeamDomains(ctx context.Context, teamID string) ([]string, err
 }
 
 const teamMembers = `-- name: TeamMembers :many
-SELECT users.id,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS name,users.color,memberships.role FROM users JOIN memberships ON users.id=memberships.user_id WHERE memberships.team_id=$1 ORDER BY memberships.created_at,users.id
+SELECT users.id,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS name,users.color,users.avatar_data,memberships.role FROM users JOIN memberships ON users.id=memberships.user_id WHERE memberships.team_id=$1 ORDER BY memberships.created_at,users.id
 `
 
 type TeamMembersRow struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Role  string `json:"role"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Color      string `json:"color"`
+	AvatarData string `json:"avatar_data"`
+	Role       string `json:"role"`
 }
 
 func (q *Queries) TeamMembers(ctx context.Context, teamID string) ([]TeamMembersRow, error) {
@@ -603,6 +607,7 @@ func (q *Queries) TeamMembers(ctx context.Context, teamID string) ([]TeamMembers
 			&i.ID,
 			&i.Name,
 			&i.Color,
+			&i.AvatarData,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -689,7 +694,7 @@ func (q *Queries) UseInvite(ctx context.Context, id string) error {
 }
 
 const userByEmail = `-- name: UserByEmail :one
-SELECT id, email, name, password_hash, color, created_at FROM users WHERE email=$1
+SELECT id, email, name, password_hash, color, created_at, avatar_data FROM users WHERE email=$1
 `
 
 func (q *Queries) UserByEmail(ctx context.Context, email string) (User, error) {
@@ -702,20 +707,22 @@ func (q *Queries) UserByEmail(ctx context.Context, email string) (User, error) {
 		&i.PasswordHash,
 		&i.Color,
 		&i.CreatedAt,
+		&i.AvatarData,
 	)
 	return i, err
 }
 
 const userByID = `-- name: UserByID :one
-SELECT id,email,name,color,created_at FROM users WHERE id=$1
+SELECT id,email,name,color,created_at,avatar_data FROM users WHERE id=$1
 `
 
 type UserByIDRow struct {
-	ID        string             `json:"id"`
-	Email     string             `json:"email"`
-	Name      string             `json:"name"`
-	Color     string             `json:"color"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         string             `json:"id"`
+	Email      string             `json:"email"`
+	Name       string             `json:"name"`
+	Color      string             `json:"color"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	AvatarData string             `json:"avatar_data"`
 }
 
 func (q *Queries) UserByID(ctx context.Context, id string) (UserByIDRow, error) {
@@ -727,6 +734,7 @@ func (q *Queries) UserByID(ctx context.Context, id string) (UserByIDRow, error) 
 		&i.Name,
 		&i.Color,
 		&i.CreatedAt,
+		&i.AvatarData,
 	)
 	return i, err
 }

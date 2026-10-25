@@ -1,9 +1,10 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import { GripVertical, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Category, Meta, Report, reportDomains, request } from "@/lib/types";
-
 const stateNames = {
   active: "正式",
   pending: "待整理",
@@ -21,6 +22,7 @@ export function CatalogManager({
   onClose?: () => void;
   categoryKind?: "project" | "domain";
 }) {
+  const { t: tr } = useI18n();
   const [selectedKind, setKind] = useState<"project" | "domain">("project"),
     [editing, setEditing] = useState<Category | null>(null);
   const [name, setName] = useState(""),
@@ -61,7 +63,9 @@ export function CatalogManager({
     try {
       await request(`/catalog/${kind}/order`, {
         method: "PUT",
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({
+          ids,
+        }),
       });
       setMessage("顺序已保存");
       onChange();
@@ -106,7 +110,10 @@ export function CatalogManager({
     setBusy(true);
     setError("");
     try {
-      await request(path, { method, body: JSON.stringify(body) });
+      await request(path, {
+        method,
+        body: JSON.stringify(body),
+      });
       choose(null);
       setOrderedIds(null);
       setMessage(success);
@@ -123,16 +130,19 @@ export function CatalogManager({
     >
       <div className="section-heading">
         <h3>
-          {categoryKind ? (kind === "project" ? "项目" : "领域") : "项目与领域"}
+          {categoryKind
+            ? kind === "project"
+              ? tr("项目")
+              : tr("领域")
+            : tr("项目与领域")}
         </h3>
         <span>
-          {
-            (meta.catalog || []).filter(
+          {tr("{count} 项待整理", {
+            count: (meta.catalog || []).filter(
               (x) =>
                 x.state === "pending" && (!categoryKind || x.kind === kind),
-            ).length
-          }{" "}
-          项待整理
+            ).length,
+          })}
         </span>
         <Button
           type="button"
@@ -141,17 +151,21 @@ export function CatalogManager({
           onClick={() => choose(null)}
         >
           <Plus />
-          新建{kind === "project" ? "项目" : "领域"}
+          {tr(kind === "project" ? "新建项目" : "新建领域")}
         </Button>
         {onClose && (
           <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-            完成
+            {tr("完成")}
           </Button>
         )}
       </div>
 
       {!categoryKind && (
-        <div className="catalog-tabs" role="tablist" aria-label="分类类型">
+        <div
+          className="catalog-tabs"
+          role="tablist"
+          aria-label={tr("分类类型")}
+        >
           {(["project", "domain"] as const).map((k) => (
             <button
               role="tab"
@@ -163,18 +177,18 @@ export function CatalogManager({
                 choose(null);
               }}
             >
-              {k === "project" ? "项目" : "领域"}
+              {k === "project" ? tr("项目") : tr("领域")}
             </button>
           ))}
         </div>
       )}
       <div
         className="catalog-list"
-        aria-label={kind === "project" ? "项目列表" : "领域列表"}
+        aria-label={kind === "project" ? tr("项目列表") : tr("领域列表")}
       >
         {visibleItems.length === 0 && (
           <p className="catalog-empty">
-            暂无{kind === "project" ? "项目" : "领域"}
+            {tr(kind === "project" ? "暂无项目" : "暂无领域")}
           </p>
         )}
         {visibleItems.map((v, index) => (
@@ -186,8 +200,10 @@ export function CatalogManager({
             <button
               type="button"
               className="catalog-drag"
-              aria-label={`拖动排序 ${v.name}`}
-              title="拖拽排序，也可使用 Alt + ↑ / ↓"
+              aria-label={tr("拖动排序 {0}", {
+                0: v.name,
+              })}
+              title={tr("拖拽排序，也可使用 Alt + ↑ / ↓")}
               disabled={busy || meta.mode === "local-demo"}
               onPointerDown={(e) => {
                 if (e.button !== 0 || busy) return;
@@ -207,7 +223,10 @@ export function CatalogManager({
                     : null;
                 dragTarget.current = id;
                 setDropTarget(id);
-                if (id) row?.scrollIntoView({ block: "nearest" });
+                if (id)
+                  row?.scrollIntoView({
+                    block: "nearest",
+                  });
               }}
               onPointerUp={(e) => {
                 const from = dragged.current,
@@ -250,14 +269,16 @@ export function CatalogManager({
               </span>
               {v.state !== "active" && (
                 <span className={`category-state ${v.state}`}>
-                  {stateNames[v.state]}
+                  {tr(stateNames[v.state])}
                 </span>
               )}
             </button>
             <div className="catalog-move">
               <button
                 type="button"
-                aria-label={`上移 ${v.name}`}
+                aria-label={tr("上移 {0}", {
+                  0: v.name,
+                })}
                 disabled={busy || index === 0 || meta.mode === "local-demo"}
                 onClick={() => void reorder(v.id, visibleItems[index - 1].id)}
               >
@@ -265,7 +286,9 @@ export function CatalogManager({
               </button>
               <button
                 type="button"
-                aria-label={`下移 ${v.name}`}
+                aria-label={tr("下移 {0}", {
+                  0: v.name,
+                })}
                 disabled={
                   busy ||
                   index === visibleItems.length - 1 ||
@@ -283,8 +306,10 @@ export function CatalogManager({
         <div className="section-heading">
           <h4>
             {editing
-              ? `整理「${editing.name}」`
-              : `新建${kind === "project" ? "项目" : "领域"}`}
+              ? tr("整理「{0}」", {
+                  0: editing.name,
+                })
+              : tr(kind === "project" ? "新建项目" : "新建领域")}
           </h4>
           {editing && (
             <Button
@@ -293,49 +318,51 @@ export function CatalogManager({
               size="sm"
               onClick={() => choose(null)}
             >
-              取消
+              {tr("取消")}
             </Button>
           )}
         </div>
         <label>
-          名称
+          {tr("名称")}
           <input
             required
             maxLength={40}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={
-              kind === "project" ? "如：CoFlow 首版开发" : "如：视频制作"
+              kind === "project"
+                ? tr("如：CoFlow 首版开发")
+                : tr("如：视频制作")
             }
           />
         </label>
         <label>
-          别名
+          {tr("别名")}
           <input
             value={aliases}
             maxLength={1500}
             onChange={(e) => setAliases(e.target.value)}
-            placeholder="多个别名用逗号分隔"
+            placeholder={tr("多个别名用逗号分隔")}
           />
         </label>
         <label>
-          状态
+          {tr("状态")}
           <select value={state} onChange={(e) => setState(e.target.value)}>
-            <option value="active">正式</option>
-            <option value="pending">待整理</option>
-            <option value="archived">已归档</option>
+            <option value="active">{tr("正式")}</option>
+            <option value="pending">{tr("待整理")}</option>
+            <option value="archived">{tr("已归档")}</option>
           </select>
         </label>
         <Button disabled={busy} type="submit">
-          {editing ? "保存分类" : "创建分类"}
+          {editing ? tr("保存分类") : tr("创建分类")}
         </Button>
       </form>
       {editing && (
         <div className="merge-box">
           <label>
-            合并到另一个正式分类
+            {tr("合并到另一个正式分类")}
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">选择目标</option>
+              <option value="">{tr("选择目标")}</option>
               {items
                 .filter((x) => x.id !== editing.id && x.state === "active")
                 .map((x) => (
@@ -346,7 +373,7 @@ export function CatalogManager({
             </select>
           </label>
           <p className="muted">
-            历史简报将归入目标分类，旧名称继续作为别名匹配。
+            {tr("历史简报将归入目标分类，旧名称继续作为别名匹配。")}
           </p>
           <Button
             variant="outline"
@@ -355,29 +382,30 @@ export function CatalogManager({
               void mutate(
                 `/catalog/${kind}/${editing.id}/merge`,
                 "POST",
-                { target_id: target },
+                {
+                  target_id: target,
+                },
                 "已合并分类及历史简报",
               )
             }
           >
-            合并并归并历史简报
+            {tr("合并并归并历史简报")}
           </Button>
         </div>
       )}
       {error && (
         <p role="alert" className="error-text">
-          {error}
+          {tr(error)}
         </p>
       )}
       {message && (
         <p role="status" className="success-text">
-          {message}
+          {tr(message)}
         </p>
       )}
     </section>
   );
 }
-
 export function ClassificationEditor({
   report: r,
   meta,
@@ -387,6 +415,7 @@ export function ClassificationEditor({
   meta: Meta;
   onChange: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [project, setProject] = useState(r.project_id),
     [domains, setDomains] = useState(reportDomains(r).join("，")),
     [busy, setBusy] = useState(false),
@@ -394,7 +423,8 @@ export function ClassificationEditor({
   return (
     <details className="classification-editor">
       <summary>
-        调整分类{r.classification_locked ? " · 已人工确认" : ""}
+        {tr("调整分类")}
+        {r.classification_locked ? tr(" · 已人工确认") : ""}
       </summary>
       <form
         className="workspace-form"
@@ -422,9 +452,9 @@ export function ClassificationEditor({
         }}
       >
         <label>
-          所属项目
+          {tr("所属项目")}
           <select value={project} onChange={(e) => setProject(e.target.value)}>
-            <option value="">未归属项目</option>
+            <option value="">{tr("未归属项目")}</option>
             {meta.projects
               .filter((p) => p.status !== "archived" || p.id === r.project_id)
               .map((p) => (
@@ -435,21 +465,23 @@ export function ClassificationEditor({
           </select>
         </label>
         <label>
-          工作领域
+          {tr("工作领域")}
           <input
             value={domains}
             onChange={(e) => setDomains(e.target.value)}
-            placeholder="研发，产品"
+            placeholder={tr("研发，产品")}
             maxLength={500}
           />
         </label>
-        <p className="muted">保存后，Agent 更新简报时保留你确认的分类。</p>
+        <p className="muted">
+          {tr("保存后，Agent 更新简报时保留你确认的分类。")}
+        </p>
         <Button size="sm" disabled={busy}>
-          保存归属
+          {tr("保存归属")}
         </Button>
         {error && (
           <p role="alert" className="error-text">
-            {error}
+            {tr(error)}
           </p>
         )}
       </form>

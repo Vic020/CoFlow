@@ -33,6 +33,7 @@ type Classification struct {
 	MergedInto string             `json:"merged_into"`
 	CreatedBy  string             `json:"created_by"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	SortOrder  int32              `json:"sort_order"`
 }
 
 type CollaborationRequest struct {
@@ -172,4 +173,12 @@ type User struct {
 	PasswordHash string             `json:"password_hash"`
 	Color        string             `json:"color"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	AvatarData   string             `json:"avatar_data"`
+}
+
+type UserPreference struct {
+	UserID          string             `json:"user_id"`
+	Locale          string             `json:"locale"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DisplayTimezone string             `json:"display_timezone"`
 }

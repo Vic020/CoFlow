@@ -1,6 +1,6 @@
 # 开发指南
 
-CoFlow 0.1.1 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
+CoFlow 0.1.3 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
 
 ## 环境
 
@@ -89,7 +89,7 @@ npm run test:api
 完整身份集成测试（在 `apps/api`）：
 
 ```sh
-COFLOW_TEST_DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable' go test -race ./...
+COFLOW_TEST_DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable' go test -race -count=1 ./...
 ```
 
 每个身份集成测试会创建独立的随机 schema，并在结束后清理；不会清空或覆盖正式团队表。未设置变量时，这部分测试明确跳过，演示测试仍运行。
@@ -105,3 +105,7 @@ COFLOW_TEST_DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?ssl
 生产准备见 [DEPLOYMENT.md](DEPLOYMENT.md)。更改版本时也需手动同步 compose.production.yaml 中的应用镜像标签；开发和提交不会自动升级版本。
 
 团队内称呼保存在 memberships.display_name，迁移 004 为已有成员回填账号名。创建新团队可传 display_name，/auth/me 与 /meta 按当前团队返回称呼，账号、密码及旧 Agent Token 的团队归属保持不变。
+
+## 界面语言
+
+默认英文，支持简体中文；个人设置保存账号语言。字典、扩展规范与本地验证见[多语言说明](I18N.md)。用户写入的业务内容保持原文。

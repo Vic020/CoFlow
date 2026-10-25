@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +11,6 @@ import {
 import { Bell } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { Notification, request } from "@/lib/types";
-
 export function NotificationCenter({
   team,
   onSelect,
@@ -17,13 +18,18 @@ export function NotificationCenter({
   team: string;
   onSelect: (id: string) => void;
 }) {
+  const { t: tr, date: formatDate } = useI18n();
   const [items, setItems] = useState<Notification[]>([]),
     [open, setOpen] = useState(false),
     [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
       setItems(
-        (await request<{ items: Notification[] }>("/notifications")).items,
+        (
+          await request<{
+            items: Notification[];
+          }>("/notifications")
+        ).items,
       );
       setError("");
     } catch (e) {
@@ -40,7 +46,9 @@ export function NotificationCenter({
     try {
       await request("/notifications/read", {
         method: "POST",
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({
+          id,
+        }),
       });
       await load();
     } catch (e) {
@@ -52,7 +60,7 @@ export function NotificationCenter({
       <Button
         variant="ghost"
         size="icon"
-        aria-label="消息通知"
+        aria-label={tr("消息通知")}
         className="bell"
         onClick={() => {
           setOpen(true);
@@ -64,12 +72,12 @@ export function NotificationCenter({
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="info-dialog">
-          <DialogTitle className="modal-title">消息通知</DialogTitle>
+          <DialogTitle className="modal-title">{tr("消息通知")}</DialogTitle>
           <DialogDescription className="modal-description">
-            关注你的简报、评论与协作进展。
+            {tr("关注你的简报、评论与协作进展。")}
           </DialogDescription>
           <Button size="sm" variant="outline" onClick={() => void read("")}>
-            全部标为已读
+            {tr("全部标为已读")}
           </Button>
           <div className="notification-list">
             {items.map((v) => (
@@ -82,20 +90,25 @@ export function NotificationCenter({
                   onSelect(v.report_id);
                 }}
               >
-                <strong>{v.title}</strong>
+                <strong>{tr(v.title)}</strong>
                 <small>
-                  {new Date(v.created_at).toLocaleString("zh-CN")}
-                  {!v.read_at ? " · 未读" : ""}
+                  {formatDate(v.created_at, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                  {!v.read_at ? tr(" · 未读") : ""}
                 </small>
               </button>
             ))}
             {!items.length && (
-              <p className="muted">暂无消息，有新的协作进展时会出现在这里。</p>
+              <p className="muted">
+                {tr("暂无消息，有新的协作进展时会出现在这里。")}
+              </p>
             )}
           </div>
           {error && (
             <p role="alert" className="error-text">
-              {error}
+              {tr(error)}
             </p>
           )}
         </DialogContent>

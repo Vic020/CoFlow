@@ -324,6 +324,7 @@
   margin: 12px 0 8px;
 }
 .join > p {
+  overflow-wrap: anywhere;
   font-size: 11px;
   color: #8a978d;
   line-height: 1.7;
@@ -597,4 +598,11 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+.headerActions { display: flex; align-items: center; gap: 16px; }
+.login .loginHint { color: #84908b; }
+@media (max-width: 800px) {
+  .login .loginHint { display: none; }
+  .headerActions { gap: 10px; }
 }

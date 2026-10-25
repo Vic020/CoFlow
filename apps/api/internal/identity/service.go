@@ -227,7 +227,15 @@ func (s *Service) Me(ctx context.Context, p Principal) (map[string]any, error) {
 			u.Name = team.DisplayName
 		}
 	}
-	return map[string]any{"user": u, "teams": teams, "current_team": p.TeamID, "role": p.Role}, nil
+	team, err := s.Q.TeamByID(ctx, p.TeamID)
+	if err != nil {
+		return nil, err
+	}
+	prefs, err := s.Preferences(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"user": u, "teams": teams, "current_team": p.TeamID, "role": p.Role, "preferences": prefs, "timezone": team.Timezone}, nil
 }
 func (s *Service) SwitchTeam(ctx context.Context, p Principal, raw, team string) error {
 	if _, err := s.Q.Membership(ctx, db.MembershipParams{TeamID: team, UserID: p.UserID}); errors.Is(err, pgx.ErrNoRows) {
@@ -299,7 +307,7 @@ func (s *Service) Metadata(ctx context.Context, p Principal) (map[string]any, er
 	}
 	ms := []store.Member{}
 	for _, m := range members {
-		ms = append(ms, store.Member{ID: m.ID, Name: m.Name, Color: m.Color, Role: m.Role})
+		ms = append(ms, store.Member{ID: m.ID, Name: m.Name, Color: m.Color, AvatarData: m.AvatarData, Role: m.Role})
 	}
 	ps := []store.Project{}
 	for _, v := range projects {
@@ -340,7 +348,7 @@ func (s *Service) InviteInfo(ctx context.Context, raw string) (map[string]any, e
 	if v.UsedAt.Valid || v.RevokedAt.Valid || time.Now().After(v.ExpiresAt.Time) {
 		return nil, &Error{410, "邀请已使用、撤销或过期"}
 	}
-	return map[string]any{"email": v.Email, "team_name": v.TeamName, "expires_at": v.ExpiresAt}, nil
+	return map[string]any{"email": v.Email, "email_domain": v.Email[strings.LastIndex(v.Email, "@")+1:], "inviter_name": v.InviterName, "team_name": v.TeamName, "expires_at": v.ExpiresAt}, nil
 }
 func (s *Service) AcceptInvite(ctx context.Context, raw, name, password string, authenticatedUser string) (string, error) {
 	tx, err := s.Pool.Begin(ctx)

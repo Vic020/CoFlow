@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownWideNarrow,
@@ -63,7 +65,6 @@ import {
   request,
   statuses,
 } from "@/lib/types";
-
 type Filters = {
   project: string;
   domain: string;
@@ -90,26 +91,28 @@ function Avatar({
       className={`avatar ${member?.color || "mint"} ${small ? "small" : ""}`}
       aria-hidden="true"
     >
-      {member?.name.slice(0, 1) || "?"}
+      {member?.avatar_data ? <img src={member.avatar_data} alt="" /> : member?.name.slice(0, 1) || "?"}
     </span>
   );
 }
 function Agent({ name }: { name: string }) {
+  const { t: tr } = useI18n();
   return (
     <span className="agent">
       <span className={name.includes("Claude") ? "claude-mark" : "codex-mark"}>
         {name.includes("Claude") ? "✳" : "◉"}
       </span>
-      {name || "手动上报"}
+      {["手动上报", "其他 Agent"].includes(name) ? tr(name) : name || tr("手动上报")}
     </span>
   );
 }
 function Status({ value }: { value: string }) {
+  const { t: tr } = useI18n();
   const s = statuses[value] || statuses.progress;
   return (
     <span className={`status ${s.className}`}>
       <i />
-      {s.label}
+      {tr(s.label)}
     </span>
   );
 }
@@ -122,17 +125,21 @@ function SelectFilter({
   label: string;
   value: string;
   onChange: (s: string) => void;
-  options: { id: string; name: string }[];
+  options: {
+    id: string;
+    name: string;
+  }[];
 }) {
+  const { t: tr } = useI18n();
   return (
     <label className="filter-select">
-      <span>{label}</span>
+      <span>{tr(label)}</span>
       <select
-        aria-label={label}
+        aria-label={tr(label)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">全部</option>
+        <option value="">{tr("全部")}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
@@ -161,8 +168,8 @@ function Markdown({ children }: { children: string }) {
     </div>
   );
 }
-
 export function Workspace({ children }: { children: React.ReactNode }) {
+  const { t: tr, locale, timeZone, date: formatDate } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const credentialsPage = pathname === "/credentials";
@@ -192,6 +199,14 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     [notice, setNotice] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  useEffect(() => {
+    const user = auth.me?.user;
+    if (!user) return;
+    setMeta((previous) => {
+      if (!previous || previous.team.id !== auth.me?.current_team) return previous;
+      return { ...previous, members: previous.members.map((member) => member.id === user.id ? { ...member, name: user.name, avatar_data: user.avatar_data } : member) };
+    });
+  }, [auth.me?.user.name, auth.me?.user.avatar_data, auth.me?.current_team, auth.me?.user.id]);
   function toggleSidebar() {
     setSidebarCollapsed((previous) => {
       const next = !previous;
@@ -211,12 +226,18 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       try {
         const [m, r] = await Promise.all([
           request<Meta>("/meta"),
-          request<{ items: Report[] }>("/reports"),
+          request<{
+            items: Report[];
+          }>("/reports"),
         ]);
         if (m.mode !== "local-demo") {
           const [reads, cs] = await Promise.all([
-            request<{ items: Record<string, string> }>("/reads"),
-            request<{ items: Collaboration[] }>("/collaborations"),
+            request<{
+              items: Record<string, string>;
+            }>("/reads"),
+            request<{
+              items: Collaboration[];
+            }>("/collaborations"),
           ]);
           if (!current()) return;
           setSeen(reads.items);
@@ -268,17 +289,25 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     if (meta?.mode !== "local-demo")
       void request(`/reports/${r.id}/read`, {
         method: "POST",
-        body: JSON.stringify({ seen_at: r.updated_at }),
+        body: JSON.stringify({
+          seen_at: r.updated_at,
+        }),
       }).catch((e) => setNotice(`已读同步失败：${e.message}`));
     setSeen((prev) => {
-      const next = { ...prev, [r.id]: r.updated_at };
+      const next = {
+        ...prev,
+        [r.id]: r.updated_at,
+      };
       if (meta?.mode === "local-demo")
         localStorage.setItem("coflow-seen", JSON.stringify(next));
       return next;
     });
   };
   const updateFilter = (key: keyof Filters, value: string) =>
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   function resetFilters() {
     setFilters(initialFilters);
     setScope("all");
@@ -348,19 +377,25 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const groups = useMemo(() => {
     const map = new Map<string, Report[]>();
     for (const r of filtered) {
-      const key = dateKey(r.created_at);
+      const key = dateKey(r.created_at, timeZone);
       map.set(key, [...(map.get(key) || []), r]);
     }
     return [...map.entries()];
-  }, [filtered]);
+  }, [filtered, timeZone]);
   const selected = reports.find((r) => r.id === detail);
-  const today = dateKey(new Date().toISOString());
+  const today = dateKey(new Date().toISOString(), timeZone);
   const dayLabel = (key: string) => {
-    const d = new Date(`${key}T12:00:00+08:00`);
-    const month = d.getUTCMonth() + 1,
-      day = d.getUTCDate();
-    const yesterday = dateKey(new Date(Date.now() - 86400000).toISOString());
-    return `${key === today ? "今天 · " : key === yesterday ? "昨天 · " : ""}${month}月${day}日`;
+    const yesterday = dateKey(new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString(), "UTC");
+    const prefix =
+      key === today ? tr("今天 · ") : key === yesterday ? tr("昨天 · ") : "";
+    return (
+      prefix +
+      formatDate(`${key}T12:00:00Z`, {
+        timeZone: "UTC",
+        month: "long",
+        day: "numeric",
+      })
+    );
   };
   const activeFilters =
     Object.entries(filters).filter(
@@ -375,22 +410,25 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   ).length;
   const domainFilter = (
     <SelectFilter
-      label="领域"
+      label={tr("领域")}
       value={filters.domain}
       onChange={(v) => updateFilter("domain", v)}
-      options={(meta?.domains || []).map((d) => ({ id: d, name: d }))}
+      options={(meta?.domains || []).map((d) => ({
+        id: d,
+        name: d,
+      }))}
     />
   );
   const filtersContent = (
     <>
       <SelectFilter
-        label="项目"
+        label={tr("项目")}
         value={filters.project}
         onChange={(v) => updateFilter("project", v)}
         options={meta?.projects || []}
       />
       <SelectFilter
-        label="成员"
+        label={tr("成员")}
         value={filters.member}
         onChange={(v) => updateFilter("member", v)}
         options={meta?.members || []}
@@ -400,49 +438,57 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         value={filters.agent}
         onChange={(v) => updateFilter("agent", v)}
         options={[...new Set(reports.map((r) => r.agent).filter(Boolean))].map(
-          (a) => ({ id: a, name: a }),
+          (a) => ({
+            id: a,
+            name: ["手动上报", "其他 Agent"].includes(a) ? tr(a) : a,
+          }),
         )}
       />
       <label className="filter-select">
-        <span>日期</span>
+        <span>{tr("日期")}</span>
         <select
-          aria-label="日期"
+          aria-label={tr("日期")}
           value={filters.days}
           onChange={(e) => updateFilter("days", e.target.value)}
         >
-          <option value="1">最近 24 小时</option>
-          <option value="7">最近 7 天</option>
-          <option value="30">最近 30 天</option>
-          <option value="">全部时间</option>
+          <option value="1">{tr("最近 24 小时")}</option>
+          <option value="7">{tr("最近 7 天")}</option>
+          <option value="30">{tr("最近 30 天")}</option>
+          <option value="">{tr("全部时间")}</option>
         </select>
         <ChevronDown size={14} />
       </label>
       <div className="filter-personal">
-        <div className="scope-shortcuts" role="group" aria-label="动态范围">
+        <div
+          className="scope-shortcuts"
+          role="group"
+          aria-label={tr("动态范围")}
+        >
           <button
             type="button"
             aria-pressed={scope === "all"}
-            title="团队全部动态"
+            title={tr("团队全部动态")}
             onClick={() => setScope("all")}
           >
-            全部
+            {tr("全部")}
           </button>
           <button
             type="button"
             aria-pressed={scope === "related"}
-            title="我发布、评论、被提及或参与协作的动态"
+            title={tr("我发布、评论、被提及或参与协作的动态")}
             onClick={() => setScope("related")}
           >
-            与我相关
+            {tr("与我相关")}
           </button>
           {meta?.mode !== "local-demo" && (
             <button
               type="button"
               aria-pressed={scope === "todo"}
-              title="分配给我且尚未完成的协作"
+              title={tr("分配给我且尚未完成的协作")}
               onClick={() => setScope("todo")}
             >
-              待我处理 <span>{pendingCount}</span>
+              {tr("待我处理")}
+              <span>{pendingCount}</span>
             </button>
           )}
         </div>
@@ -452,7 +498,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             checked={unread}
             onChange={(e) => setUnread(e.target.checked)}
           />
-          未读
+          {tr("未读")}
         </label>
       </div>
     </>
@@ -463,8 +509,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         {sidebarCollapsed && !nav ? (
           <button
             className="brand brand-expand"
-            aria-label="点击 Logo 展开侧边栏"
-            title="展开侧边栏"
+            aria-label={tr("点击 Logo 展开侧边栏")}
+            title={tr("展开侧边栏")}
             aria-expanded={false}
             onClick={toggleSidebar}
           >
@@ -481,8 +527,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             className="sidebar-toggle"
             variant="ghost"
             size="icon"
-            aria-label="收起侧边栏"
-            title="收起侧边栏"
+            aria-label={tr("收起侧边栏")}
+            title={tr("收起侧边栏")}
             aria-expanded={true}
             onClick={toggleSidebar}
           >
@@ -494,7 +540,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         teamName={
           meta?.team.name ||
           auth.me?.teams.find((t) => t.id === auth.me?.current_team)?.name ||
-          "工作空间"
+          tr("工作空间")
         }
         onNavigate={() => setNav(false)}
       />
@@ -514,39 +560,41 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       <div className="nav-bottom">
         <Link
           href="/credentials"
-          aria-label="Agent 凭证"
-          title="Agent 凭证"
+          aria-label={tr("Agent 凭证")}
+          title={tr("Agent 凭证")}
           className={credentialsPage ? "nav-active" : ""}
           aria-current={credentialsPage ? "page" : undefined}
           onClick={() => setNav(false)}
         >
           <KeyRound size={18} />
-          <span className="nav-label">Agent 凭证</span>
+          <span className="nav-label">{tr("Agent 凭证")}</span>
         </Link>
         <Link
           href="/settings"
-          aria-label="团队设置"
-          title="团队设置"
+          aria-label={tr("团队设置")}
+          title={tr("团队设置")}
           className={settingsPage ? "nav-active" : ""}
           aria-current={settingsPage ? "page" : undefined}
           onClick={() => setNav(false)}
         >
           <Settings2 size={18} />
-          <span className="nav-label">团队设置</span>
+          <span className="nav-label">{tr("团队设置")}</span>
         </Link>
         <AccountMenu
           avatar={<Avatar member={member(meta?.current_user || "")} small />}
           name={
             member(meta?.current_user || "")?.name ||
             auth.me?.user.name ||
-            "成员"
+            tr("成员")
           }
           role={
             auth.mode === "local-demo"
-              ? publicDemo ? "演示体验者" : "本地演示身份"
+              ? publicDemo
+                ? tr("演示体验者")
+                : tr("本地演示身份")
               : meta?.role === "admin"
-                ? "团队管理员"
-                : "团队成员"
+                ? tr("团队管理员")
+                : tr("团队成员")
           }
         />
       </div>
@@ -578,10 +626,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       {children}
       <aside className="sidebar">{navigation}</aside>
       <main className="main-shell">
-        {publicDemo && <div className="public-demo-banner" role="note">
-          <span><strong>公开演示</strong>虚拟团队 · 操作仅本页有效，刷新后重置</span>
-          <a href={repositoryURL} target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-        </div>}
+        {publicDemo && (
+          <div className="public-demo-banner" role="note">
+            <span>
+              <strong>{tr("公开演示")}</strong>
+              {tr("虚拟团队 · 操作仅本页有效，刷新后重置")}
+            </span>
+            <a href={repositoryURL} target="_blank" rel="noopener noreferrer">
+              GitHub ↗
+            </a>
+          </div>
+        )}
         <div
           className={`workspace-content${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
@@ -591,7 +646,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 variant="ghost"
                 size="icon"
                 className="mobile-only"
-                aria-label="打开导航"
+                aria-label={tr("打开导航")}
                 onClick={() => setNav(true)}
               >
                 <Menu />
@@ -599,17 +654,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               <div className="heading-copy">
                 <h1>
                   {credentialsPage
-                    ? "Agent 凭证"
+                    ? tr("Agent 凭证")
                     : settingsPage
-                      ? "团队设置"
-                      : "团队动态"}
+                      ? tr("团队设置")
+                      : tr("团队动态")}
                   {!credentialsPage && !settingsPage && (
                     <span className="heading-dot" />
                   )}
                 </h1>
                 {!credentialsPage && !settingsPage && (
                   <span className="heading-caption">
-                    每一次推进，都在这里汇合。
+                    {tr("每一次推进，都在这里汇合。")}
                   </span>
                 )}
               </div>
@@ -619,17 +674,20 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <label className="search">
                   <Search size={16} />
                   <input
-                    aria-label="搜索动态"
-                    placeholder="搜索动态、项目或成员…"
+                    aria-label={tr("搜索动态")}
+                    placeholder={tr("搜索动态、项目或成员…")}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   {query && (
-                    <button aria-label="清空搜索" onClick={() => setQuery("")}>
+                    <button
+                      aria-label={tr("清空搜索")}
+                      onClick={() => setQuery("")}
+                    >
                       <X size={14} />
                     </button>
                   )}
-                  <kbd>搜索</kbd>
+                  <kbd>{tr("搜索")}</kbd>
                 </label>
                 {meta?.mode !== "local-demo" && meta ? (
                   <NotificationCenter
@@ -648,7 +706,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="查看待关注事项"
+                    aria-label={tr("查看待关注事项")}
                     className="bell"
                     onClick={() => {
                       setOnlyAttention((v) => !v);
@@ -661,7 +719,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 )}
                 <Button onClick={() => setReportTab("manual")}>
                   <Plus />
-                  <span>上报</span>
+                  <span>{tr("上报")}</span>
                 </Button>
               </div>
             )}
@@ -681,7 +739,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           ) : credentialsPage ? (
             <div className="credentials-content">
               {auth.mode === "local-demo" ? (
-                <p className="muted">{publicDemo ? "公开演示不签发凭证。请在自己的 CoFlow 实例中配置 Agent。" : "演示模式无需凭证。"}</p>
+                <p className="muted">
+                  {publicDemo
+                    ? tr(
+                        "公开演示不签发凭证。请在自己的 CoFlow 实例中配置 Agent。",
+                      )
+                    : tr("演示模式无需凭证。")}
+                </p>
               ) : (
                 <TokenManager key={auth.me?.current_team} />
               )}
@@ -695,13 +759,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                       className={view === "all" ? "active" : ""}
                       onClick={() => setView("all")}
                     >
-                      全部动态
+                      {tr("全部动态")}
                     </button>
                     <button
                       className={view === "daily" ? "active" : ""}
                       onClick={() => setView("daily")}
                     >
-                      日报汇总
+                      {tr("日报汇总")}
                     </button>
                   </div>
                 </div>
@@ -713,14 +777,14 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     onClick={resetFilters}
                     disabled={!activeFilters && !onlyAttention && !query}
                   >
-                    重置
+                    {tr("重置")}
                   </button>
                   {auth.mode !== "local-demo" && (
                     <button
                       type="button"
                       className={`catalog-edit-toggle${catalogOpen ? " active" : ""}`}
-                      aria-label="编辑项目与领域"
-                      title="编辑项目与领域"
+                      aria-label={tr("编辑项目与领域")}
+                      title={tr("编辑项目与领域")}
                       aria-expanded={catalogOpen}
                       onClick={() => setCatalogOpen((v) => !v)}
                     >
@@ -732,7 +796,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                       className="catalog-pending-link"
                       onClick={() => setCatalogOpen(true)}
                     >
-                      待整理{" "}
+                      {tr("待整理")}{" "}
                       {meta.catalog.filter((c) => c.state === "pending").length}
                     </button>
                   )}
@@ -744,27 +808,32 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     onClick={() => setMobileFilters(true)}
                   >
                     <Filter />
-                    筛选{activeFilters ? ` · ${activeFilters}` : ""}
+                    {tr("筛选")}
+                    {activeFilters ? ` · ${activeFilters}` : ""}
                   </Button>
                   {auth.mode !== "local-demo" && (
                     <button
                       type="button"
                       className="catalog-edit-toggle"
-                      aria-label="编辑项目与领域"
-                      title="编辑项目与领域"
+                      aria-label={tr("编辑项目与领域")}
+                      title={tr("编辑项目与领域")}
                       aria-expanded={catalogOpen}
                       onClick={() => setCatalogOpen((v) => !v)}
                     >
                       <Pencil size={14} />
                     </button>
                   )}
-                  <span>{filtered.length} 条动态</span>
+                  <span>
+                    {tr("{count} 条动态", {
+                      count: filtered.length,
+                    })}
+                  </span>
                   <button
                     className="text-action"
                     onClick={() => setView(view === "daily" ? "all" : "daily")}
                   >
                     <ArrowDownWideNarrow size={14} />
-                    {view === "daily" ? "按日报汇总" : "按时间排序"}
+                    {view === "daily" ? tr("按日报汇总") : tr("按时间排序")}
                   </button>
                 </div>
                 <div className="domain-chips">
@@ -784,7 +853,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                       className={filters.domain === d ? "selected" : ""}
                       onClick={() => updateFilter("domain", d)}
                     >
-                      {d || "全部领域"}
+                      {d || tr("全部领域")}
                     </button>
                   ))}
                 </div>
@@ -801,12 +870,18 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 {(activeFilters > 0 || onlyAttention || query) && (
                   <div className="filter-summary">
                     <span>
-                      当前显示 {filtered.length} 条
-                      {onlyAttention ? "待关注" : ""}
-                      动态
+                      {tr(
+                        onlyAttention
+                          ? "当前显示 {count} 条待关注动态"
+                          : "当前显示 {count} 条动态",
+                        {
+                          count: filtered.length,
+                        },
+                      )}
                     </span>
                     <button onClick={resetFilters}>
-                      清除筛选 <X size={12} />
+                      {tr("清除筛选")}
+                      <X size={12} />
                     </button>
                   </div>
                 )}
@@ -816,7 +891,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 >
                   <span>
                     <span className="attention-dot" />
-                    需要关注 <strong>{needs.length}</strong>
+                    {tr("需要关注")}
+                    <strong>{needs.length}</strong>
                   </span>
                   <ChevronDown
                     size={16}
@@ -836,29 +912,32 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 )}
                 {error && (
                   <div className="error-box" role="alert">
-                    <strong>暂时无法同步动态</strong>
-                    <p>{error}。请确认 Go API 已启动。</p>
+                    <strong>{tr("暂时无法同步动态")}</strong>
+                    <p>
+                      {tr(error)}
+                      {tr("。请确认 Go API 已启动。")}
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => void load(true)}
                     >
-                      重新连接
+                      {tr("重新连接")}
                     </Button>
                   </div>
                 )}
                 {loading ? (
                   <div className="loading">
                     <Loader2 className="animate-spin" />
-                    正在汇集团队进展…
+                    {tr("正在汇集团队进展…")}
                   </div>
                 ) : !error && groups.length === 0 ? (
                   <div className="empty">
                     <Search size={30} />
-                    <h3>还没有匹配的动态</h3>
-                    <p>调整筛选条件，或者发布第一条进展。</p>
+                    <h3>{tr("还没有匹配的动态")}</h3>
+                    <p>{tr("调整筛选条件，或者发布第一条进展。")}</p>
                     <Button variant="outline" onClick={resetFilters}>
-                      清除全部筛选
+                      {tr("清除全部筛选")}
                     </Button>
                   </div>
                 ) : (
@@ -866,37 +945,48 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     <section className="day-group" key={date}>
                       <div className="day-heading">
                         <h2>{dayLabel(date)}</h2>
-                        <span>{rows.length} 条更新</span>
+                        <span>
+                          {tr("{count} 条更新", {
+                            count: rows.length,
+                          })}
+                        </span>
                       </div>
                       {view === "daily" && (
                         <div className="daily-summary">
                           <span>
-                            {new Set(rows.map((r) => r.author_id)).size} 位成员
+                            {tr("{count} 位成员", {
+                              count: new Set(rows.map((r) => r.author_id)).size,
+                            })}
                           </span>
                           <span>
-                            {
-                              rows.filter((r) => r.status === "delivered")
-                                .length
-                            }{" "}
-                            项交付
+                            {tr("{count} 项交付", {
+                              count: rows.filter(
+                                (r) => r.status === "delivered",
+                              ).length,
+                            })}
                           </span>
                           <span>
-                            {rows.filter((r) => r.status === "blocked").length}{" "}
-                            项阻塞
+                            {tr("{count} 项阻塞", {
+                              count: rows.filter((r) => r.status === "blocked")
+                                .length,
+                            })}
                           </span>
                           <span>
-                            {rows.reduce((n, r) => n + r.links.length, 0)}{" "}
-                            个交付链接
+                            {tr("{count} 个交付链接", {
+                              count: rows.reduce(
+                                (n, r) => n + r.links.length,
+                                0,
+                              ),
+                            })}
                           </span>
                           <span>
-                            {
-                              collaborations.filter(
+                            {tr("{count} 项待办协作", {
+                              count: collaborations.filter(
                                 (c) =>
                                   rows.some((r) => r.id === c.report_id) &&
                                   !["done", "cancelled"].includes(c.status),
-                              ).length
-                            }{" "}
-                            项待办协作
+                              ).length,
+                            })}
                           </span>
                         </div>
                       )}
@@ -910,7 +1000,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               )
                               .map((id) => ({
                                 id,
-                                name: "已离开成员",
+                                name: tr("已离开成员"),
                                 role: "",
                                 color: "mint",
                               })),
@@ -925,8 +1015,10 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                                   <strong>{m.name}</strong>
                                   <span>
                                     {items.length
-                                      ? `${items.length} 条上报`
-                                      : "暂无上报"}
+                                      ? tr("{count} 条上报", {
+                                          count: items.length,
+                                        })
+                                      : tr("暂无上报")}
                                   </span>
                                 </div>
                                 {items.map((r) => (
@@ -937,11 +1029,16 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                                     <Status value={r.status} />
                                     <strong>{r.title}</strong>
                                     <span className="daily-project">
-                                      {project(r.project_id)?.name || "未归属"}
+                                      {project(r.project_id)?.name ||
+                                        tr("未归属")}
                                     </span>
                                     <MessageCircle size={13} />
                                     <span>{r.comments.length}</span>
-                                    <span>{r.links.length} 个链接</span>
+                                    <span>
+                                      {tr("{count} 个链接", {
+                                        count: r.links.length,
+                                      })}
+                                    </span>
                                   </button>
                                 ))}
                               </div>
@@ -956,28 +1053,33 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               onClick={() =>
                                 updateFilter("member", r.author_id)
                               }
-                              aria-label={`筛选成员 ${member(r.author_id)?.name}`}
+                              aria-label={tr("筛选成员 {0}", {
+                                0: member(r.author_id)?.name,
+                              })}
                             >
                               <Avatar member={member(r.author_id)} />
                               <span>
                                 <strong>
-                                  {member(r.author_id)?.name || "成员"}
+                                  {member(r.author_id)?.name || tr("成员")}
                                 </strong>
                                 <small>
-                                  {project(r.project_id)?.name || "未归属"}
+                                  {project(r.project_id)?.name || tr("未归属")}
                                   <span> / </span>
-                                  {reportDomains(r).join(" · ") || "未分类"}
+                                  {reportDomains(r).join(" · ") || tr("未分类")}
                                 </small>
                               </span>
                             </button>
                             <div className="report-content">
                               <div className="report-meta">
                                 <Agent name={r.agent} />
-                                <time>{clock(r.created_at)}</time>
+                                <time>{clock(r.created_at, locale, timeZone)}</time>
                                 {(!seen[r.id] ||
                                   Date.parse(seen[r.id]) <
                                     Date.parse(r.updated_at)) && (
-                                  <i className="unread-dot" title="未读" />
+                                  <i
+                                    className="unread-dot"
+                                    title={tr("未读")}
+                                  />
                                 )}
                               </div>
                               <button
@@ -996,7 +1098,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                                     key={i}
                                   >
                                     <ExternalLink size={13} />
-                                    {l.title || "交付链接"}
+                                    {l.title || tr("交付链接")}
                                   </a>
                                 ))}
                               </div>
@@ -1005,12 +1107,14 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               <Status value={r.status} />
                               <button onClick={() => markRead(r)}>
                                 <MessageCircle size={14} />
-                                {r.comments.length} 条评论
+                                {tr("{count} 条评论", {
+                                  count: r.comments.length,
+                                })}
                                 {collaborations.some(
                                   (c) =>
                                     c.report_id === r.id &&
                                     !["done", "cancelled"].includes(c.status),
-                                ) && <small> · 有待办协作</small>}
+                                ) && <small>{tr("· 有待办协作")}</small>}
                               </button>
                             </div>
                           </article>
@@ -1024,10 +1128,11 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <section className="rail-card">
                   <div className="rail-title">
                     <h2>
-                      需要关注 <span>{needs.length}</span>
+                      {tr("需要关注")}
+                      <span>{needs.length}</span>
                     </h2>
                     <button
-                      aria-label="筛选全部待关注事项"
+                      aria-label={tr("筛选全部待关注事项")}
                       onClick={() => setOnlyAttention((v) => !v)}
                     >
                       <ArrowUpRight size={17} />
@@ -1046,19 +1151,22 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                         <span>
                           <strong>{r.title}</strong>
                           <small>
-                            {member(r.author_id)?.name} · {clock(r.created_at)}
+                            {member(r.author_id)?.name} ·{" "}
+                            {clock(r.created_at, locale, timeZone)}
                           </small>
                         </span>
                         <ChevronDown size={14} />
                       </button>
                     ))
                   ) : (
-                    <p className="muted text-sm">当前没有阻塞或待反馈事项。</p>
+                    <p className="muted text-sm">
+                      {tr("当前没有阻塞或待反馈事项。")}
+                    </p>
                   )}
                 </section>
                 <section className="rail-card">
                   <div className="rail-title">
-                    <h2>进行中的项目</h2>
+                    <h2>{tr("进行中的项目")}</h2>
                     <span className="muted text-xs">
                       {meta?.projects.filter((p) => p.status !== "archived")
                         .length || 0}
@@ -1097,7 +1205,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <section className="rail-card team-card">
                   <div className="rail-title">
                     <h2>
-                      团队 <span>· {meta?.members.length || 5} 人</span>
+                      {tr("团队")}
+                      <span>
+                        ·{" "}
+                        {tr("{count} 人", {
+                          count: meta?.members.length || 5,
+                        })}
+                      </span>
                     </h2>
                     <Users size={16} />
                   </div>
@@ -1116,9 +1230,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                         <strong>{m.name}</strong>
                         <small>
                           {m.role === "admin"
-                            ? "管理员"
+                            ? tr("管理员")
                             : m.role === "member"
-                              ? "成员"
+                              ? tr("成员")
                               : m.role}
                         </small>
                       </button>
@@ -1131,14 +1245,19 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <p className="demo-note">
                   {meta?.mode === "local-demo" ? (
                     <>
-                      {publicDemo ? "公开演示 · 全部为虚拟数据" : "本地演示 · 示例人物与交付链接"}
+                      {publicDemo
+                        ? tr("公开演示 · 全部为虚拟数据")
+                        : tr("本地演示 · 示例人物与交付链接")}
                       <br />
-                      {publicDemo ? "不连接真实服务，不保存到服务器" : "上报及评论会保存在本机"}
+                      {publicDemo
+                        ? tr("不连接真实服务，不保存到服务器")
+                        : tr("上报及评论会保存在本机")}
                     </>
                   ) : (
                     <>
-                      团队数据由 PostgreSQL 持久化
-                      <br />每 30 秒同步进展
+                      {tr("团队数据由 PostgreSQL 持久化")}
+                      <br />
+                      {tr("每 30 秒同步进展")}
                     </>
                   )}
                 </p>
@@ -1149,18 +1268,18 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       </main>
       <Dialog open={nav} onOpenChange={setNav}>
         <DialogContent className="nav-dialog">
-          <DialogTitle className="sr-only">工作空间导航</DialogTitle>
+          <DialogTitle className="sr-only">{tr("工作空间导航")}</DialogTitle>
           <DialogDescription className="sr-only">
-            导航与团队工具
+            {tr("导航与团队工具")}
           </DialogDescription>
           {navigation}
         </DialogContent>
       </Dialog>
       <Dialog open={mobileFilters} onOpenChange={setMobileFilters}>
         <DialogContent className="filter-dialog">
-          <DialogTitle className="modal-title">筛选动态</DialogTitle>
+          <DialogTitle className="modal-title">{tr("筛选动态")}</DialogTitle>
           <DialogDescription className="modal-description">
-            组合查看项目、领域、成员和 Agent 的进展。
+            {tr("组合查看项目、领域、成员和 Agent 的进展。")}
           </DialogDescription>
           <div className="mobile-filter-fields">
             {filtersContent}
@@ -1168,10 +1287,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex gap-3 mt-6">
             <Button variant="outline" onClick={resetFilters}>
-              重置
+              {tr("重置")}
             </Button>
             <Button className="flex-1" onClick={() => setMobileFilters(false)}>
-              查看 {filtered.length} 条动态
+              {tr("查看")}
+              {tr("{count} 条动态", {
+                count: filtered.length,
+              })}
             </Button>
           </div>
         </DialogContent>
@@ -1222,7 +1344,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       {notice && (
         <div className="toast" role="status">
           <Check size={17} />
-          {notice}
+          {tr(notice)}
         </div>
       )}
     </div>
@@ -1241,6 +1363,7 @@ function Detail({
   onChange: () => void;
   onSaved: (s: string) => void;
 }) {
+  const { t: tr, locale, timeZone } = useI18n();
   const [body, setBody] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -1258,7 +1381,10 @@ function Detail({
     try {
       await request(`/reports/${r.id}/comments`, {
         method: "POST",
-        body: JSON.stringify({ body, mentions }),
+        body: JSON.stringify({
+          body,
+          mentions,
+        }),
       });
       setBody("");
       setMentions([]);
@@ -1276,7 +1402,9 @@ function Detail({
     try {
       await request(`/reports/${r.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "resolved" }),
+        body: JSON.stringify({
+          status: "resolved",
+        }),
       });
       onChange();
       onSaved("已标记解决");
@@ -1289,9 +1417,9 @@ function Detail({
   if (editing)
     return (
       <div className="detail-body report-edit-body">
-        <DialogTitle className="modal-title">编辑简报</DialogTitle>
+        <DialogTitle className="modal-title">{tr("编辑简报")}</DialogTitle>
         <DialogDescription className="sr-only">
-          修改标题、内容、分类和交付链接，保留原始来源与讨论。
+          {tr("修改标题、内容、分类和交付链接，保留原始来源与讨论。")}
         </DialogDescription>
         <ReportCompose
           meta={meta}
@@ -1313,12 +1441,14 @@ function Detail({
           <Avatar member={author} small />
           <strong>{author?.name}</strong>
           <Agent name={r.agent} />
-          <time>{clock(r.created_at)}</time>
+          <time>{clock(r.created_at, locale, timeZone)}</time>
         </div>
         <DialogTitle className="detail-title">{r.title}</DialogTitle>
         <DialogDescription className="detail-description">
-          {meta.projects.find((p) => p.id === r.project_id)?.name || "未归属"} /{" "}
-          {reportDomains(r).join(" · ") || "未分类"} · {dateKey(r.created_at)}
+          {meta.projects.find((p) => p.id === r.project_id)?.name ||
+            tr("未归属")}{" "}
+          / {reportDomains(r).join(" · ") || tr("未分类")} ·{" "}
+          {dateKey(r.created_at, timeZone)}
         </DialogDescription>
         <div className="detail-status">
           {canEdit && (
@@ -1328,7 +1458,7 @@ function Detail({
               onClick={() => setEditing(true)}
             >
               <Pencil />
-              编辑
+              {tr("编辑")}
             </Button>
           )}
           <Status value={r.status} />
@@ -1342,7 +1472,7 @@ function Detail({
                 onClick={() => void resolve()}
               >
                 <Check />
-                标记解决
+                {tr("标记解决")}
               </Button>
             )}
         </div>
@@ -1360,14 +1490,19 @@ function Detail({
             <a key={i} href={l.url} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={16} />
               <span>
-                {l.title || "交付链接"}
+                {l.title || tr("交付链接")}
                 <small>{new URL(l.url).hostname}</small>
               </span>
               <ArrowUpRight size={16} />
             </a>
           ))}
         </div>
-        {r.model && <p className="source-note">来源 Model：{r.model}</p>}
+        {r.model && (
+          <p className="source-note">
+            {tr("来源 Model：")}
+            {r.model}
+          </p>
+        )}
         {meta.mode !== "local-demo" && (
           <>
             <CollaborationPanel
@@ -1380,7 +1515,7 @@ function Detail({
           </>
         )}
         <div className="discussion-heading">
-          <h3>讨论</h3>
+          <h3>{tr("讨论")}</h3>
           <span>{r.comments.length}</span>
         </div>
         {r.comments.length ? (
@@ -1392,7 +1527,7 @@ function Detail({
                 <div>
                   <div className="comment-source">
                     <strong>{m?.name}</strong>
-                    <time>{clock(c.created_at)}</time>
+                    <time>{clock(c.created_at, locale, timeZone)}</time>
                   </div>
                   <Markdown>{c.body}</Markdown>
                 </div>
@@ -1401,27 +1536,27 @@ function Detail({
           })
         ) : (
           <p className="discussion-empty">
-            还没有评论。可以补充反馈，或讨论下一步。
+            {tr("还没有评论。可以补充反馈，或讨论下一步。")}
           </p>
         )}
       </div>
       <form className="comment-form" onSubmit={comment}>
         <label htmlFor="comment-body">
-          以
+          {tr("以")}
           {meta.members.find((m) => m.id === meta.current_user)?.name ||
-            "当前成员"}
-          的身份回复
+            tr("当前成员")}
+          {tr("的身份回复")}
         </label>
         <textarea
           id="comment-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="分享反馈或协作建议，支持 Markdown…"
+          placeholder={tr("分享反馈或协作建议，支持 Markdown…")}
           rows={3}
           maxLength={4000}
         />
         {meta.mode !== "local-demo" && (
-          <div className="mention-picker" aria-label="提醒成员">
+          <div className="mention-picker" aria-label={tr("提醒成员")}>
             {meta.members
               .filter((m) => m.id !== meta.current_user)
               .map((m) => (
@@ -1444,11 +1579,11 @@ function Detail({
         )}
         <div className="comment-form-footer">
           <span className="error-text" role="alert">
-            {error}
+            {tr(error)}
           </span>
           <Button type="submit" disabled={busy || !body.trim()}>
             {busy ? <Loader2 className="animate-spin" /> : <MessageCircle />}
-            发布评论
+            {tr("发布评论")}
           </Button>
         </div>
       </form>

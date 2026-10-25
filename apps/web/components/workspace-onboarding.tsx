@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -13,9 +14,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CoFlowLogo } from "@/components/coflow-logo";
 import { request } from "@/lib/types";
-
 const steps = ["为团队命名", "认识一下你", "准备启航"];
-
 export function WorkspaceOnboarding({
   onDone,
   onCreateTeam,
@@ -25,6 +24,7 @@ export function WorkspaceOnboarding({
   onCreateTeam?: (team: string, name: string) => Promise<void>;
   initialName?: string;
 }) {
+  const { t: tr, locale } = useI18n();
   const [step, setStep] = useState(0);
   const [team, setTeam] = useState("");
   const [name, setName] = useState(initialName);
@@ -34,10 +34,11 @@ export function WorkspaceOnboarding({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [setupToken, setSetupToken] = useState("");
-  const [setupAccess, setSetupAccess] = useState<"checking" | "allowed" | "blocked">("checking");
+  const [setupAccess, setSetupAccess] = useState<
+    "checking" | "allowed" | "blocked"
+  >("checking");
   const setupCheck = useRef<Promise<string> | null>(null);
   const firstField = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     if (onCreateTeam) return;
     if (!setupCheck.current) {
@@ -45,48 +46,61 @@ export function WorkspaceOnboarding({
       const token = url.searchParams.get("token") || "";
       if (url.searchParams.has("token")) {
         url.searchParams.delete("token");
-        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+        window.history.replaceState(
+          window.history.state,
+          "",
+          url.pathname + url.search + url.hash,
+        );
       }
       setupCheck.current = token
         ? request("/auth/bootstrap/check", {
             method: "POST",
-            headers: { "X-CoFlow-Setup-Token": token },
+            headers: {
+              "X-CoFlow-Setup-Token": token,
+            },
             body: "{}",
           }).then(() => token)
         : Promise.reject(new Error("Missing initialization link"));
     }
     let active = true;
-    setupCheck.current.then((token) => {
-      if (!active) return;
-      setSetupToken(token);
-      setSetupAccess("allowed");
-    }).catch(() => {
-      if (active) setSetupAccess("blocked");
-    });
-    return () => { active = false; };
+    setupCheck.current
+      .then((token) => {
+        if (!active) return;
+        setSetupToken(token);
+        setSetupAccess("allowed");
+      })
+      .catch(() => {
+        if (active) setSetupAccess("blocked");
+      });
+    return () => {
+      active = false;
+    };
   }, [onCreateTeam]);
-
   useEffect(() => {
     firstField.current?.focus();
   }, [step, setupAccess]);
-
   function goTo(next: number) {
     setError("");
     setVisible(false);
     setStep(next);
   }
-
   if (!onCreateTeam && setupAccess !== "allowed") {
     return (
       <main className="account-page onboarding-page">
-        <div className="account-brand"><CoFlowLogo /><strong>CoFlow</strong></div>
+        <div className="account-brand">
+          <CoFlowLogo />
+          <strong>CoFlow</strong>
+        </div>
         <section className="account-card" aria-live="polite">
-          <h1>{setupAccess === "checking" ? "正在验证初始化链接…" : "初始化链接无效或已失效"}</h1>
+          <h1>
+            {setupAccess === "checking"
+              ? tr("正在验证初始化链接…")
+              : tr("初始化链接无效或已失效")}
+          </h1>
         </section>
       </main>
     );
   }
-
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -113,7 +127,7 @@ export function WorkspaceOnboarding({
           return;
         }
         await onCreateTeam(team.trim(), name.trim());
-      } else
+      } else {
         await request("/auth/bootstrap", {
           method: "POST",
           headers: { "X-CoFlow-Setup-Token": setupToken },
@@ -124,6 +138,11 @@ export function WorkspaceOnboarding({
             password,
           }),
         });
+        await request("/auth/preferences", {
+          method: "PATCH",
+          body: JSON.stringify({ locale }),
+        });
+      }
       setPassword("");
       setSetupToken("");
       setVisible(false);
@@ -134,7 +153,6 @@ export function WorkspaceOnboarding({
       setBusy(false);
     }
   }
-
   return (
     <main className="account-page onboarding-page">
       <div className="account-brand">
@@ -143,9 +161,9 @@ export function WorkspaceOnboarding({
       </div>
       <section
         className="account-card onboarding-card"
-        aria-label="创建工作空间"
+        aria-label={tr("创建工作空间")}
       >
-        <ol className="onboarding-steps" aria-label="创建进度">
+        <ol className="onboarding-steps" aria-label={tr("创建进度")}>
           {(onCreateTeam ? steps.slice(0, 2) : steps).map((label, index) => (
             <li
               key={label}
@@ -156,7 +174,7 @@ export function WorkspaceOnboarding({
                     ? "is-current"
                     : ""
               }
-              aria-label={`${label}${index < step ? "，已完成" : ""}`}
+              aria-label={`${tr(label)}${index < step ? tr("，已完成") : ""}`}
               aria-current={index === step ? "step" : undefined}
             >
               <span className="onboarding-step-track" />
@@ -178,16 +196,21 @@ export function WorkspaceOnboarding({
           <div className="onboarding-heading" aria-live="polite">
             <h1>
               {step === 0
-                ? "先给团队起个名字。"
+                ? tr("先给团队起个名字。")
                 : step === 1
-                  ? `「${team}」，认识一下你。`
-                  : `「${team}」，欢迎 ${name} 登船。`}
+                  ? tr("「{0}」，认识一下你。", {
+                      0: team,
+                    })
+                  : tr("「{0}」，欢迎 {1} 登船。", {
+                      0: team,
+                      1: name,
+                    })}
             </h1>
           </div>
           <form className="account-form" onSubmit={submit} aria-busy={busy}>
             {step === 0 ? (
               <label htmlFor="onboarding-team">
-                <span className="sr-only">团队名称</span>
+                <span className="sr-only">{tr("团队名称")}</span>
                 <input
                   ref={firstField}
                   id="onboarding-team"
@@ -195,13 +218,13 @@ export function WorkspaceOnboarding({
                   maxLength={40}
                   value={team}
                   onChange={(e) => setTeam(e.target.value)}
-                  placeholder="比如：引力工作室"
+                  placeholder={tr("比如：引力工作室")}
                   autoComplete="organization"
                 />
               </label>
             ) : step === 1 ? (
               <label htmlFor="onboarding-name">
-                <span className="sr-only">怎么称呼你</span>
+                <span className="sr-only">{tr("怎么称呼你")}</span>
                 <input
                   ref={firstField}
                   id="onboarding-name"
@@ -209,14 +232,14 @@ export function WorkspaceOnboarding({
                   maxLength={40}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="比如：Vic"
+                  placeholder={tr("比如：Vic")}
                   autoComplete="name"
                 />
               </label>
             ) : (
               <>
                 <label htmlFor="onboarding-email">
-                  <span className="sr-only">邮箱</span>
+                  <span className="sr-only">{tr("邮箱")}</span>
                   <input
                     ref={firstField}
                     id="onboarding-email"
@@ -225,13 +248,13 @@ export function WorkspaceOnboarding({
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="邮箱"
+                    placeholder={tr("邮箱")}
                     disabled={busy}
                   />
                 </label>
                 <div className="account-password-group">
                   <label className="sr-only" htmlFor="onboarding-password">
-                    设置密码
+                    {tr("设置密码")}
                   </label>
                   <span className="account-password-field">
                     <input
@@ -243,13 +266,13 @@ export function WorkspaceOnboarding({
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="设置密码，至少 8 位"
+                      placeholder={tr("设置密码，至少 8 位")}
                       disabled={busy}
                     />
                     <button
                       type="button"
                       className="account-password-toggle"
-                      aria-label={visible ? "隐藏密码" : "显示密码"}
+                      aria-label={visible ? tr("隐藏密码") : tr("显示密码")}
                       aria-pressed={visible}
                       onClick={() => setVisible((v) => !v)}
                       disabled={busy}
@@ -266,27 +289,27 @@ export function WorkspaceOnboarding({
             )}
             {error && (
               <p className="account-error" role="alert">
-                {error}
+                {tr(error)}
               </p>
             )}
             <Button type="submit" disabled={busy} className="onboarding-next">
               {busy ? <Loader2 className="animate-spin" /> : null}
               {step === 0
-                ? "团队就叫这个"
+                ? tr("团队就叫这个")
                 : step === 1
                   ? onCreateTeam
                     ? busy
-                      ? "正在创建…"
-                      : "创建团队"
-                    : "认识了，继续"
+                      ? tr("正在创建…")
+                      : tr("创建团队")
+                    : tr("认识了，继续")
                   : busy
-                    ? "正在创建工作空间…"
-                    : "创建团队，启航"}
+                    ? tr("正在创建工作空间…")
+                    : tr("创建团队，启航")}
               {!busy && <ArrowRight aria-hidden="true" />}
             </Button>
             {onCreateTeam && step === 0 && (
               <Link href="/" className="onboarding-back">
-                返回工作空间
+                {tr("返回工作空间")}
               </Link>
             )}
             {step > 0 && (
@@ -297,7 +320,7 @@ export function WorkspaceOnboarding({
                 disabled={busy}
               >
                 <ArrowLeft aria-hidden="true" />
-                上一步
+                {tr("上一步")}
               </button>
             )}
           </form>

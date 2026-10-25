@@ -2,7 +2,7 @@
 
 本文部署自用／自托管真实团队服务。维护者购买的服务器用于自用，不作为开源仓库的公开演示后端。公开 GitHub Pages 仅运行虚拟数据网页，无 Go API、数据库或真实账号，详见 [Pages 说明](GITHUB_PAGES.md)。
 
-当前版本 0.1.1。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
+当前版本 0.1.3。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
 
 ## 生产拓扑
 
@@ -18,7 +18,7 @@ Compose 的内存上限合计约 1.4GB，给系统留余量；数据库限制 20
 cp deploy/production.env.example .env.production
 # 本地编辑域名、随机十六进制数据库密码与独立的初始化 token（各用 openssl rand -hex 32 生成）；不要把真实值提交到 Git。
 docker compose --env-file .env.production -f compose.production.yaml build
-docker save coflow-api:0.1.1 coflow-web:0.1.1 | gzip > /tmp/coflow-images.tar.gz
+docker save coflow-api:0.1.3 coflow-web:0.1.3 | gzip > /tmp/coflow-images.tar.gz
 ```
 
 将镜像包、compose.production.yaml、deploy/Caddyfile 和私密的 .env.production 通过 SSH 传至自己的服务器，导入后启动：

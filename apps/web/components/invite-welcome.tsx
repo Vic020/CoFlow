@@ -1,5 +1,8 @@
 "use client";
 
+import { InvitationHint } from "@/components/invitation-hint";
+import type { InvitationInfo } from "@/lib/types";
+import { LanguageSwitcher, useI18n } from "@/components/i18n-provider";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -17,7 +20,6 @@ import {
 import { CoFlowLogo } from "@/components/coflow-logo";
 import { request } from "@/lib/types";
 import styles from "./invite-welcome.module.css";
-
 const steps = [
   {
     icon: Terminal,
@@ -40,16 +42,13 @@ const steps = [
     description: "后续进展接着走，协作有回音",
   },
 ];
-
 export function InviteWelcome() {
+  const { t: tr } = useI18n();
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
-  const [info, setInfo] = useState<{ email: string; team_name: string } | null>(
-    null,
-  );
+  const [info, setInfo] = useState<InvitationInfo | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
-
   useEffect(() => {
     let active = true;
     let revision = 0;
@@ -66,13 +65,12 @@ export function InviteWelcome() {
       }
       setChecking(true);
       try {
-        const result = await request<{ email: string; team_name: string }>(
-          "/auth/invite-info",
-          {
-            method: "POST",
-            body: JSON.stringify({ token: value }),
-          },
-        );
+        const result = await request<InvitationInfo>("/auth/invite-info", {
+          method: "POST",
+          body: JSON.stringify({
+            token: value,
+          }),
+        });
         if (active && current === revision) setInfo(result);
       } catch (e) {
         if (active && current === revision) setError((e as Error).message);
@@ -87,7 +85,6 @@ export function InviteWelcome() {
       window.removeEventListener("hashchange", readInvite);
     };
   }, []);
-
   function continueWithEmail(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!token) {
@@ -101,40 +98,48 @@ export function InviteWelcome() {
     }
     window.location.assign(`/#invite=${encodeURIComponent(token)}`);
   }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand} aria-label="CoFlow 首页">
+        <Link href="/" className={styles.brand} aria-label={tr("CoFlow 首页")}>
           <CoFlowLogo />
           <span>CoFlow</span>
         </Link>
-        <Link href="/" className={styles.login}>
-          已有账号？
-          <span>
-            前往工作空间 <ArrowRight size={14} />
-          </span>
-        </Link>
+        <div className={styles.headerActions}>
+          <Link href="/" className={styles.login}>
+            <span className={styles.loginHint}>{tr("已有账号？")}</span>
+            <span>
+              {tr("前往工作空间")}
+              <ArrowRight size={14} />
+            </span>
+          </Link>
+          <LanguageSwitcher inline />
+        </div>
       </header>
 
       <section className={styles.content} aria-labelledby="invite-title">
         <div className={styles.intro}>
           <span className={styles.eyebrow}>
-            <span /> AI 时代的工作协作方式
+            <span />
+            {tr("AI 时代的工作协作方式")}
           </span>
           <h1 id="invite-title">
-            让每一次推进，<span>都被团队看见。</span>
+            {tr("让每一次推进，")}
+            <span>{tr("都被团队看见。")}</span>
           </h1>
-          <p>你的 Agent 在工作，你的团队在同一条时间线上协作。</p>
+          <p>{tr("你的 Agent 在工作，你的团队在同一条时间线上协作。")}</p>
         </div>
 
         <div
           className={styles.workflow}
-          aria-label="协作流程：Agent 上报简报和链接，团队浏览，评论或提出协作请求，后续进展持续更新"
+          aria-label={tr(
+            "协作流程：Agent 上报简报和链接，团队浏览，评论或提出协作请求，后续进展持续更新",
+          )}
         >
           <div className={styles.workflowTop}>
             <span>
-              <span className={styles.liveDot} /> 一次上报，开启协作
+              <span className={styles.liveDot} />
+              {tr("一次上报，开启协作")}
             </span>
             <span>FROM UPDATE TO COLLABORATION</span>
           </div>
@@ -143,7 +148,11 @@ export function InviteWelcome() {
               <li
                 className={styles.step}
                 key={step.title}
-                style={{ "--step": index } as React.CSSProperties}
+                style={
+                  {
+                    "--step": index,
+                  } as React.CSSProperties
+                }
               >
                 <div className={styles.stepHeading}>
                   <span className={styles.stepIcon}>
@@ -151,37 +160,39 @@ export function InviteWelcome() {
                   </span>
                   <span className={styles.stepNumber}>0{index + 1}</span>
                 </div>
-                <h2>{step.title}</h2>
-                <p>{step.description}</p>
+                <h2>{tr(step.title)}</h2>
+                <p>{tr(step.description)}</p>
                 <div className={styles.example} aria-hidden="true">
                   {index === 0 && (
                     <>
                       <div className={styles.exampleMeta}>
-                        <Terminal size={11} /> Agent · 刚刚
+                        <Terminal size={11} />
+                        {tr("Agent · 刚刚")}
                       </div>
-                      <strong>首页移动端适配已完成</strong>
+                      <strong>{tr("首页移动端适配已完成")}</strong>
                       <span className={styles.linkChip}>
-                        <Link2 size={10} /> 预览与交付链接{" "}
-                        <ExternalLink size={9} />
+                        <Link2 size={10} />
+                        {tr("预览与交付链接")} <ExternalLink size={9} />
                       </span>
                     </>
                   )}
                   {index === 1 && (
                     <>
                       <div className={styles.exampleMeta}>
-                        团队动态 <span className={styles.newBadge}>+1</span>
+                        {tr("团队动态")}
+                        <span className={styles.newBadge}>+1</span>
                       </div>
                       <div className={styles.feedLine}>
-                        <b>陈</b>
+                        <b>{tr("陈")}</b>
                         <span>
-                          研发进展已更新
+                          {tr("研发进展已更新")}
                           <i />
                         </span>
                       </div>
                       <div className={styles.feedLine}>
-                        <b>林</b>
+                        <b>{tr("林")}</b>
                         <span>
-                          运营计划已交付
+                          {tr("运营计划已交付")}
                           <i />
                         </span>
                       </div>
@@ -190,29 +201,35 @@ export function InviteWelcome() {
                   {index === 2 && (
                     <>
                       <div className={styles.exampleMeta}>
-                        <MessageCircle size={11} /> 一起推进
+                        <MessageCircle size={11} />
+                        {tr("一起推进")}
                       </div>
                       <div className={styles.comment}>
-                        @林悦 可以一起确认文案吗？
+                        {tr("@林悦 可以一起确认文案吗？")}
                       </div>
                       <span className={styles.reply}>
-                        <Check size={11} /> 收到，我来跟进
+                        <Check size={11} />
+                        {tr("收到，我来跟进")}
                       </span>
                     </>
                   )}
                   {index === 3 && (
                     <>
                       <div className={styles.exampleMeta}>
-                        <RefreshCw size={11} /> 后续进展
+                        <RefreshCw size={11} />
+                        {tr("后续进展")}
                       </div>
                       <div className={styles.updateLine}>
-                        <span /> 文案确认完成
+                        <span />
+                        {tr("文案确认完成")}
                       </div>
                       <div className={styles.updateLine}>
-                        <span /> 已合并，准备发布
+                        <span />
+                        {tr("已合并，准备发布")}
                       </div>
                       <span className={styles.done}>
-                        <Check size={10} /> 协作已推进
+                        <Check size={10} />
+                        {tr("协作已推进")}
                       </span>
                     </>
                   )}
@@ -229,7 +246,7 @@ export function InviteWelcome() {
           </ol>
           <div className={styles.loopNote}>
             <RefreshCw size={12} />
-            <span>新的进展，继续汇入团队时间线</span>
+            <span>{tr("新的进展，继续汇入团队时间线")}</span>
             <div className={styles.loopLine} />
           </div>
         </div>
@@ -239,12 +256,16 @@ export function InviteWelcome() {
             <Mail size={20} strokeWidth={1.6} />
           </span>
           <h2 id="join-title">
-            {info ? `加入「${info.team_name}」` : "从这里，开始一起协作"}
+            {info
+              ? tr("加入「{0}」", {
+                  0: info.team_name,
+                })
+              : tr("从这里，开始一起协作")}
           </h2>
-          <p>填写受邀邮箱，与团队和 Agent 保持同步。</p>
+          {info ? <InvitationHint info={info} /> : <p>{tr("填写受邀邮箱，与团队和 Agent 保持同步。")}</p>}
           <form onSubmit={continueWithEmail} className={styles.form}>
             <label htmlFor="invite-email" className={styles.srOnly}>
-              受邀邮箱
+              {tr("受邀邮箱")}
             </label>
             <div className={styles.inputRow}>
               <Mail size={17} aria-hidden="true" />
@@ -253,7 +274,7 @@ export function InviteWelcome() {
                 type="email"
                 name="email"
                 autoComplete="email"
-                placeholder="输入你的邮箱"
+                placeholder={tr("输入你的邮箱")}
                 required
                 maxLength={254}
                 value={email}
@@ -269,25 +290,26 @@ export function InviteWelcome() {
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <>
-                    继续 <ArrowRight size={15} />
+                    {tr("继续")}
+                    <ArrowRight size={15} />
                   </>
                 )}
               </button>
             </div>
             {error && (
               <p id="invite-error" className={styles.error} role="alert">
-                {error}
+                {tr(error)}
               </p>
             )}
             <p id="invite-hint" className={styles.hint}>
-              通过团队邀请加入 · 简报、链接与讨论在这里汇合
+              {tr("通过团队邀请加入 · 简报、链接与讨论在这里汇合")}
             </p>
           </form>
         </section>
       </section>
       <footer className={styles.footer}>
         <span>CoFlow</span>
-        <span>人与 Agent，一起把事情向前推进。</span>
+        <span>{tr("人与 Agent，一起把事情向前推进。")}</span>
       </footer>
     </main>
   );

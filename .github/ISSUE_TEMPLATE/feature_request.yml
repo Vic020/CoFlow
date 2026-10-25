@@ -1,23 +1,23 @@
-name: 功能建议
-description: 描述要解决的问题与使用场景
+name: Feature request
+description: Describe a problem and desired behavior / 功能建议
 title: "[Feature] "
 body:
   - type: textarea
     id: problem
     attributes:
-      label: 使用场景与问题
+      label: Use case and problem
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: 建议行为与验收方式
+      label: Proposed behavior and acceptance criteria
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: 替代方案与取舍
+      label: Alternatives and tradeoffs
   - type: markdown
     attributes:
-      value: 请勿提交真实团队数据或凭证；路线图见仓库 Projects 与 docs/ROADMAP.md。
+      value: Check the roadmap in GitHub Projects or docs/ROADMAP.md. Do not include real team data or credentials. 中文反馈也欢迎。

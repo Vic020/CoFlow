@@ -5,7 +5,7 @@ INSERT INTO users(id,email,name,password_hash,color) VALUES ($1,$2,$3,$4,$5) RET
 -- name: UserByEmail :one
 SELECT * FROM users WHERE email=$1;
 -- name: UserByID :one
-SELECT id,email,name,color,created_at FROM users WHERE id=$1;
+SELECT id,email,name,color,created_at,avatar_data FROM users WHERE id=$1;
 -- name: CreateTeam :one
 INSERT INTO teams(id,name) VALUES ($1,$2) RETURNING *;
 -- name: CreateMembership :exec
@@ -17,7 +17,7 @@ SELECT teams.*,memberships.role,memberships.display_name FROM teams JOIN members
 -- name: TeamByID :one
 SELECT * FROM teams WHERE id=$1;
 -- name: TeamMembers :many
-SELECT users.id,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS name,users.color,memberships.role FROM users JOIN memberships ON users.id=memberships.user_id WHERE memberships.team_id=$1 ORDER BY memberships.created_at,users.id;
+SELECT users.id,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS name,users.color,users.avatar_data,memberships.role FROM users JOIN memberships ON users.id=memberships.user_id WHERE memberships.team_id=$1 ORDER BY memberships.created_at,users.id;
 -- name: CreateSession :exec
 INSERT INTO sessions(token_hash,user_id,team_id,expires_at) VALUES ($1,$2,$3,$4);
 -- name: SessionIdentity :one
@@ -29,7 +29,7 @@ UPDATE sessions SET team_id=$2 WHERE token_hash=$1;
 -- name: CreateInvite :one
 INSERT INTO invites(id,team_id,email,token_hash,created_by,expires_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,team_id,email,created_by,expires_at,used_at,revoked_at,created_at;
 -- name: InviteByHash :one
-SELECT invites.*,teams.name AS team_name FROM invites JOIN teams ON teams.id=invites.team_id WHERE token_hash=$1;
+SELECT invites.*,teams.name AS team_name,COALESCE(NULLIF(memberships.display_name,''),users.name)::text AS inviter_name FROM invites JOIN teams ON teams.id=invites.team_id JOIN users ON users.id=invites.created_by LEFT JOIN memberships ON memberships.team_id=invites.team_id AND memberships.user_id=invites.created_by WHERE token_hash=$1;
 -- name: LockInvite :one
 SELECT * FROM invites WHERE token_hash=$1 FOR UPDATE;
 -- name: UseInvite :exec

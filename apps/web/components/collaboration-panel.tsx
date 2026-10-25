@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +11,6 @@ import {
   request,
   clock,
 } from "@/lib/types";
-
 export function CollaborationPanel({
   report,
   meta,
@@ -21,6 +22,7 @@ export function CollaborationPanel({
   items: Collaboration[];
   onChange: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [open, setOpen] = useState(false),
     [title, setTitle] = useState(""),
     [body, setBody] = useState(""),
@@ -31,14 +33,17 @@ export function CollaborationPanel({
     <section className="collaboration-panel">
       <div className="section-heading">
         <h3>
-          协作请求 <small>{items.length}</small>
+          {tr("协作请求")}
+          <small>{items.length}</small>
         </h3>
         <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
-          {open ? "收起" : "提出协作请求"}
+          {open ? tr("收起") : tr("提出协作请求")}
         </Button>
       </div>
       {!items.length && !open && (
-        <p className="muted">需要谁协助？明确负责人，让后续进展有回音。</p>
+        <p className="muted">
+          {tr("需要谁协助？明确负责人，让后续进展有回音。")}
+        </p>
       )}
       {items.map((v) => (
         <RequestCard key={v.id} value={v} meta={meta} onChange={onChange} />
@@ -72,23 +77,23 @@ export function CollaborationPanel({
           }}
         >
           <label>
-            需要协助的事情
+            {tr("需要协助的事情")}
             <input
               required
               maxLength={150}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="如：请补录新版产品界面"
+              placeholder={tr("如：请补录新版产品界面")}
             />
           </label>
           <label>
-            负责人
+            {tr("负责人")}
             <select
               required
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
             >
-              <option value="">选择团队成员</option>
+              <option value="">{tr("选择团队成员")}</option>
               {meta.members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -97,19 +102,19 @@ export function CollaborationPanel({
             </select>
           </label>
           <label>
-            说明
+            {tr("说明")}
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={2}
               maxLength={3000}
-              placeholder="说明交付物、阻塞和期望结果"
+              placeholder={tr("说明交付物、阻塞和期望结果")}
             />
           </label>
-          <Button disabled={busy}>发起协作</Button>
+          <Button disabled={busy}>{tr("发起协作")}</Button>
           {error && (
             <p className="error-text" role="alert">
-              {error}
+              {tr(error)}
             </p>
           )}
         </form>
@@ -126,13 +131,14 @@ function RequestCard({
   meta: Meta;
   onChange: () => void;
 }) {
+  const { t: tr, locale, timeZone, date: formatDate } = useI18n();
   const [status, setStatus] = useState(v.status),
     [body, setBody] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   useEffect(() => setStatus(v.status), [v.status]);
   const name = (id: string) =>
-    meta.members.find((m) => m.id === id)?.name || "已离开成员";
+    meta.members.find((m) => m.id === id)?.name || tr("已离开成员");
   const canUpdate =
     meta.current_user === v.author_id ||
     meta.current_user === v.assignee_id ||
@@ -142,20 +148,22 @@ function RequestCard({
       <div className="section-heading">
         <strong>{v.title}</strong>
         <span className={`request-status ${v.status}`}>
-          {collaborationStatuses[v.status]}
+          {tr(collaborationStatuses[v.status])}
         </span>
       </div>
       <p className="muted">
-        {name(v.author_id)} 发起 → {name(v.assignee_id)} 负责
+        {name(v.author_id)}
+        {tr("发起 →")}
+        {name(v.assignee_id)}
+        {tr("负责")}
       </p>
       {v.body && <p className="request-body">{v.body}</p>}
       <div className="request-updates">
         {v.updates.map((u) => (
           <div key={u.id}>
             <small>
-              {name(u.actor_id)} · {collaborationStatuses[u.status]} ·{" "}
-              {new Date(u.created_at).toLocaleDateString("zh-CN")}{" "}
-              {clock(u.created_at)}
+              {name(u.actor_id)} · {tr(collaborationStatuses[u.status])} ·{" "}
+              {formatDate(u.created_at)} {clock(u.created_at, locale, timeZone)}
             </small>
             {u.body && <p>{u.body}</p>}
           </div>
@@ -163,7 +171,7 @@ function RequestCard({
       </div>
       {canUpdate && (
         <details>
-          <summary>更新进展</summary>
+          <summary>{tr("更新进展")}</summary>
           <form
             className="workspace-form"
             onSubmit={async (e) => {
@@ -173,7 +181,10 @@ function RequestCard({
               try {
                 await request(`/collaborations/${v.id}`, {
                   method: "PATCH",
-                  body: JSON.stringify({ status, body }),
+                  body: JSON.stringify({
+                    status,
+                    body,
+                  }),
                 });
                 setBody("");
                 onChange();
@@ -185,37 +196,37 @@ function RequestCard({
             }}
           >
             <label>
-              处理状态
+              {tr("处理状态")}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
                 {Object.entries(collaborationStatuses).map(([key, label]) => (
                   <option key={key} value={key}>
-                    {label}
+                    {tr(label)}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              后续进展
+              {tr("后续进展")}
               <textarea
                 rows={2}
                 maxLength={3000}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="处理结果、阻塞原因或下一步…"
+                placeholder={tr("处理结果、阻塞原因或下一步…")}
               />
             </label>
             <Button
               size="sm"
               disabled={busy || (status === v.status && !body.trim())}
             >
-              更新协作
+              {tr("更新协作")}
             </Button>
             {error && (
               <p className="error-text" role="alert">
-                {error}
+                {tr(error)}
               </p>
             )}
           </form>
@@ -224,7 +235,6 @@ function RequestCard({
     </article>
   );
 }
-
 export function ReportHistory({
   id,
   meta,
@@ -234,6 +244,7 @@ export function ReportHistory({
   meta: Meta;
   updatedAt: string;
 }) {
+  const { t: tr, date: formatDate } = useI18n();
   const [items, setItems] = useState<
       {
         id: string;
@@ -249,7 +260,9 @@ export function ReportHistory({
   useEffect(() => {
     if (!open) return;
     let active = true;
-    request<{ items: typeof items }>(`/reports/${id}/history`)
+    request<{
+      items: typeof items;
+    }>(`/reports/${id}/history`)
       .then((v) => {
         if (active) {
           setItems(v.items);
@@ -264,38 +277,42 @@ export function ReportHistory({
     };
   }, [id, updatedAt, open]);
   function category(r: Report) {
-    return `${meta.projects.find((p) => p.id === r.project_id)?.name || r.project_id || "未归属"} / ${r.domains?.join("、") || r.domain || "未分类"}`;
+    return `${meta.projects.find((p) => p.id === r.project_id)?.name || r.project_id || tr("未归属")} / ${r.domains?.join("、") || r.domain || tr("未分类")}`;
   }
   return (
     <details
       className="report-history"
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary>更新与分类记录</summary>
+      <summary>{tr("更新与分类记录")}</summary>
       {error && (
         <p role="alert" className="error-text">
-          {error}
+          {tr(error)}
         </p>
       )}
       {items.map((v) => (
         <details key={v.id}>
           <summary>
-            {v.action} ·{" "}
+            {tr(v.action)} ·{" "}
             {meta.members.find((m) => m.id === v.actor_id)?.name ||
-              "已离开成员"}{" "}
-            · {new Date(v.created_at).toLocaleString("zh-CN")}
+              tr("已离开成员")}{" "}
+            ·{" "}
+            {formatDate(v.created_at, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
           </summary>
           <p className="muted">
             {category(v.before)} → {category(v.after)}
           </p>
           <div className="history-snapshots">
             <div>
-              <small>更新前</small>
-              <strong>{v.before.title || "首次上报"}</strong>
+              <small>{tr("更新前")}</small>
+              <strong>{v.before.title || tr("首次上报")}</strong>
               <p>{v.before.body}</p>
             </div>
             <div>
-              <small>更新后</small>
+              <small>{tr("更新后")}</small>
               <strong>{v.after.title}</strong>
               <p>{v.after.body}</p>
             </div>

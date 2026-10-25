@@ -1,5 +1,12 @@
+import { calendarDateKey, formatDate } from "./i18n/core";
 import { publicDemo } from "./runtime";
-export type Member = { id: string; name: string; role: string; color: string };
+export type InvitationInfo = {
+  email: string;
+  email_domain: string;
+  inviter_name: string;
+  team_name: string;
+};
+export type Member = { avatar_data?: string; id: string; name: string; role: string; color: string };
 export type Project = {
   id: string;
   name: string;
@@ -137,19 +144,9 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return res.json();
 }
-export function dateKey(time: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(time));
+export function dateKey(time: string, timeZone = "Asia/Shanghai") {
+  return calendarDateKey(time, timeZone);
 }
-export function clock(time: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(time));
+export function clock(time: string, locale = "en", timeZone = "Asia/Shanghai") {
+  return formatDate(locale, time, { timeZone, hour: "2-digit", minute: "2-digit" });
 }

@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2, Plus, Users } from "lucide-react";
 import Link from "next/link";
@@ -6,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-gate";
 import { publicDemo } from "@/lib/runtime";
 import { request } from "@/lib/types";
-
 export function TeamSwitcher({
   teamName,
   onNavigate,
@@ -14,6 +15,7 @@ export function TeamSwitcher({
   teamName: string;
   onNavigate: () => void;
 }) {
+  const { t: tr } = useI18n();
   const auth = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -40,7 +42,9 @@ export function TeamSwitcher({
     try {
       await request("/auth/team", {
         method: "POST",
-        body: JSON.stringify({ team_id: id }),
+        body: JSON.stringify({
+          team_id: id,
+        }),
       });
       auth.setCredential("");
       await auth.refresh();
@@ -68,7 +72,9 @@ export function TeamSwitcher({
         ref={trigger}
         type="button"
         className="workspace"
-        aria-label={`切换团队：${teamName}`}
+        aria-label={tr("切换团队：{0}", {
+          0: teamName,
+        })}
         aria-expanded={open}
         onClick={() => {
           setOpen((v) => !v);
@@ -81,9 +87,15 @@ export function TeamSwitcher({
         <ChevronDown size={13} className="workspace-chevron" />
       </button>
       {open && (
-        <div className="team-switch-menu" role="group" aria-label="团队切换">
+        <div
+          className="team-switch-menu"
+          role="group"
+          aria-label={tr("团队切换")}
+        >
           {auth.mode === "local-demo" ? (
-            <p className="muted">{publicDemo ? "公开演示 · Flow Studio" : "本地演示团队"}</p>
+            <p className="muted">
+              {publicDemo ? tr("公开演示 · Flow Studio") : tr("本地演示团队")}
+            </p>
           ) : (
             <>
               {auth.me?.teams.map((t) => (
@@ -117,13 +129,13 @@ export function TeamSwitcher({
                 }}
               >
                 <Plus size={15} />
-                新建团队
+                {tr("新建团队")}
               </Link>
             </>
           )}
           {error && (
             <p role="alert" className="error-text">
-              {error}
+              {tr(error)}
             </p>
           )}
         </div>

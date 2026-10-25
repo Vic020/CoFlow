@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useState } from "react";
 import {
   Check,
@@ -13,7 +15,6 @@ import {
 import { CatalogManager } from "@/components/catalog-manager";
 import { Button } from "@/components/ui/button";
 import { Meta, request } from "@/lib/types";
-
 type Invite = {
   id: string;
   email: string;
@@ -28,6 +29,7 @@ export function TeamSettings({
   meta: Meta;
   onChange: () => void;
 }) {
+  const { t: tr, date: formatDate } = useI18n();
   const [tab, setTab] = useState<"members" | "invites" | "project" | "domain">(
     "members",
   );
@@ -40,7 +42,13 @@ export function TeamSettings({
     [copied, setCopied] = useState(false);
   const load = useCallback(async () => {
     try {
-      setInvites((await request<{ items: Invite[] }>("/invites")).items);
+      setInvites(
+        (
+          await request<{
+            items: Invite[];
+          }>("/invites")
+        ).items,
+      );
     } catch (e) {
       setError((e as Error).message);
     }
@@ -55,13 +63,17 @@ export function TeamSettings({
     setLink("");
     setCopied(false);
     try {
-      const v = await request<{ token: string; invite: { id: string } }>(
-        "/invites",
-        {
-          method: "POST",
-          body: JSON.stringify({ email }),
-        },
-      );
+      const v = await request<{
+        token: string;
+        invite: {
+          id: string;
+        };
+      }>("/invites", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+        }),
+      });
       setLink(`${window.location.origin}/invite#invite=${v.token}`);
       setIssuedInvite(v.invite.id);
       setEmail("");
@@ -76,7 +88,9 @@ export function TeamSettings({
     setBusy(true);
     setError("");
     try {
-      await request(path, { method: "DELETE" });
+      await request(path, {
+        method: "DELETE",
+      });
       if (path === `/invites/${issuedInvite}`) setLink("");
       await load();
       onChange();
@@ -88,14 +102,14 @@ export function TeamSettings({
   }
   return (
     <section className="team-settings-page">
-      <nav className="settings-categories" aria-label="团队设置分类">
+      <nav className="settings-categories" aria-label={tr("团队设置分类")}>
         <button
           type="button"
           aria-current={tab === "members" ? "page" : undefined}
           onClick={() => setTab("members")}
         >
           <Users size={15} />
-          成员
+          {tr("成员")}
         </button>
         <button
           type="button"
@@ -103,7 +117,7 @@ export function TeamSettings({
           onClick={() => setTab("invites")}
         >
           <Mail size={15} />
-          邀请
+          {tr("邀请")}
         </button>
         {(
           [
@@ -118,7 +132,7 @@ export function TeamSettings({
             onClick={() => setTab(value)}
           >
             <Icon size={15} />
-            {label}
+            {tr(label)}
           </button>
         ))}
       </nav>
@@ -133,10 +147,10 @@ export function TeamSettings({
         )}
         {tab === "invites" && meta.mode !== "local-demo" && (
           <>
-            <h3>邀请成员</h3>
+            <h3>{tr("邀请成员")}</h3>
             <form className="invite-form" onSubmit={invite}>
               <label className="sr-only" htmlFor="invite-email">
-                受邀成员邮箱
+                {tr("受邀成员邮箱")}
               </label>
               <input
                 id="invite-email"
@@ -144,17 +158,17 @@ export function TeamSettings({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="输入成员邮箱"
+                placeholder={tr("输入成员邮箱")}
               />
               <Button type="submit" disabled={busy || !email.trim()} size="sm">
                 {busy ? <Loader2 className="animate-spin" /> : <UserPlus />}
-                生成邀请
+                {tr("生成邀请")}
               </Button>
             </form>
             {link && (
               <div className="issued-secret">
                 <label htmlFor="invite-link">
-                  邀请链接 · 7 天有效，仅能接受一次
+                  {tr("邀请链接 · 7 天有效，仅能接受一次")}
                 </label>
                 <textarea
                   id="invite-link"
@@ -176,9 +190,9 @@ export function TeamSettings({
                   }}
                 >
                   {copied ? <Check /> : <Copy />}
-                  {copied ? "已复制" : "复制邀请链接"}
+                  {copied ? tr("已复制") : tr("复制邀请链接")}
                 </Button>
-                <p>请将链接发给对应成员。完整链接仅此次生成时显示。</p>
+                <p>{tr("请将链接发给对应成员。完整链接仅此次生成时显示。")}</p>
               </div>
             )}
           </>
@@ -187,7 +201,8 @@ export function TeamSettings({
           <>
             <div className="settings-section-heading">
               <h2>
-                成员 <span>{meta.members.length}</span>
+                {tr("成员")}
+                <span>{meta.members.length}</span>
               </h2>
               {meta.mode !== "local-demo" && (
                 <Button
@@ -196,7 +211,7 @@ export function TeamSettings({
                   onClick={() => setTab("invites")}
                 >
                   <UserPlus />
-                  邀请成员
+                  {tr("邀请成员")}
                 </Button>
               )}
             </div>
@@ -204,19 +219,19 @@ export function TeamSettings({
               {meta.members.map((m) => (
                 <div className="management-row" key={m.id}>
                   <span className={`avatar small ${m.color}`}>
-                    {m.name.slice(0, 1)}
+                    {m.avatar_data ? <img src={m.avatar_data} alt="" /> : m.name.slice(0, 1)}
                   </span>
                   <div>
                     <strong>
                       {m.name}
-                      {m.id === meta.current_user ? "（我）" : ""}
+                      {m.id === meta.current_user ? tr("（我）") : ""}
                     </strong>
                     <small>
                       {meta.mode === "local-demo"
                         ? m.role
                         : m.role === "admin"
-                          ? "管理员"
-                          : "成员"}
+                          ? tr("管理员")
+                          : tr("成员")}
                     </small>
                   </div>
                   {meta.mode !== "local-demo" &&
@@ -228,7 +243,7 @@ export function TeamSettings({
                         disabled={busy}
                         onClick={() => void revoke(`/members/${m.id}`)}
                       >
-                        移除
+                        {tr("移除")}
                       </Button>
                     )}
                 </div>
@@ -238,7 +253,7 @@ export function TeamSettings({
         )}
         {tab === "invites" && invites.length > 0 && (
           <>
-            <h3>邀请记录</h3>
+            <h3>{tr("邀请记录")}</h3>
             <div className="management-list">
               {invites.map((i) => {
                 const active =
@@ -251,12 +266,14 @@ export function TeamSettings({
                       <strong>{i.email}</strong>
                       <small>
                         {i.used_at
-                          ? "已加入"
+                          ? tr("已加入")
                           : i.revoked_at
-                            ? "已撤销"
+                            ? tr("已撤销")
                             : !active
-                              ? "已过期"
-                              : `待加入 · ${new Date(i.expires_at).toLocaleDateString("zh-CN")} 到期`}
+                              ? tr("已过期")
+                              : tr("待加入 · {0} 到期", {
+                                  0: formatDate(i.expires_at),
+                                })}
                       </small>
                     </div>
                     {active && (
@@ -266,7 +283,7 @@ export function TeamSettings({
                         disabled={busy}
                         onClick={() => void revoke(`/invites/${i.id}`)}
                       >
-                        撤销
+                        {tr("撤销")}
                       </Button>
                     )}
                   </div>
@@ -276,11 +293,11 @@ export function TeamSettings({
           </>
         )}
         {tab === "invites" && meta.mode === "local-demo" && (
-          <p className="muted">演示模式不发送邀请。</p>
+          <p className="muted">{tr("演示模式不发送邀请。")}</p>
         )}
         {error && (
           <p className="error-text" role="alert">
-            {error}
+            {tr(error)}
           </p>
         )}
       </div>

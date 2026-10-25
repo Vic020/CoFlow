@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, KeyRound, Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/components/auth-gate";
@@ -11,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAgentPrompt } from "@/lib/agent-prompt";
 import { Meta, request } from "@/lib/types";
-
 type Token = {
   id: string;
   name: string;
@@ -23,11 +24,10 @@ type Token = {
 };
 const isActive = (token: Token) =>
   !token.revoked_at && Date.parse(token.expires_at) > Date.now();
-const date = (value: string) => new Date(value).toLocaleDateString("zh-CN");
-
 export function TokenManager() {
+  const { t: tr, date: formatDate } = useI18n();
   const { me, credential, setCredential, refreshTokens } = useAuth();
-  const { copyPrompt, copied, copyError, origin, credentialPath } =
+  const { copyPrompt, prompt, copied, copyError, origin } =
     useAgentPrompt();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Codex");
@@ -37,13 +37,11 @@ export function TokenManager() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [issued, setIssued] = useState("");
   const mounted = useRef(false);
   function closeSecret() {
     setIssued("");
     setCredential("");
-    setTokenCopied(false);
   }
   useEffect(() => {
     mounted.current = true;
@@ -54,7 +52,13 @@ export function TokenManager() {
   }, [setCredential]);
   const load = useCallback(async () => {
     try {
-      setTokens((await request<{ items: Token[] }>("/tokens")).items);
+      setTokens(
+        (
+          await request<{
+            items: Token[];
+          }>("/tokens")
+        ).items,
+      );
       await refreshTokens();
     } catch (e) {
       setError((e as Error).message);
@@ -65,15 +69,6 @@ export function TokenManager() {
   useEffect(() => {
     void load();
   }, [load]);
-  useEffect(() => {
-    setTokenCopied(false);
-  }, [credential]);
-  useEffect(() => {
-    if (!tokenCopied) return;
-    const timer = setTimeout(() => setTokenCopied(false), 2500);
-    return () => clearTimeout(timer);
-  }, [tokenCopied]);
-
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -86,7 +81,9 @@ export function TokenManager() {
           : scope === "comment"
             ? ["reports:read", "reports:write", "comments:write"]
             : ["reports:read", "reports:write"];
-      const v = await request<{ credential: string }>("/tokens", {
+      const v = await request<{
+        credential: string;
+      }>("/tokens", {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
@@ -108,7 +105,9 @@ export function TokenManager() {
     setBusy(true);
     setError("");
     try {
-      await request(`/tokens/${t.id}`, { method: "DELETE" });
+      await request(`/tokens/${t.id}`, {
+        method: "DELETE",
+      });
       if (credential.startsWith(t.prefix)) setCredential("");
       await load();
     } catch (e) {
@@ -123,7 +122,9 @@ export function TokenManager() {
     try {
       const raw = existing.trim();
       const metadata = await request<Meta>("/meta", {
-        headers: { Authorization: `Bearer ${raw}` },
+        headers: {
+          Authorization: `Bearer ${raw}`,
+        },
       });
       if (
         metadata.current_user !== me?.user.id ||
@@ -141,44 +142,34 @@ export function TokenManager() {
       setBusy(false);
     }
   }
-  async function copyCredential() {
-    try {
-      await navigator.clipboard.writeText(credential);
-      setTokenCopied(true);
-      setError("");
-    } catch {
-      setError("无法访问剪贴板，请选中凭证手动复制。");
-    }
-  }
-
   return (
     <section className="credentials-manager">
       <form className="token-form credentials-create" onSubmit={create}>
         <label>
-          名称
+          {tr("名称")}
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={40}
-            placeholder="如：Codex · 本机"
+            placeholder={tr("如：Codex · 本机")}
             disabled={busy}
           />
         </label>
         <label>
-          权限
+          {tr("权限")}
           <select
             value={scope}
             onChange={(e) => setScope(e.target.value)}
             disabled={busy}
           >
-            <option value="report">读取与上报</option>
-            <option value="comment">读取、上报与评论</option>
-            <option value="read">只读</option>
+            <option value="report">{tr("读取与上报")}</option>
+            <option value="comment">{tr("读取、上报与评论")}</option>
+            <option value="read">{tr("只读")}</option>
           </select>
         </label>
         <label>
-          有效期
+          {tr("有效期")}
           <select
             value={days}
             onChange={(e) => setDays(e.target.value)}
@@ -186,13 +177,16 @@ export function TokenManager() {
           >
             {[7, 30, 90, 365].map((d) => (
               <option key={d} value={d}>
-                {d} 天
+                {tr("{count} 天", {
+                  count: d,
+                })}
               </option>
             ))}
           </select>
         </label>
         <Button type="submit" disabled={busy || !name.trim()}>
-          {busy ? <Loader2 className="animate-spin" /> : <Plus />}创建凭证
+          {busy ? <Loader2 className="animate-spin" /> : <Plus />}
+          {tr("创建凭证")}
         </Button>
       </form>
       <Dialog
@@ -202,75 +196,58 @@ export function TokenManager() {
         }}
       >
         <DialogContent className="credential-secret-dialog info-dialog">
-          <DialogTitle className="modal-title">保存你的凭证</DialogTitle>
+          <DialogTitle className="modal-title">
+            {tr("安装到 Agent")}
+          </DialogTitle>
           <DialogDescription className="modal-description">
-            仅展示一次。复制配置 Prompt，让 Agent 保存到本机。
+            {tr("仅展示一次。交给当前项目的 Agent，安装 Skill 和本机凭证。")}
           </DialogDescription>
           <label className="sr-only" htmlFor="issued-token">
-            Agent 凭证明文
+            {tr("安装提示词")}
           </label>
           <textarea
             id="issued-token"
             className="credential-plaintext"
             readOnly
-            value={issued}
-            rows={3}
+            value={prompt}
+            rows={7}
             spellCheck={false}
             onFocus={(e) => e.currentTarget.select()}
           />
-          {credentialPath && (
-            <p className="credential-local-path">
-              <span>本机保存位置</span>
-              <code>{credentialPath}</code>
-            </p>
-          )}
+          <p className="credential-next-command">{tr("安装后，对 Agent 说：")}<code>{tr("上报 CoFlow")}</code></p>
           <div className="credential-dialog-actions">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void copyCredential()}
-            >
-              {tokenCopied ? <Check /> : <Copy />}
-              {tokenCopied ? "已复制" : "复制凭证"}
-            </Button>
             <Button
               size="sm"
               onClick={() => void copyPrompt()}
               disabled={!origin}
             >
               {copied ? <Check /> : <Copy />}
-              {copied ? "已复制" : "复制配置 Prompt"}
+              {copied ? tr("已复制") : tr("复制安装提示词")}
             </Button>
           </div>
           {copyError && (
             <p role="alert" className="error-text">
-              {copyError}
+              {tr(copyError)}
             </p>
           )}
-          <button
-            type="button"
-            className="credential-saved"
-            onClick={closeSecret}
-          >
-            我已保存，关闭
-          </button>
         </DialogContent>
       </Dialog>
       {(error || copyError) && (
         <p className="error-text" role="alert">
-          {error || copyError}
+          {tr(error || copyError)}
         </p>
       )}
       <div className="credentials-list-heading">
         <h2>
-          我的凭证 <span>{tokens.length}</span>
+          {tr("我的凭证")}
+          <span>{tokens.length}</span>
         </h2>
-        <span>仅当前团队</span>
+        <span>{tr("仅当前团队")}</span>
       </div>
       {loading ? (
         <div className="credentials-empty">
           <Loader2 className="animate-spin" />
-          正在读取凭证…
+          {tr("正在读取凭证…")}
         </div>
       ) : tokens.length ? (
         <div className="credentials-list">
@@ -291,21 +268,29 @@ export function TokenManager() {
                   </div>
                   <div className="credential-permissions">
                     {t.scopes.includes("comments:write")
-                      ? "读取、上报与评论"
+                      ? tr("读取、上报与评论")
                       : t.scopes.includes("reports:write")
-                        ? "读取与上报"
-                        : "只读"}
+                        ? tr("读取与上报")
+                        : tr("只读")}
                     <small>
                       {t.last_used_at
-                        ? `最近使用 ${date(t.last_used_at)}`
-                        : "尚未使用"}
+                        ? tr("最近使用 {0}", {
+                            0: formatDate(t.last_used_at),
+                          })
+                        : tr("尚未使用")}
                     </small>
                   </div>
                   <div
                     className={`credential-state${active ? "" : " inactive"}`}
                   >
-                    {t.revoked_at ? "已撤销" : !active ? "已过期" : "有效"}
-                    <small>{date(t.expires_at)} 到期</small>
+                    {t.revoked_at
+                      ? tr("已撤销")
+                      : !active
+                        ? tr("已过期")
+                        : tr("有效")}
+                    <small>
+                      {tr("{0} 到期", { 0: formatDate(t.expires_at) })}
+                    </small>
                   </div>
                   {active ? (
                     <Button
@@ -313,9 +298,11 @@ export function TokenManager() {
                       variant="ghost"
                       disabled={busy}
                       onClick={() => void revoke(t)}
-                      aria-label={`撤销 ${t.name}`}
+                      aria-label={tr("撤销 {0}", {
+                        0: t.name,
+                      })}
                     >
-                      撤销
+                      {tr("撤销")}
                     </Button>
                   ) : (
                     <span className="credential-action-spacer" />
@@ -327,7 +314,7 @@ export function TokenManager() {
       ) : (
         <div className="credentials-empty">
           <KeyRound size={22} />
-          <span>{error ? "暂时无法读取凭证" : "还没有凭证"}</span>
+          <span>{error ? tr("暂时无法读取凭证") : tr("还没有凭证")}</span>
           {error && (
             <Button
               size="sm"
@@ -338,16 +325,16 @@ export function TokenManager() {
                 void load();
               }}
             >
-              重试
+              {tr("重试")}
             </Button>
           )}
         </div>
       )}
       <details className="existing-credential">
-        <summary>使用已保存的凭证</summary>
+        <summary>{tr("使用已保存的凭证")}</summary>
         <div className="credentials-existing-row">
           <label className="sr-only" htmlFor="existing-token">
-            已保存的 Agent 凭证
+            {tr("已保存的 Agent 凭证")}
           </label>
           <input
             id="existing-token"
@@ -355,7 +342,7 @@ export function TokenManager() {
             autoComplete="off"
             value={existing}
             onChange={(e) => setExisting(e.target.value)}
-            placeholder="粘贴 cf_ 开头的凭证"
+            placeholder={tr("粘贴 cf_ 开头的凭证")}
             disabled={busy}
           />
           <Button
@@ -364,7 +351,7 @@ export function TokenManager() {
             disabled={busy || !existing.trim()}
             onClick={() => void useExisting()}
           >
-            验证并使用
+            {tr("验证并使用")}
           </Button>
         </div>
       </details>

@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.1-087354" alt="Version 0.1.1" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.3-087354" alt="Version 0.1.3" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,7 +30,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.1.1，早期自托管版本。**
+> **当前版本：0.1.3。**
 
 ## 功能
 
@@ -42,10 +42,12 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 - **持续跟进**：站内评论／协作提醒、服务端已读状态、简报修订与分类历史。
 - **多团队**：创建与切换团队，分类、简报、协作和消息按团队隔离。
 - **团队身份**：邮箱密码登录、一次性邀请、成员权限与绑定成员/团队的个人凭证。
-- **Agent 接入**：一键复制上报 Prompt，提供可下载的 Skill 与 REST API；相同来源标识更新原记录，避免重复上报。
+- **Agent 接入**：Skill 与本机凭证安装一次，后续用「上报 CoFlow」复用；支持 HTTP API，相同来源标识更新原记录。
+- **中英双语**：界面支持英文与简体中文，语言偏好随个人账号保存。
+- **个人资料**：头像、团队昵称、密码修改和可搜索的展示时区。
 - **响应式界面**：桌面侧栏与信息流，手机抽屉导航、筛选面板与单列阅读。
 
-更多操作见 [Wiki 使用指南](https://github.com/Vic020/CoFlow/wiki)，验证范围见 [验收记录](docs/VERIFICATION.md)。
+更多操作见 [Wiki 使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)，验证范围见 [验收记录](docs/VERIFICATION.md)。
 
 ## 界面预览
 
@@ -57,11 +59,11 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识。**
 
-当前已发布 **0.1.1**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
+当前源码版本 **0.1.3**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 已发布（0.1.1） | 团队简报、交付链接与协作跟进 |
+| **0.1 · Timeline** | 源码可用（0.1.3） | 团队简报、交付链接与协作跟进 |
 | **0.2 · Todo** | 规划中 | 自定义看板，人工与 Agent 共同管理任务 |
 | **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
@@ -84,13 +86,13 @@ npm run dev:demo
 npm run dev
 ```
 
-打开 [localhost:3000](http://127.0.0.1:3000)。真实团队配置见[开发指南](docs/DEVELOPMENT.md)，自托管见[部署指南](docs/DEPLOYMENT.md)。
+打开 [127.0.0.1:3000](http://127.0.0.1:3000)。真实团队配置见[开发指南](docs/DEVELOPMENT.md)，自托管见[部署指南](docs/DEPLOYMENT.md)。
 
 ## Agent 接入
 
 支持 Skill 与 HTTP API，使用绑定成员和团队的个人凭证；同一 `source_id` 持续更新原简报。
 
-[Agent Skill](skills/coflow-report/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki)
+[Agent Skill](skills/coflow-report/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
 ## 部署与备份
 
@@ -125,7 +127,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.1.1
+├── VERSION           # 当前版本：0.1.3
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 
@@ -153,7 +155,7 @@ npm run version:check
 - [Release](https://github.com/Vic020/CoFlow/releases)：版本说明与源码下载。
 - [路线图](docs/ROADMAP.md)：0.2 Todo、0.3 Calendar、0.4 AI 助手、0.5 Context 的版本范围与验收标准。
 - [Projects](https://github.com/users/Vic020/projects/1)：产品事项跟踪，版本规划以路线图文档为准。
-- [Wiki](https://github.com/Vic020/CoFlow/wiki)：基本使用指南。
+- [Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)：基本使用指南。
 - [Issues](https://github.com/Vic020/CoFlow/issues/new/choose)：Bug 与功能建议。
 - [Actions](https://github.com/Vic020/CoFlow/actions)：自动验证；新工作流运行结果以 GitHub 实际状态为准。
 - [安全说明](SECURITY.md) · [获取帮助](SUPPORT.md) · [贡献约定](CONTRIBUTING.md)。

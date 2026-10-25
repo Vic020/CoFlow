@@ -1,32 +1,37 @@
-name: Bug 报告
-description: 帮助我们复现并修复问题
+name: Bug report
+description: Help reproduce and fix a problem / 报告问题
 title: "[Bug] "
 body:
   - type: markdown
     attributes:
-      value: 请使用虚拟示例，勿粘贴凭证、Cookie、有效邀请链接、真实成员邮箱或团队数据。安全漏洞请参见 SECURITY.md。
+      value: Use synthetic examples. Do not share credentials, cookies, active invitation links, account emails, or real team data. See SECURITY.md for security reports. 中文反馈也欢迎，请先脱敏。
   - type: input
     id: version
     attributes:
-      label: 版本与环境
-      placeholder: v0.1.0，macOS，Chrome，团队模式
+      label: Version and environment
+      placeholder: 0.1.3 source, macOS, Chrome, team mode
     validations:
       required: true
+  - type: input
+    id: preferences
+    attributes:
+      label: Interface language and display time zone
+      placeholder: English, Asia/Shanghai (if relevant)
   - type: textarea
     id: steps
     attributes:
-      label: 复现步骤
-      description: 写出最短操作路径。
+      label: Steps to reproduce
+      description: Include the shortest sequence that reproduces the problem.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: 预期与实际结果
+      label: Expected and actual behavior
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: 脱敏截图或错误信息
-      description: 只附必要信息；提交前检查图片及日志内容。
+      label: Redacted screenshots or errors
+      description: Include only relevant, sanitized information.

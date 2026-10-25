@@ -1199,10 +1199,20 @@ input[type="checkbox"] {
   top: 0;
   color: #ce775f;
 }
+.compose-fields label > .compose-field-title {
+  position: static;
+  display: flex;
+  gap: 4px;
+  color: inherit;
+}
+.compose-field-title > span { color: #ce775f; }
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+}
+@media (max-width: 480px) {
+  .compose-fields .form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .compose-footer {
   display: flex;
@@ -1910,18 +1920,22 @@ input[type="checkbox"] {
 }
 .heading-start {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 .heading-copy {
   display: flex;
+  flex: 1;
   align-items: baseline;
   gap: 14px;
   min-width: 0;
 }
 .page-heading h1 {
   font-size: 24px;
+  flex-shrink: 0;
+  white-space: nowrap;
   margin: 0;
   letter-spacing: -0.6px;
 }
@@ -1929,6 +1943,9 @@ input[type="checkbox"] {
   margin-top: 5px;
 }
 .heading-caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #a0aaa4;
   font-size: 12px;
   white-space: nowrap;
@@ -3490,20 +3507,6 @@ input[type="checkbox"] {
   gap: 8px;
   margin: 16px 0;
 }
-.credential-saved {
-  display: block;
-  margin: 22px auto 0;
-  font-size: 12px;
-  color: #7a9384;
-  cursor: pointer;
-}
-.credential-saved:hover {
-  color: #087354;
-}
-.credential-saved:focus-visible {
-  outline: 2px solid #228e71;
-  outline-offset: 3px;
-}
 @media (max-width: 760px) {
   .credential-secret-dialog {
     width: calc(100% - 32px);
@@ -4211,3 +4214,101 @@ input[type="checkbox"] {
 .public-demo-banner strong { color: #08664f; margin-right: 12px; font-weight: 600; }
 .public-demo-banner a { flex-shrink: 0; color: #08664f; }
 @media (max-width: 700px) { .public-demo-banner { padding: 9px 16px; font-size: 11px; } .public-demo-banner span { max-width: 260px; } }
+
+/* Account preferences share the compact account form layout. */
+.account-language { position: fixed; top: 20px; right: 24px; z-index: 30; }
+.account-language select, .inline-language select { border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 10px; background: var(--background); color: var(--foreground); font-size: 12px; }
+.sidebar .nav-label { white-space: nowrap; }
+.sidebar .nav-bottom > a > svg { flex-shrink: 0; }
+@media (min-width: 761px) and (max-width: 1200px) {
+  html[lang="en"] .sidebar .nav-bottom > a { gap: 8px; padding-inline: 8px; font-size: 12px; }
+}
+
+.account-language-control { position: relative; }
+.account-language-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #edf1ee;
+  font-size: 12px;
+  color: #6d8275;
+  cursor: pointer;
+}
+.account-language-chevron { margin-left: auto; }
+.account-language-row:hover { color: #08674f; }
+.account-language-row:focus-visible,
+.account-language-popover button:focus-visible {
+  outline: 2px solid #228e71;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.account-language-row:disabled { opacity: .6; cursor: wait; }
+.account-language-popover {
+  position: absolute;
+  left: calc(100% + 20px);
+  bottom: -6px;
+  z-index: 1;
+  width: 152px;
+  padding: 5px;
+  border: 1px solid #e1e9e4;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 28px #173b3418;
+}
+.account-language-popover button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6d8275;
+  cursor: pointer;
+}
+.account-language-popover button:hover,
+.account-language-popover button[aria-pressed="true"] {
+  color: #08674f;
+  background: #edf7f2;
+}
+@media (max-width: 480px) {
+  .account-language-popover { left: auto; right: 0; bottom: calc(100% + 8px); }
+}
+
+.credential-next-command { margin: 16px 0; color: #84958b; font-size: 12px; line-height: 1.7; }
+.credential-next-command code { display: inline-block; margin-left: 6px; color: #08674f; font-size: 12px; }
+
+.invitation-hint { margin: -12px 0 20px; color: #6d8275; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+
+.avatar > img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.personal-profile-dialog { width: min(480px, calc(100vw - 32px)); }
+.personal-profile-tabs { margin-top: 20px; }
+.profile-form { display: grid; gap: 20px; padding-top: 4px; }
+.profile-form fieldset { display: grid; gap: 18px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.profile-form > button { justify-self: start; }
+.profile-avatar-editor { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; flex-wrap: wrap; }
+.profile-avatar-editor > .avatar { width: 56px; height: 56px; font-size: 20px; }
+.profile-password-input { display: flex; position: relative; }
+.profile-password-input input { padding-right: 42px; width: 100%; }
+.profile-password-input > button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); padding: 8px; color: #7e9286; cursor: pointer; }
+.profile-password-input > button:focus-visible { outline: 2px solid #228e71; border-radius: 4px; }
+.profile-feedback { color: #087354; font-size: 12px; margin-top: 16px; }
+@media (max-width: 480px) { .personal-profile-dialog { padding: 24px 20px; max-height: calc(100dvh - 32px); overflow-y: auto; } }
+
+
+.profile-timezone { padding-top: 20px; margin-top: 24px; border-top: 1px solid #edf1ee; }
+
+
+.timezone-picker { position: relative; min-width: 0; }
+.timezone-picker-input { position: relative; }
+.timezone-picker-input > input { width: 100%; padding-right: 34px; }
+.timezone-picker-input > button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); padding: 8px; color: #84958b; cursor: pointer; }
+.timezone-picker-list { position: absolute; z-index: 2; bottom: calc(100% + 5px); left: 0; right: 0; max-height: 190px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; border: 1px solid #dce8e0; border-radius: 7px; background: #fff; box-shadow: 0 8px 24px #173b3418; }
+.timezone-picker-list > button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px; border-radius: 4px; color: #536c5e; font-size: 12px; text-align: left; cursor: pointer; }
+.timezone-picker-list > button span { overflow-wrap: anywhere; min-width: 0; }
+.timezone-picker-list > button svg { flex-shrink: 0; }
+.timezone-picker-list > button[data-active="true"] { background: #edf7f2; color: #08674f; }
+.timezone-picker-list > p { padding: 10px 8px; font-size: 12px; color: #84958b; }

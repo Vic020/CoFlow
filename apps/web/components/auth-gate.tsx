@@ -1,5 +1,8 @@
 "use client";
 
+import { InvitationHint } from "@/components/invitation-hint";
+import type { InvitationInfo } from "@/lib/types";
+import { LanguageSwitcher, useI18n } from "@/components/i18n-provider";
 import {
   createContext,
   useContext,
@@ -16,11 +19,32 @@ import {
   hasActiveReportToken,
   type AgentTokenMetadata,
 } from "@/lib/report-prompt";
+import { isLocale, type Locale } from "@/lib/i18n/core";
 import { request, ApiError } from "@/lib/types";
-
-type User = { id: string; name: string; email: string; color: string };
-type Team = { id: string; name: string; role: string; display_name?: string };
-type Me = { user: User; teams: Team[]; current_team: string; role: string };
+type User = {
+  avatar_data?: string;
+  id: string;
+  name: string;
+  email: string;
+  color: string;
+};
+type Team = {
+  id: string;
+  name: string;
+  role: string;
+  display_name?: string;
+};
+type Me = {
+  timezone: string;
+  preferences: {
+    locale: Locale;
+    display_timezone: string;
+  };
+  user: User;
+  teams: Team[];
+  current_team: string;
+  role: string;
+};
 type TokenStatus = "loading" | "available" | "missing" | "error";
 type AuthValue = {
   mode: string;
@@ -38,8 +62,8 @@ export function useAuth() {
   if (!value) throw new Error("AuthGate is required");
   return value;
 }
-
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const { t: tr } = useI18n();
   const [status, setStatus] = useState<{
     mode: string;
     initialized: boolean;
@@ -50,6 +74,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [credential, setCredential] = useState("");
   const [invite, setInvite] = useState("");
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>("loading");
+  const { setLocale, setTimeZone } = useI18n();
+  useEffect(() => {
+    if (isLocale(me?.preferences?.locale)) setLocale(me.preferences.locale);
+  }, [me?.user.id, me?.preferences?.locale, setLocale]);
+  useEffect(() => {
+    if (me?.preferences?.display_timezone) setTimeZone(me.preferences.display_timezone);
+  }, [me?.user.id, me?.preferences?.display_timezone, setTimeZone]);
   const identity = `${me?.current_team || ""}:${me?.user.id || ""}`;
   const currentIdentity = useRef(identity);
   currentIdentity.current = identity;
@@ -60,7 +91,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
     const target = `${me.current_team}:${me.user.id}`;
     try {
-      const result = await request<{ items: AgentTokenMetadata[] }>("/tokens");
+      const result = await request<{
+        items: AgentTokenMetadata[];
+      }>("/tokens");
       if (currentIdentity.current !== target) return;
       setTokenStatus(
         hasActiveReportToken(result.items) ? "available" : "missing",
@@ -77,9 +110,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [refreshTokens]);
   const refresh = useCallback(async () => {
     try {
-      const state = await request<{ mode: string; initialized: boolean }>(
-        "/auth/status",
-      );
+      const state = await request<{
+        mode: string;
+        initialized: boolean;
+      }>("/auth/status");
       setStatus(state);
       if (state.mode !== "local-demo" && state.initialized) {
         try {
@@ -115,7 +149,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     };
   }, [refresh]);
   async function logout() {
-    await request("/auth/logout", { method: "POST" });
+    await request("/auth/logout", {
+      method: "POST",
+    });
     setCredential("");
     setMe(null);
   }
@@ -141,15 +177,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
   return (
     <AuthContext.Provider value={value}>
+      {!me && status?.mode !== "local-demo" && <LanguageSwitcher />}
       {loading ? (
         <div className="auth-loading">
           <Loader2 className="animate-spin" />
-          正在连接工作空间…
+          {tr("正在连接工作空间…")}
         </div>
       ) : error ? (
         <div className="auth-loading">
-          <p role="alert">{error}</p>
-          <Button onClick={() => void refresh()}>重新连接</Button>
+          <p role="alert">{tr(error)}</p>
+          <Button onClick={() => void refresh()}>{tr("重新连接")}</Button>
         </div>
       ) : status?.mode === "local-demo" ? (
         children
@@ -175,7 +212,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
 function AccountForm({
   invite,
   me,
@@ -189,9 +225,8 @@ function AccountForm({
   onDone: () => void;
   onLogout: () => Promise<void>;
 }) {
-  const [info, setInfo] = useState<{ email: string; team_name: string } | null>(
-    null,
-  );
+  const { t: tr, locale } = useI18n();
+  const [info, setInfo] = useState<InvitationInfo | null>(null);
   const [email, setEmail] = useState(""),
     [name, setName] = useState(""),
     [password, setPassword] = useState(""),
@@ -204,9 +239,11 @@ function AccountForm({
     if (!invite) return;
     setInfo(null);
     setError("");
-    request<{ email: string; team_name: string }>("/auth/invite-info", {
+    request<InvitationInfo>("/auth/invite-info", {
       method: "POST",
-      body: JSON.stringify({ token: invite }),
+      body: JSON.stringify({
+        token: invite,
+      }),
     })
       .then(setInfo)
       .catch((e) => setError(e.message));
@@ -221,12 +258,26 @@ function AccountForm({
       if (invite)
         await request("/auth/accept-invite", {
           method: "POST",
-          body: JSON.stringify({ token: invite, name, password }),
+          body: JSON.stringify({
+            token: invite,
+            name,
+            password,
+          }),
         });
       else
         await request(setup ? "/auth/bootstrap" : "/auth/login", {
           method: "POST",
-          body: JSON.stringify({ email, name, password, team_name: team }),
+          body: JSON.stringify({
+            email,
+            name,
+            password,
+            team_name: team,
+          }),
+        });
+      if (invite)
+        await request("/auth/preferences", {
+          method: "PATCH",
+          body: JSON.stringify({ locale }),
         });
       setPassword("");
       setShowPassword(false);
@@ -246,26 +297,38 @@ function AccountForm({
       </div>
       <section className="account-card">
         <span className="eyebrow">WORK TOGETHER WITH AGENTS</span>
-        <h1>{invite ? "加入团队" : setup ? "创建你的工作空间" : "欢迎回来"}</h1>
+        <h1>
+          {invite
+            ? tr("加入团队")
+            : setup
+              ? tr("创建你的工作空间")
+              : tr("欢迎回来")}
+        </h1>
         <p className="account-intro">
           {invite
             ? info
-              ? `你受邀加入「${info.team_name}」`
-              : "正在读取邀请信息…"
+              ? tr("你受邀加入「{0}」", {
+                  0: info.team_name,
+                })
+              : tr("正在读取邀请信息…")
             : setup
-              ? "创建管理员账号，邀请伙伴开始协作。"
-              : "登录后查看团队进展，继续推进协作。"}
+              ? tr("创建管理员账号，邀请伙伴开始协作。")
+              : tr("登录后查看团队进展，继续推进协作。")}
         </p>
+        {invite && info && <InvitationHint info={info} className="invitation-hint" />}
         {wrongAccount ? (
           <div className="info-callout">
-            当前登录的是 {me?.user.email}，此邀请属于 {info?.email}。
+            {tr("当前登录的是")}
+            {me?.user.email}
+            {tr("，此邀请属于")}
+            {info?.email}。
             <Button
               variant="outline"
               className="mt-3"
               onClick={() => void onLogout()}
             >
               <LogOut />
-              退出并使用受邀账号
+              {tr("退出并使用受邀账号")}
             </Button>
           </div>
         ) : (
@@ -273,7 +336,7 @@ function AccountForm({
             {(!invite || info) && (
               <>
                 <label>
-                  邮箱
+                  {tr("邮箱")}
                   <input
                     type="email"
                     required
@@ -290,12 +353,12 @@ function AccountForm({
                       checked={existing}
                       onChange={(e) => setExisting(e.target.checked)}
                     />
-                    已有账号，使用原密码加入
+                    {tr("已有账号，使用原密码加入")}
                   </label>
                 )}
                 {(setup || (invite && !me && !existing)) && (
                   <label>
-                    你的名字
+                    {tr("你的名字")}
                     <input
                       required
                       maxLength={40}
@@ -307,20 +370,22 @@ function AccountForm({
                 )}
                 {setup && (
                   <label>
-                    团队名称
+                    {tr("团队名称")}
                     <input
                       required
                       maxLength={40}
                       value={team}
                       onChange={(e) => setTeam(e.target.value)}
-                      placeholder="如：共创团队"
+                      placeholder={tr("如：共创团队")}
                     />
                   </label>
                 )}
                 {!me && (
                   <div className="account-password-group">
                     <label htmlFor="account-password">
-                      {setup || (invite && !existing) ? "设置密码" : "密码"}
+                      {setup || (invite && !existing)
+                        ? tr("设置密码")
+                        : tr("密码")}
                     </label>
                     <span className="account-password-field">
                       <input
@@ -341,7 +406,9 @@ function AccountForm({
                       <button
                         type="button"
                         className="account-password-toggle"
-                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                        aria-label={
+                          showPassword ? tr("隐藏密码") : tr("显示密码")
+                        }
                         aria-pressed={showPassword}
                         onClick={() => setShowPassword((visible) => !visible)}
                       >
@@ -354,14 +421,18 @@ function AccountForm({
                     </span>
                     <small id="account-password-hint">
                       {setup || (invite && !existing)
-                        ? "至少8位，请妥善保存密码。"
-                        : "请输入该账号的原密码。"}
+                        ? tr("至少8位，请妥善保存密码。")
+                        : tr("请输入该账号的原密码。")}
                     </small>
                   </div>
                 )}
                 <Button type="submit" disabled={busy || (!!invite && !info)}>
                   {busy && <Loader2 className="animate-spin" />}
-                  {invite ? "接受邀请并加入" : setup ? "创建工作空间" : "登录"}
+                  {invite
+                    ? tr("接受邀请并加入")
+                    : setup
+                      ? tr("创建工作空间")
+                      : tr("登录")}
                 </Button>
               </>
             )}
@@ -369,19 +440,19 @@ function AccountForm({
         )}
         {error && (
           <p className="account-error" role="alert">
-            {error}
+            {tr(error)}
           </p>
         )}
         {!invite && initialized && (
-          <p className="account-hint">新成员通过团队邀请链接加入。</p>
+          <p className="account-hint">{tr("新成员通过团队邀请链接加入。")}</p>
         )}
         {invite && (
           <a className="account-back" href="/">
-            返回工作空间
+            {tr("返回工作空间")}
           </a>
         )}
       </section>
-      <p className="account-footer">AI 时代的工作协作方式</p>
+      <p className="account-footer">{tr("AI 时代的工作协作方式")}</p>
     </main>
   );
 }

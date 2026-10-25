@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 使用指南
+  - name: User guide / 使用指南
     url: https://github.com/Vic020/CoFlow/wiki
-    about: 安装、团队协作、Agent 接入和常见问题
-  - name: 产品规划
-    url: https://github.com/Vic020/CoFlow/projects
-    about: Todo 看板与 Calendar 的分阶段计划
+    about: Setup, Agent reporting, collaboration, personal settings, and troubleshooting
+  - name: Product roadmap / 产品规划
+    url: https://github.com/users/Vic020/projects/1
+    about: Todo, Calendar, AI Assistant, and Context plans

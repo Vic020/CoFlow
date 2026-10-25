@@ -19,6 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run version:check
+      - run: npm run test:i18n
       - run: npm run test:agent
       - run: npm run test:demo
       - run: npm run typecheck
@@ -44,7 +45,7 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
-      - run: go test -race ./...
+      - run: go test -race -count=1 ./...
         working-directory: apps/api
         env:
           COFLOW_TEST_DATABASE_URL: postgres://coflow_test:ci_disposable_only@127.0.0.1:5432/coflow_ci?sslmode=disable
