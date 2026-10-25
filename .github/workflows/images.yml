@@ -1,0 +1,110 @@
+name: Build release images · GHCR
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable tag with successful main CI (e.g. v0.1.4)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-images
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+      registry: ${{ steps.release.outputs.registry }}
+      image_tag: ${{ steps.release.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Verify release source and successful CI
+        id: release
+        env:
+          COFLOW_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/prepare-image-release.mjs
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Check version records
+        run: npm run version:check
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and publish API
+        id: api
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ needs.verify.outputs.registry }}-api:${{ needs.verify.outputs.image_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.verify.outputs.sha }}
+            org.opencontainers.image.version=${{ needs.verify.outputs.version }}
+          cache-from: type=gha,scope=coflow-api
+          cache-to: type=gha,mode=max,scope=coflow-api
+          provenance: mode=min
+      - name: Build and publish Web
+        id: web
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ needs.verify.outputs.registry }}-web:${{ needs.verify.outputs.image_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.verify.outputs.sha }}
+            org.opencontainers.image.version=${{ needs.verify.outputs.version }}
+          cache-from: type=gha,scope=coflow-web
+          cache-to: type=gha,mode=max,scope=coflow-web
+          provenance: mode=min
+      - name: Record exact image references
+        env:
+          IMAGE_BASE: ${{ needs.verify.outputs.registry }}
+          SOURCE_SHA: ${{ needs.verify.outputs.sha }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          [[ "$API_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$WEB_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          {
+            printf '## Release images %s\n\n' "$RELEASE_VERSION"
+            printf 'Source: `%s`\n\n' "$SOURCE_SHA"
+            printf 'API: `%s-api@%s`\n\n' "$IMAGE_BASE" "$API_DIGEST"
+            printf 'Web: `%s-web@%s`\n\n' "$IMAGE_BASE" "$WEB_DIGEST"
+            printf 'Build only. No server access, release creation, or deployment. Verify package visibility before anonymous pulls.\n'
+          } >> "$GITHUB_STEP_SUMMARY"

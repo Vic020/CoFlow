@@ -20,3 +20,5 @@
 - GitHub Pages is a public, offline demo using synthetic team data only. It is separate from the owner’s purchased server, which is for private/self-use real teams, not a public GitHub demo backend. Never connect the Pages build to real APIs, accounts, credentials or databases.
 
 - Documentation and GitHub maintenance: follow `docs/MAINTENANCE.md` and `docs/wiki-map.json`. Repository docs and canonical protocols are the source; keep README/Wiki language pairs aligned, track Projects acceptance separately from releases, and report local versus remote sync status accurately. Run `npm run docs:check` for documentation changes; checks never authorize publishing, changing project status, releases or deployments.
+
+- Release images may be built manually on GitHub-hosted runners using `.github/workflows/images.yml`; follow `docs/IMAGE_BUILDS.md`. Use only verified public source and the scoped built-in registry token, never production credentials/data or the private server as a runner. Image publication, package visibility, Release creation and deployment are separate states; do not claim unverified remote outcomes.

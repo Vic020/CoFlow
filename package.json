@@ -12,7 +12,8 @@
     "version:check": "node scripts/check-version.mjs",
     "dev:demo": "cd apps/api && COFLOW_DEMO=true go run ./cmd/server",
     "test:i18n": "node --test scripts/i18n.test.mjs",
-    "docs:check": "node scripts/check-docs.mjs"
+    "docs:check": "node scripts/check-docs.mjs",
+    "test:images": "node --test scripts/image-release.test.mjs"
   },
   "workspaces": [
     "apps/web",

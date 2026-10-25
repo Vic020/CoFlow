@@ -59,6 +59,10 @@ README 默认英文，同时提供中文翻译；Wiki 以英文页面为默认�
 
 Release、[Pages 发布](GITHUB_PAGES.md)、[真实团队部署](DEPLOYMENT.md)各自需要明确指令，不能因其中一项完成而触发另一项。私有服务器、备份和验收记录不写入 GitHub。
 
+## 手动镜像构建
+
+[GitHub 镜像工作流](IMAGE_BUILDS.md)仅从 main 上已通过 CI 的稳定标签构建通用镜像，不接入生产 Secrets，不使用自用服务器作为 Runner。记录源提交、运行和摘要，分别报告构建、GHCR 可见性、匿名拉取与部署的状态；不能用构建成功代替部署验收。
+
 ## 自动检查的边界
 
 `npm run docs:check` 只检查本地文件目标（Markdown 内联及 HTML 链接，不校验页内锚点或外链）、README 中英入口、Wiki 映射源文件与页面标识；版本由 `version:check` 检查，界面翻译由 `test:i18n` 检查。CI 执行这些只读检查，不发布内容、不改状态、不递增版本。

@@ -20,6 +20,7 @@ The repository guides below are maintained in Chinese. The Wiki provides English
 | Check the current product and future scope | [Product](PRODUCT.md) · [Roadmap](ROADMAP.md) |
 | Run a team trial or inspect recorded checks | [Pilot checklist](PILOT.md) · [Verification](VERIFICATION.md) |
 | Prepare a version or read release notes | [Versioning](VERSIONING.md) · [v0.1.4](releases/v0.1.4.md) · [Changelog](../CHANGELOG.md) |
+| Build generic Docker images on GitHub | [Image builds](IMAGE_BUILDS.md) |
 | Maintain docs, Wiki, Projects and releases | [Maintenance workflow](MAINTENANCE.md) |
 
 ## Protocol sources

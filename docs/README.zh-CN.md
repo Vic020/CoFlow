@@ -18,6 +18,7 @@ CoFlow **0.1.4** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 了解现有能力与后续范围 | [产品定义](PRODUCT.md) · [路线图](ROADMAP.md) |
 | 团队试用与检查验收事实 | [试用清单](PILOT.md) · [验证记录](VERIFICATION.md) |
 | 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.1.4 发布说明](releases/v0.1.4.md) · [更新日志](../CHANGELOG.md) |
+| 在 GitHub 构建通用 Docker 镜像 | [镜像构建](IMAGE_BUILDS.md) |
 | 维护文档、Wiki、Projects 与发布流程 | [维护规范](MAINTENANCE.md) |
 
 ## 协议源文件

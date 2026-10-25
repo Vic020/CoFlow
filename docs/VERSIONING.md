@@ -44,3 +44,5 @@ npm run version:check
 0.1.4 的实际变化与验证范围见[发布说明](releases/v0.1.4.md)。历史发布说明保留当时的版本与事实，不随当前版本批量替换。
 
 README、Wiki、Projects 与发布说明的同步职责、页面映射和交付状态见[文档与 GitHub 维护流程](MAINTENANCE.md)。
+
+镜像可以按[镜像构建流程](IMAGE_BUILDS.md)从现有标签手动构建；这不改变 VERSION，也不自动创建 Release 或部署。
