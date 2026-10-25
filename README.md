@@ -13,14 +13,22 @@
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
   <a href="#agent-接入">Agent 接入</a> ·
-  <a href="https://github.com/users/Vic020/projects/1">产品路线图</a> ·
+  <a href="#路线图">产品路线图</a> ·
   <a href="https://github.com/Vic020/CoFlow/wiki">使用指南</a> ·
   <a href="https://github.com/Vic020/CoFlow/releases">Releases</a> ·
   <a href="CHANGELOG.md">更新日志</a> ·
   <a href="docs/DEVELOPMENT.md">开发指南</a>
 </p>
 
-CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过 Codex、Claude Code 等工具上报简报和交付链接，团队在统一的 Timeline 中浏览、评论并讨论阻塞。
+CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
+
+## 为什么需要 CoFlow
+
+一个人同时开着几个 AI Coding 工具：一个 Agent 改接口，一个写页面，另一个补测试。团队里每个人都有自己的 Agent 在并行工作，协作的节奏也随之改变。
+
+工作推进得更快，结果也散落在更多对话、终端和工具里。伙伴完成了什么？交付在哪里？哪些事情卡住了，需要自己关注？团队需要一个共同看见进展的地方。
+
+**CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
 > **当前版本：0.1.1，早期自托管版本。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网体验与容量仍需验收，邮件能力尚未提供；独立演示模式继续保留。
 
@@ -87,7 +95,7 @@ DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable
 npm run dev
 ```
 
-打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)，创建首个管理员和工作空间，再到团队设置邀请成员。
+首次访问使用 `http://127.0.0.1:3000/?token=<初始化 token>`，将占位符替换为启动后端时设置的 `COFLOW_BOOTSTRAP_TOKEN`。校验通过后创建管理员和工作空间，再到团队设置邀请成员。已有团队直接打开 [http://127.0.0.1:3000](http://127.0.0.1:3000) 登录。
 
 只体验原有示例数据可运行 `npm run dev:demo`；此模式不要求 PostgreSQL，简报保存在被忽略的 `apps/api/.data/demo.json`。
 
@@ -162,21 +170,19 @@ npm run version:check
 
 ## 路线图
 
-- [x] Timeline、组合筛选、日报汇总与响应式布局
-- [x] 简报、交付链接、评论与上报去重
-- [x] 一键复制上报 Prompt、Skill 下载、HTTP API
-- [x] 网页编辑简报、多人关注与多链接表单
-- [x] 正式登录、邀请加入与团队权限
-- [x] 个人 Agent 凭证及撤销
-- [x] 项目与领域管理
-- [x] 跨设备未读与站内通知
-- [x] PostgreSQL 迁移与身份/隔离集成验证
-- [ ] 正式团队部署与备份
-- [ ] CLI／MCP 正式接入
+**Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识。**
 
-后续版本：**0.2 Todo 看板**，支持自定义列及人与 Agent 共同管理；**0.3 Calendar**，支持项目／领域日历、甘特排期、Big Day 与版本节点。
+当前已发布 **0.1.1**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
 
-实施顺序与验收标准见[版本工作计划](docs/ROADMAP.md)，现有功能范围见[产品定义](docs/PRODUCT.md)。
+| 版本 | 状态 | 目标 |
+| --- | --- | --- |
+| **0.1 · Timeline** | 已发布（0.1.1） | 团队简报、交付链接与协作跟进 |
+| **0.2 · Todo** | 规划中 | 自定义看板，人工与 Agent 共同管理任务 |
+| **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
+| **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
+| **0.5 · Context** | 规划中 | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
+
+详细范围与验收标准见[版本工作计划](docs/ROADMAP.md)。
 
 ## 贡献
 
@@ -197,7 +203,8 @@ npm run version:check
 ## 社区与项目入口
 
 - [Release](https://github.com/Vic020/CoFlow/releases)：版本说明与源码下载。
-- [Projects](https://github.com/users/Vic020/projects/1)：0.2 Todo、0.3 Calendar 产品计划。
+- [路线图](docs/ROADMAP.md)：0.2 Todo、0.3 Calendar、0.4 AI 助手、0.5 Context 的版本范围与验收标准。
+- [Projects](https://github.com/users/Vic020/projects/1)：产品事项跟踪，版本规划以路线图文档为准。
 - [Wiki](https://github.com/Vic020/CoFlow/wiki)：基本使用指南。
 - [Issues](https://github.com/Vic020/CoFlow/issues/new/choose)：Bug 与功能建议。
 - [Actions](https://github.com/Vic020/CoFlow/actions)：自动验证；新工作流运行结果以 GitHub 实际状态为准。
