@@ -23,7 +23,7 @@
 | `apps/api/internal/version/version.go` | Go API 版本，健康检查响应使用 |
 | `docs/openapi.yaml`                    | API 协议版本                  |
 | `CHANGELOG.md`                         | 对应版本的变化记录            |
-| `README.md`                            | 对外展示的版本号与徽标        |
+| `README.md`、`README.zh-CN.md`          | 英文／中文展示的版本号与徽标        |
 
 ## 检查
 
@@ -31,4 +31,4 @@
 npm run version:check
 ```
 
-该命令只检查版本记录，不写文件、不递增版本、不创建提交或标签。README 的展示文字和徽标由维护者在明确更新版本时一并调整。
+该命令只检查版本记录，不写文件、不递增版本、不创建提交或标签。英文／中文 README 的展示文字和徽标由维护者在明确更新版本时一并调整。

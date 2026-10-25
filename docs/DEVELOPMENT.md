@@ -49,7 +49,7 @@ npm run dev
 读一下 http://127.0.0.1:3000/agent/coflow-report/SKILL.md，服务地址是 http://127.0.0.1:3000，我的凭证是 <个人凭证>，按照要求上报一下当前项目的进展、交付链接和阻塞。
 ```
 
-HTTP 使用 `Authorization: Bearer <个人凭证>`。日常 Prompt 优先读取 `COFLOW_TOKEN`，否则读取按站点／团队／成员隔离的 `~/.coflow/credentials/.../*.token`。具体规则见 README 的本机凭证配置与 canonical Skill。CLI、MCP 暂未正式支持。
+HTTP 使用 `Authorization: Bearer <个人凭证>`。日常 Prompt 优先读取 `COFLOW_TOKEN`，否则读取按站点／团队／成员隔离的 `~/.coflow/credentials/.../*.token`。保存路径与规则见 [Agent Skill](../skills/coflow-report/SKILL.md)。CLI、MCP 暂未正式支持。
 
 不要把真实凭证写进示例文件、源码或日志。Agent 身份来自 Token，不采信请求体的作者或团队字段；Agent 无权管理账号、邀请和凭证，管理员 Token 也不获得管理他人简报的权限。
 

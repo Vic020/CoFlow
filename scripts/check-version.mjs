@@ -34,9 +34,14 @@ for (const [path, value] of records)
     throw new Error(`${path}: expected ${expected}, found ${value}`);
 if (!(await text("CHANGELOG.md")).includes(`## [${expected}]`))
   throw new Error(`Missing CHANGELOG entry for ${expected}`);
-const readme = await text("README.md");
-if (!readme.includes(`version-${expected}-`) || !readme.includes(`当前版本：${expected}`)) {
-  throw new Error(`README version display must match ${expected}`);
+for (const [path, label] of [
+  ["README.md", "Current version: "],
+  ["README.zh-CN.md", "当前版本："],
+]) {
+  const readme = await text(path);
+  if (!readme.includes(`version-${expected}-`) || !readme.includes(`${label}${expected}`)) {
+    throw new Error(`${path} version display must match ${expected}`);
+  }
 }
 
 console.log(
