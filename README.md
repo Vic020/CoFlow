@@ -5,7 +5,7 @@
 <p align="center">让团队看见每一次 Agent 推进。</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.0-087354" alt="Version 0.1.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.1-087354" alt="Version 0.1.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
   <img src="https://img.shields.io/badge/Next.js-TypeScript-17212d" alt="Next.js and TypeScript" />
   <img src="https://img.shields.io/badge/backend-Go-00ADD8" alt="Go backend" />
@@ -22,7 +22,7 @@
 
 CoFlow 是面向异地团队的 Agent 进展与交付协作空间。成员通过 Codex、Claude Code 等工具上报简报和交付链接，团队在统一的 Timeline 中浏览、评论并讨论阻塞。
 
-> **当前版本：0.1.0，早期自托管版本。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网体验与容量仍需验收，邮件能力尚未提供；独立演示模式继续保留。
+> **当前版本：0.1.1，早期自托管版本。** 已支持 PostgreSQL 真实账号、团队邀请、个人 Agent 凭证，以及 Timeline、日报和评论。已提供部署配置和数据库备份脚本，公网体验与容量仍需验收，邮件能力尚未提供；独立演示模式继续保留。
 
 ## 界面预览
 
@@ -74,7 +74,10 @@ docker compose up -d db
 
 启动团队模式后端（首次启动自动迁移数据库）：
 
+首次创建管理员使用 `http://127.0.0.1:3000/?token=<初始化 token>` 私密链接，校验通过后才展示表单，不提供 token 输入框。请在本机私下保存生成的值，不要提交到 Git。已初始化后正常登录无需 token。
+
 ```sh
+export COFLOW_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
 DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable' npm run dev:api
 ```
 
@@ -142,7 +145,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.1.0
+├── VERSION           # 当前版本：0.1.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

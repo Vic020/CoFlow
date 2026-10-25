@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"coflow/api/internal/identity"
+	"crypto/sha256"
+	"crypto/subtle"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
@@ -12,9 +14,10 @@ import (
 const sessionCookie = "coflow_session"
 
 type Config struct {
-	Identity      *identity.Service
-	SecureCookies bool
-	Demo          bool
+	Identity       *identity.Service
+	SecureCookies  bool
+	Demo           bool
+	BootstrapToken string
 }
 
 func principal(c *gin.Context) identity.Principal {
@@ -107,6 +110,23 @@ func authLimiter() gin.HandlerFunc {
 		c.Next()
 	}
 }
+func requireBootstrapToken(token string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Never fall back to an unprotected bootstrap, including local team mode.
+		if len(token) < 32 {
+			c.AbortWithStatusJSON(503, gin.H{"error": "请先在服务器配置至少 32 位的 COFLOW_BOOTSTRAP_TOKEN"})
+			return
+		}
+		want := sha256.Sum256([]byte(token))
+		got := sha256.Sum256([]byte(c.GetHeader("X-CoFlow-Setup-Token")))
+		if subtle.ConstantTimeCompare(want[:], got[:]) != 1 {
+			c.AbortWithStatusJSON(403, gin.H{"error": "初始化 token 无效"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func registerIdentity(r *gin.Engine, cfg Config) {
 	r.GET("/api/v1/auth/status", func(c *gin.Context) {
 		if cfg.Demo {
@@ -126,7 +146,19 @@ func registerIdentity(r *gin.Engine, cfg Config) {
 	s := cfg.Identity
 	pub := r.Group("/api/v1/auth")
 	pub.Use(authLimiter())
-	pub.POST("/bootstrap", func(c *gin.Context) {
+	pub.POST("/bootstrap/check", requireBootstrapToken(cfg.BootstrapToken), func(c *gin.Context) {
+		ready, err := s.Initialized(c.Request.Context())
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		if ready {
+			c.JSON(409, gin.H{"error": "工作空间已初始化"})
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
+	pub.POST("/bootstrap", requireBootstrapToken(cfg.BootstrapToken), func(c *gin.Context) {
 		var v struct {
 			Email    string `json:"email"`
 			Name     string `json:"name"`

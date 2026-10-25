@@ -1,6 +1,6 @@
 # CoFlow 版本工作计划
 
-更新：2026-10-24（Asia/Shanghai）。当前版本 **0.1.0**；以下为后续版本的开发计划，不表示功能已实现或发布。实际发版时再由维护者明确更新版本号，开发期间继续记录到 CHANGELOG 的 Unreleased。
+更新：2026-10-25（Asia/Shanghai）。当前版本 **0.1.1**；以下为后续版本的开发计划，不表示功能已实现或发布。实际发版时再由维护者明确更新版本号，开发期间继续记录到 CHANGELOG 的 Unreleased。
 
 [GitHub Projects 产品路线图](https://github.com/users/Vic020/projects/1)
 

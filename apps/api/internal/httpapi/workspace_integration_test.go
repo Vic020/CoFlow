@@ -11,7 +11,7 @@ import (
 
 func TestWorkspaceClassificationAndCollaboration(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	guest := &authClient{t: t, h: h}
 	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{"email": "owner@example.test", "name": "Owner", "password": "workspace-test-owner-password", "team_name": "Team A"}, 201)
@@ -146,7 +146,7 @@ func TestWorkspaceClassificationAndCollaboration(t *testing.T) {
 
 func TestConcurrentClassificationNames(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{"email": "concurrent@example.test", "name": "Owner", "password": "workspace-test-owner-password", "team_name": "Concurrent Team"}, 201)
 	var wg sync.WaitGroup
@@ -188,7 +188,7 @@ func TestConcurrentClassificationNames(t *testing.T) {
 
 func TestCatalogOrdering(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{"email": "order@example.test", "name": "Owner", "password": "ordering-test-password", "team_name": "Ordering"}, 201)
 	token := owner.call("POST", "/api/v1/tokens", map[string]any{"name": "Agent"}, 201)["credential"].(string)
@@ -223,7 +223,7 @@ func TestCatalogOrdering(t *testing.T) {
 
 func TestBrowserReportEditing(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	member := &authClient{t: t, h: h}
 	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{"email": "editor@example.test", "name": "Editor", "password": "editing-test-password", "team_name": "Editing"}, 201)

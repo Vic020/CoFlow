@@ -15,7 +15,7 @@ npm ci
 NEXT_PUBLIC_COFLOW_PUBLIC_DEMO=true NEXT_PUBLIC_COFLOW_BASE_PATH=/CoFlow npm run build --workspace @coflow/web -- --webpack
 ```
 
-此 Next.js 版本在 export 模式下把自定义 `distDir` 作为导出目录，静态产物为 `apps/web/.next-pages`，只部署此目录，不部署 `.next` 或整个仓库。仓库 Settings → Pages → Source 选择 GitHub Actions；主分支推送触发 `.github/workflows/pages.yml`，也可手动运行。构建步骤只读取仓库中的合成示例，不依赖任何账号或服务器 secret。
+此 Next.js 版本在 export 模式下把自定义 `distDir` 作为导出目录，静态产物为 `apps/web/.next-pages`，只部署此目录，不部署 `.next` 或整个仓库。仓库 Settings → Pages → Source 选择 GitHub Actions；仅在维护者明确要求更新演示站后，手动运行 `.github/workflows/pages.yml`（Actions → Public demo · GitHub Pages → Run workflow）。主分支推送、打标签和发布 Release 都不会自动更新 Pages。构建步骤只读取仓库中的合成示例，不依赖任何账号或服务器 secret。
 
 Fork 后需要按仓库名称修改 base path，使用自己的 Pages 地址。不要通过此开关模拟真实身份或生产权限。
 

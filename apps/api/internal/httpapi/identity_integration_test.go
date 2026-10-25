@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const testBootstrapToken = "synthetic-bootstrap-token-for-tests-only"
+
 type authClient struct {
 	t      *testing.T
 	h      http.Handler
@@ -30,6 +32,9 @@ func (a *authClient) call(method, path string, input any, want int) map[string]a
 	body, _ := json.Marshal(input)
 	r := httptest.NewRequest(method, path, bytes.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
+	if path == "/api/v1/auth/bootstrap" || path == "/api/v1/auth/bootstrap/check" {
+		r.Header.Set("X-CoFlow-Setup-Token", testBootstrapToken)
+	}
 	if a.cookie != nil {
 		r.AddCookie(a.cookie)
 	}
@@ -100,7 +105,7 @@ func identityFixture(t *testing.T) (*store.Postgres, *identity.Service) {
 }
 func TestPostgresIdentityAndAgentFlow(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	guest := &authClient{t: t, h: h}
 	ctx := t.Context()
@@ -209,7 +214,7 @@ func TestPostgresIdentityAndAgentFlow(t *testing.T) {
 
 func TestConcurrentInvitationAndExistingAccount(t *testing.T) {
 	repo, s := identityFixture(t)
-	h := NewWithConfig(repo, Config{Identity: s})
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
 	owner := &authClient{t: t, h: h}
 	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{"email": "race-owner@example.com", "name": "Owner", "password": "race-owner-password-123", "team_name": "Race Team"}, 201)
 	invitation := owner.call("POST", "/api/v1/invites", map[string]any{"email": "race-member@example.com"}, 201)

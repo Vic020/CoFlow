@@ -33,16 +33,58 @@ export function WorkspaceOnboarding({
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [setupAccess, setSetupAccess] = useState<"checking" | "allowed" | "blocked">("checking");
+  const setupCheck = useRef<Promise<string> | null>(null);
   const firstField = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (onCreateTeam) return;
+    if (!setupCheck.current) {
+      const url = new URL(window.location.href);
+      const token = url.searchParams.get("token") || "";
+      if (url.searchParams.has("token")) {
+        url.searchParams.delete("token");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      }
+      setupCheck.current = token
+        ? request("/auth/bootstrap/check", {
+            method: "POST",
+            headers: { "X-CoFlow-Setup-Token": token },
+            body: "{}",
+          }).then(() => token)
+        : Promise.reject(new Error("Missing initialization link"));
+    }
+    let active = true;
+    setupCheck.current.then((token) => {
+      if (!active) return;
+      setSetupToken(token);
+      setSetupAccess("allowed");
+    }).catch(() => {
+      if (active) setSetupAccess("blocked");
+    });
+    return () => { active = false; };
+  }, [onCreateTeam]);
+
+  useEffect(() => {
     firstField.current?.focus();
-  }, [step]);
+  }, [step, setupAccess]);
 
   function goTo(next: number) {
     setError("");
     setVisible(false);
     setStep(next);
+  }
+
+  if (!onCreateTeam && setupAccess !== "allowed") {
+    return (
+      <main className="account-page onboarding-page">
+        <div className="account-brand"><CoFlowLogo /><strong>CoFlow</strong></div>
+        <section className="account-card" aria-live="polite">
+          <h1>{setupAccess === "checking" ? "正在验证初始化链接…" : "初始化链接无效或已失效"}</h1>
+        </section>
+      </main>
+    );
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -74,6 +116,7 @@ export function WorkspaceOnboarding({
       } else
         await request("/auth/bootstrap", {
           method: "POST",
+          headers: { "X-CoFlow-Setup-Token": setupToken },
           body: JSON.stringify({
             team_name: team.trim(),
             name: name.trim(),
@@ -82,6 +125,7 @@ export function WorkspaceOnboarding({
           }),
         });
       setPassword("");
+      setSetupToken("");
       setVisible(false);
       onDone();
     } catch (e) {

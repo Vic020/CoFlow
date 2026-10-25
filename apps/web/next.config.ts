@@ -9,7 +9,9 @@ const config: NextConfig = {
     images: { unoptimized: true },
   } : {
     async headers() {
-      return [{ source: "/agent/coflow-report/SKILL.md", headers: [
+      return [{ source: "/:path*", headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+      ] }, { source: "/agent/coflow-report/SKILL.md", headers: [
         { key: "Content-Type", value: "text/markdown; charset=utf-8" },
         { key: "X-Content-Type-Options", value: "nosniff" },
       ] }];

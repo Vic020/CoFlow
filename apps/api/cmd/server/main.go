@@ -18,6 +18,7 @@ func main() {
 	demo := os.Getenv("COFLOW_DEMO") == "true"
 	var repo store.Repository
 	cfg := httpapi.Config{Demo: demo, SecureCookies: os.Getenv("COFLOW_SECURE_COOKIES") == "true"}
+	cfg.BootstrapToken = os.Getenv("COFLOW_BOOTSTRAP_TOKEN")
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

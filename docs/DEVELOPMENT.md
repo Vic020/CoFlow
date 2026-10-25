@@ -1,6 +1,6 @@
 # 开发指南
 
-CoFlow 0.1.0 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
+CoFlow 0.1.1 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
 
 ## 环境
 
@@ -13,6 +13,7 @@ CoFlow 0.1.0 支持真实团队模式，以及独立的本地演示模式。版�
 ```sh
 npm ci
 docker compose up -d db
+export COFLOW_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
 export DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?sslmode=disable'
 npm run dev:api
 ```
@@ -23,7 +24,7 @@ npm run dev:api
 npm run dev
 ```
 
-打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。首次访问创建管理员和工作空间；这是一次性初始化，数据库已有账号后不能再次创建管理员。随后新成员只能通过邀请加入。
+打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。首次访问使用 `http://127.0.0.1:3000/?token=<本机初始化 token>`，校验通过后创建管理员和工作空间；这是一次性初始化，数据库已有账号后不能再次创建管理员。无效链接不展示初始化表单。随后新成员只能通过邀请加入。
 
 默认监听本机。部署前先完成工作空间初始化，配置实际站点 `COFLOW_WEB_ORIGIN`、HTTPS 和 `COFLOW_SECURE_COOKIES=true`，更换开发数据库口令，并安排备份。服务器、域名和正式部署仍需单独落实。
 

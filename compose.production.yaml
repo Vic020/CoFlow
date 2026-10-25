@@ -22,7 +22,7 @@ services:
       retries: 10
     logging: *logging
   api:
-    image: coflow-api:0.1.0
+    image: coflow-api:0.1.1
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -31,6 +31,7 @@ services:
       DATABASE_URL: postgres://coflow:${POSTGRES_PASSWORD}@db:5432/coflow?sslmode=disable
       COFLOW_ADDR: 0.0.0.0:8080
       COFLOW_SECURE_COOKIES: "true"
+      COFLOW_BOOTSTRAP_TOKEN: ${COFLOW_BOOTSTRAP_TOKEN:-}
       COFLOW_WEB_ORIGIN: https://${COFLOW_DOMAIN:?Set COFLOW_DOMAIN in .env.production}
       GOMEMLIMIT: 192MiB
     depends_on:
@@ -38,7 +39,7 @@ services:
     mem_limit: 256m
     logging: *logging
   web:
-    image: coflow-web:0.1.0
+    image: coflow-web:0.1.1
     build:
       context: .
       dockerfile: apps/web/Dockerfile

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.1.0
+  version: 0.1.1
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -274,14 +274,46 @@ paths:
         '409': *id001
         '410': *id001
         '429': *id001
+  /auth/bootstrap/check:
+    post:
+      operationId: checkWorkspaceInitialization
+      description: Validates the setup token before displaying onboarding, without consuming it or creating data.
+        The browser obtains the token from its initialization URL parameter and sends it in a header.
+        Returns 409 if already initialized. Creation independently validates the same token.
+      security: []
+      parameters:
+      - in: header
+        name: X-CoFlow-Setup-Token
+        required: true
+        schema:
+          type: string
+          minLength: 32
+          writeOnly: true
+      responses:
+        '200': *id002
+        '403': *id001
+        '409': *id001
+        '429': *id001
+        '503': *id001
   /auth/bootstrap:
     post:
       operationId: initializeWorkspace
+      parameters:
+      - in: header
+        name: X-CoFlow-Setup-Token
+        required: true
+        schema:
+          type: string
+          minLength: 32
+          writeOnly: true
       description: One-time workspace/admin creation, serialized in a database transaction; sets a browser session
-        cookie.
+        cookie. Requires the server-configured COFLOW_BOOTSTRAP_TOKEN (at least 32 characters). Missing
+        or weak server configuration blocks setup with 503. Incorrect or absent header returns 403.
+        Once initialized, the token cannot create another administrator (409).
       security: []
       responses:
         '201': *id002
+        '503': *id001
         '400': *id001
         '401': *id001
         '403': *id001
