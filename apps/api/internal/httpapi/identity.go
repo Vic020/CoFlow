@@ -390,6 +390,19 @@ func registerIdentity(r *gin.Engine, cfg Config) {
 		}
 		c.JSON(200, gin.H{"ok": true})
 	})
+	own.PATCH("/members/:id", func(c *gin.Context) {
+		var v struct {
+			Role string `json:"role"`
+		}
+		if !decode(c, &v) {
+			return
+		}
+		if err := s.UpdateMemberRole(c.Request.Context(), principal(c), c.Param("id"), v.Role); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
 	own.DELETE("/members/:id", func(c *gin.Context) {
 		if err := s.RemoveMember(c.Request.Context(), principal(c), c.Param("id")); err != nil {
 			fail(c, err)

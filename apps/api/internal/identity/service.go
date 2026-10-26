@@ -515,3 +515,52 @@ func (s *Service) RemoveMember(ctx context.Context, p Principal, id string) erro
 	}
 	return tx.Commit(ctx)
 }
+
+// UpdateMemberRole serializes role changes per team so concurrent demotions cannot
+// remove the last administrator. Recheck the caller after acquiring the lock.
+func (s *Service) UpdateMemberRole(ctx context.Context, p Principal, id, role string) error {
+	if p.Kind != "session" || p.Role != "admin" {
+		return Denied("只有网页管理员可以修改成员角色")
+	}
+	if role != "admin" && role != "member" {
+		return Invalid("角色必须是管理员或成员")
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var team string
+	if err = tx.QueryRow(ctx, "SELECT id FROM teams WHERE id=$1 FOR UPDATE", p.TeamID).Scan(&team); err != nil {
+		return err
+	}
+	var callerRole string
+	err = tx.QueryRow(ctx, "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2", p.TeamID, p.UserID).Scan(&callerRole)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && callerRole != "admin") {
+		return Denied("只有网页管理员可以修改成员角色")
+	}
+	if err != nil {
+		return err
+	}
+	var current string
+	err = tx.QueryRow(ctx, "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2 FOR UPDATE", p.TeamID, id).Scan(&current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return notFound("成员不存在")
+	}
+	if err != nil {
+		return err
+	}
+	if current == "admin" && role == "member" {
+		var admins int
+		if err = tx.QueryRow(ctx, "SELECT count(*) FROM memberships WHERE team_id=$1 AND role='admin'", p.TeamID).Scan(&admins); err != nil {
+			return err
+		}
+		if admins <= 1 {
+			return conflict("团队至少需要一位管理员")
+		}
+	}
+	if _, err = tx.Exec(ctx, "UPDATE memberships SET role=$3 WHERE team_id=$1 AND user_id=$2", p.TeamID, id, role); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

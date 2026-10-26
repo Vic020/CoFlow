@@ -640,5 +640,10 @@
   "恢复评论：": "Comment restored: ",
   "加载中…": "Loading…",
   "删除评论：{id}": "Comment deleted: {id}",
-  "恢复评论：{id}": "Comment restored: {id}"
+  "恢复评论：{id}": "Comment restored: {id}",
+  "{0} 的角色": "Role for {0}",
+  "只有网页管理员可以修改成员角色": "Only web administrators can change member roles",
+  "角色必须是管理员或成员": "Role must be administrator or member",
+  "团队至少需要一位管理员": "A team must have at least one administrator",
+  "成员不存在": "Member not found"
 }

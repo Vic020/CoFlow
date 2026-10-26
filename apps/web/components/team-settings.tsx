@@ -100,6 +100,21 @@ export function TeamSettings({
       setBusy(false);
     }
   }
+  async function changeRole(id: string, role: string) {
+    setBusy(true);
+    setError("");
+    try {
+      await request(`/members/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      });
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="team-settings-page">
       <nav className="settings-categories" aria-label={tr("团队设置分类")}>
@@ -226,14 +241,28 @@ export function TeamSettings({
                       {m.name}
                       {m.id === meta.current_user ? tr("（我）") : ""}
                     </strong>
-                    <small>
-                      {meta.mode === "local-demo"
-                        ? m.role
-                        : m.role === "admin"
-                          ? tr("管理员")
-                          : tr("成员")}
-                    </small>
+                    {(meta.mode === "local-demo" || meta.role !== "admin") && (
+                      <small>
+                        {meta.mode === "local-demo"
+                          ? m.role
+                          : m.role === "admin"
+                            ? tr("管理员")
+                            : tr("成员")}
+                      </small>
+                    )}
                   </div>
+                  {meta.mode !== "local-demo" && meta.role === "admin" && (
+                    <select
+                      className="member-role-select"
+                      aria-label={tr("{0} 的角色", { 0: m.name })}
+                      value={m.role}
+                      disabled={busy}
+                      onChange={(e) => void changeRole(m.id, e.target.value)}
+                    >
+                      <option value="member">{tr("成员")}</option>
+                      <option value="admin">{tr("管理员")}</option>
+                    </select>
+                  )}
                   {meta.mode !== "local-demo" &&
                     meta.role === "admin" &&
                     m.role !== "admin" && (

@@ -4338,3 +4338,32 @@ input[type="checkbox"] {
 .deleted-comments { padding: 16px 28px; border-top: 1px solid #edf1ee; }
 .deleted-comments summary { color: #82958a; cursor: pointer; font-size: 11px; }
 .comment-source { flex-wrap: wrap; }
+
+/* Active filters use the same accent as selected domain chips. */
+.filter-select.is-active {
+  background: #e8f5ef;
+  border-color: #9bcbb8;
+}
+.filter-select.is-active > span,
+.filter-select.is-active select,
+.filter-select.is-active svg,
+.filter-unread.is-active {
+  color: #08674f;
+  font-weight: 600;
+}
+.filter-unread input { accent-color: #08674f; }
+.scope-shortcuts button[aria-pressed="true"] {
+  background: #e8f5ef;
+  box-shadow: inset 0 0 0 1px #9bcbb8;
+}
+.member-role-select {
+  margin-left: auto;
+  border: 1px solid #dce6e0;
+  border-radius: 6px;
+  background: #fff;
+  color: #354b40;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.member-role-select:focus-visible { outline: 2px solid #228e71; outline-offset: 2px; }
+.member-role-select:disabled { opacity: .6; }

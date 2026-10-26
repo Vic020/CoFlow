@@ -684,6 +684,29 @@ paths:
       required: true
       schema: *id003
   /members/{id}:
+    patch:
+      operationId: updateMemberRole
+      description: Browser administrators may set a current-team member role to admin or member, including their own. The last administrator cannot be demoted. Agent tokens cannot change roles. Role changes apply to subsequent requests.
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [admin, member]
+      responses:
+        '200': *id002
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
     delete:
       operationId: removeMember
       description: Browser admins may remove non-admin members. Their sessions and tokens immediately stop authorizing

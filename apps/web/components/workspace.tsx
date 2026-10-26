@@ -135,7 +135,7 @@ function SelectFilter({
 }) {
   const { t: tr } = useI18n();
   return (
-    <label className="filter-select">
+    <label className={`filter-select${value ? " is-active" : ""}`}>
       <span>{tr(label)}</span>
       <select
         aria-label={tr(label)}
@@ -459,7 +459,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           }),
         )}
       />
-      <label className="filter-select">
+      <label className={`filter-select${filters.days ? " is-active" : ""}`}>
         <span>{tr("日期")}</span>
         <select
           aria-label={tr("日期")}
@@ -507,7 +507,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             </button>
           )}
         </div>
-        <label className="filter-unread">
+        <label className={`filter-unread${unread ? " is-active" : ""}`}>
           <input
             type="checkbox"
             checked={unread}
