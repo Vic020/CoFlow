@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Explore the demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.4-087354" alt="Version 0.1.4" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.5-087354" alt="Version 0.1.5" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,7 +28,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.1.4.**
+> **Current version: 0.1.5.**
 
 ## Features
 
@@ -57,11 +57,11 @@ The preview uses synthetic identities and example delivery links.
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge.**
 
-Version **0.1.4** is available in source. Versions 0.2–0.5 are planned, with no fixed release dates.
+Version **0.1.5** is available in source. Versions 0.2–0.5 are planned, with no fixed release dates.
 
 | Version | Status | Focus |
 | --- | --- | --- |
-| **0.1 · Timeline** | Available (0.1.4) | Team reports, delivery links, and collaboration |
+| **0.1 · Timeline** | Available (0.1.5) | Team reports, delivery links, and collaboration |
 | **0.2 · Todo** | Planned | Customizable boards, with tasks managed by people and Agents |
 | **0.3 · Calendar** | Planned | Calendar and Gantt scheduling, Big Days, and version milestones |
 | **0.4 · AI Assistant** | Planned | Manage modules through conversation; custom APIs, with DeepSeek first |
