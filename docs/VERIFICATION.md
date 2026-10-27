@@ -2,6 +2,14 @@
 
 更新：2026-10-27（Asia/Shanghai）；当前版本 0.2.0。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
 
+## 0.2.0 发布与镜像（2026-10-27）
+
+- 源码提交 `41f3a7ec760ac35bbcbc573b149c22808cde6916` 已推送 main，标签 v0.2.0 指向该提交；[Release](https://github.com/Vic020/CoFlow/releases/tag/v0.2.0) 已发布，仅包含 GitHub 源码归档。
+- [云端 CI 40483443544](https://github.com/Vic020/CoFlow/actions/runs/40483443544) 全部通过，包含 Go race 与隔离 PostgreSQL 集成测试、前端生产构建、类型、翻译、Prompt、演示、文档与版本检查。本次本机 Docker 无响应导致数据库连接测试超时，不计为成功；完整数据库验证以该精确提交的云端结果为依据，前文保留此前本地验收事实。
+- 本机隔离副本的团队生产构建和 /CoFlow 前缀静态构建通过；Skill 官方格式和 48 个 OpenAPI 路径的引用解析通过。公开提交内容已检查，无私有实例信息、真实团队数据、凭证或本机 QA 产物。
+- [手动镜像构建 40484236198](https://github.com/Vic020/CoFlow/actions/runs/40484236198) 成功；匿名访问 GHCR 清单成功、清单 SHA256 与 Registry 摘要相符，包含 linux/amd64。API 摘要为 `sha256:026b20ec07e6cb501827cb1686cda5e72634e94c79203828c77b809c880a6a0f`，Web 为 `sha256:d5e18f9f6fee1b904b8f08ade9337fb881ce112d527f9cad34b70ba8eafd7ca8`。
+- 此阶段仅完成提交、Release 与通用镜像；私有服务器及 Pages 尚待维护者指定部署目标，均未更新。Wiki／Projects 未修改。实例只读预检和部署准备仅记录在私有运维目录。
+
 ## Todo 阅读与原位编辑（2026-10-27）
 
 - 任务详情改为居中弹窗，默认展示标题、属性、Markdown 描述和交付链接；只展开当前编辑字段。桌面双击或悬停末尾铅笔进入编辑，触屏直接显示铅笔，保留权限与 expected_revision 检查，保存仅提交当前字段。
