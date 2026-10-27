@@ -57,7 +57,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setTimeZone = useCallback((value: string) => {
     if (!isTimeZone(value)) return;
     updateTimeZone(value);
-    try { localStorage.setItem("coflow-timezone", value); } catch {}
+    try {
+      localStorage.setItem("coflow-timezone", value);
+    } catch {}
   }, []);
   const t = useCallback(
     (message: string, values?: Values) => translate(locale, message, values),
@@ -71,15 +73,18 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
-  const page = pathname.endsWith("/teams/new")
-    ? "新建团队"
-    : pathname.endsWith("/credentials")
-      ? "Agent 凭证"
-      : pathname.endsWith("/settings")
-        ? "团队设置"
-        : pathname.endsWith("/invite")
-          ? "加入团队"
-          : "团队动态";
+  const path = pathname.replace(/\/$/, "") || "/";
+  const page = path.endsWith("/todo")
+    ? "Todo"
+    : path.endsWith("/teams/new")
+      ? "新建团队"
+      : path.endsWith("/credentials")
+        ? "Agent 凭证"
+        : path.endsWith("/settings")
+          ? "团队设置"
+          : path.endsWith("/invite")
+            ? "加入团队"
+            : "团队动态";
   const value = useMemo(
     () => ({ locale, setLocale, timeZone, setTimeZone, t, date }),
     [locale, setLocale, timeZone, setTimeZone, t, date],

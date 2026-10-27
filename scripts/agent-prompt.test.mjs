@@ -12,7 +12,7 @@ test("repeat prompt contains identity and no empty or invented credential", () =
     member: "member-vic",
   });
   assert.ok(
-    prompt.includes("https://coflow.example.test/agent/coflow-report/SKILL.md"),
+    prompt.includes("https://coflow.example.test/agent/coflow/SKILL.md"),
   );
   assert.ok(
     prompt.includes("team_id=team-b") &&
@@ -115,15 +115,157 @@ test("first-time and daily prompts share an exact path but only setup contains t
 test("installation and reporting have separate authorization in both languages", () => {
   const target = { team: "synthetic-team", member: "synthetic-member" };
   for (const locale of ["en", "zh-CN"]) {
-    const setup = reportPrompt("https://coflow.example.test", "cf_synthetic_install", false, target, locale);
-    const daily = reportPrompt("https://coflow.example.test", "", false, target, locale);
+    const setup = reportPrompt(
+      "https://coflow.example.test",
+      "cf_synthetic_install",
+      false,
+      target,
+      locale,
+    );
+    const daily = reportPrompt(
+      "https://coflow.example.test",
+      "",
+      false,
+      target,
+      locale,
+    );
     assert.ok(setup.includes("binding.json") && setup.includes("source_id"));
-    assert.ok(setup.includes("team_id=synthetic-team") && setup.includes("member_id=synthetic-member"));
-    assert.ok(daily.includes(credentialFilePath("https://coflow.example.test", target)));
+    assert.ok(
+      setup.includes("team_id=synthetic-team") &&
+        setup.includes("member_id=synthetic-member"),
+    );
+    assert.ok(
+      daily.includes(credentialFilePath("https://coflow.example.test", target)),
+    );
     assert.ok(!daily.includes("cf_synthetic_install"));
-    assert.ok(locale === "en" ? setup.includes("Do not report during installation") : setup.includes("本次只安装，不上报"));
-    assert.ok(locale === "en" ? daily.includes("Report to CoFlow") : daily.includes("上报 CoFlow"));
-    const incomplete = reportPrompt("https://coflow.example.test", "cf_synthetic_install", false, undefined, locale);
+    assert.ok(
+      locale === "en"
+        ? setup.includes("Do not report during installation")
+        : setup.includes("本次只安装，不上报"),
+    );
+    assert.ok(
+      locale === "en"
+        ? daily.includes("Report to CoFlow")
+        : daily.includes("上报 CoFlow"),
+    );
+    const incomplete = reportPrompt(
+      "https://coflow.example.test",
+      "cf_synthetic_install",
+      false,
+      undefined,
+      locale,
+    );
     assert.ok(!incomplete.includes("binding.json"));
   }
+});
+
+test("offline Todo prompt is actionable without using preview URLs or synthetic identities", async () => {
+  const { todoManagementPrompt } = await import(
+    "../apps/web/lib/report-prompt.ts"
+  );
+  for (const locale of ["en", "zh-CN"]) {
+    const prompt = todoManagementPrompt({
+      mode: "offline-demo",
+      origin: "http://127.0.0.1:3102",
+      target: { team: "demo-team", member: "demo-alice" },
+      locale,
+    });
+    assert.ok(
+      prompt.includes("/api/v1/health") && prompt.includes("/api/v1/meta"),
+    );
+    assert.ok(prompt.includes("references/todos.md"));
+    assert.ok(
+      prompt.includes("operation_id") && prompt.includes("expected_revision"),
+    );
+    assert.ok(
+      !prompt.includes("127.0.0.1") &&
+        !prompt.includes("demo-team") &&
+        !prompt.includes("demo-alice"),
+    );
+  }
+});
+
+test("Todo management keeps verified team identity and uses only a private credential reference", async () => {
+  const { todoManagementPrompt } = await import(
+    "../apps/web/lib/report-prompt.ts"
+  );
+  const target = { team: "synthetic-team", member: "synthetic-member" };
+  const prompt = todoManagementPrompt({
+    mode: "team",
+    origin: "https://coflow.example.test",
+    target,
+    locale: "en",
+    credential: "cf_must_not_leak",
+  });
+  assert.ok(
+    prompt.includes("team_id=synthetic-team") &&
+      prompt.includes("member_id=synthetic-member"),
+  );
+  assert.ok(
+    prompt.includes(credentialFilePath("https://coflow.example.test", target)),
+  );
+  assert.ok(
+    prompt.includes("COFLOW_TOKEN") && !prompt.includes("cf_must_not_leak"),
+  );
+  assert.throws(
+    () => todoManagementPrompt({ mode: "team", locale: "en" }),
+    /Missing/,
+  );
+});
+
+test("Agent and offline draft payloads exclude server-owned fields and demo references", async () => {
+  const { todoManagementPrompt } = await import(
+    "../apps/web/lib/report-prompt.ts"
+  );
+  const task = {
+    title: "Synthetic draft",
+    body: "Synthetic description",
+    source_id: "stable-draft",
+    column_id: "demo-column",
+    assignee_id: "demo-member",
+    project_id: "demo-project",
+    domains: ["demo-domain"],
+    priority: "none",
+    due_date: "",
+    links: [],
+    created_at: "",
+    id: "must-not-copy",
+    history: [],
+  };
+  for (const mode of ["team", "offline-demo"]) {
+    const prompt = todoManagementPrompt({
+      mode,
+      origin: "https://coflow.example.test",
+      target: { team: "team", member: "member" },
+      locale: "en",
+      task,
+    });
+    const payload = JSON.parse(prompt.slice(prompt.indexOf("\n{") + 1));
+    assert.equal(payload.source_id, "stable-draft");
+    assert.equal(payload.title, task.title);
+    assert.ok(
+      !("created_at" in payload) &&
+        !("id" in payload) &&
+        !("history" in payload),
+    );
+    if (mode === "offline-demo") {
+      assert.ok(
+        !("column_id" in payload) &&
+          !("assignee_id" in payload) &&
+          !("project_id" in payload) &&
+          !("domains" in payload),
+      );
+    } else assert.equal(payload.column_id, task.column_id);
+  }
+  const demo = todoManagementPrompt({
+    mode: "local-demo",
+    origin: "http://localhost:8080",
+    target: { team: "demo", member: "chen" },
+    locale: "en",
+  });
+  assert.ok(
+    demo.includes("mode=local-demo") &&
+      !demo.includes("COFLOW_TOKEN") &&
+      !demo.includes(".token"),
+  );
 });

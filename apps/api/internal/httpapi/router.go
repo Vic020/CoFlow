@@ -53,8 +53,20 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 	if !cfg.Demo {
 		ws = &workspace.Service{Pool: cfg.Identity.Pool}
 		registerWorkspace(protected, ws)
+		registerTodos(protected, ws)
 	}
-	protected.GET("/api/v1/meta", requireScope("reports:read"), func(c *gin.Context) {
+	if cfg.Demo {
+		ws = &workspace.Service{TodoDemo: &workspace.TodoMemory{}}
+		registerTodos(protected, ws)
+	}
+	protected.GET("/api/v1/meta", func(c *gin.Context) {
+		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") {
+			fail(c, identity.Denied("需要读取权限"))
+			c.Abort()
+			return
+		}
+		c.Next()
+	}, func(c *gin.Context) {
 		if cfg.Demo {
 			c.JSON(200, gin.H{"members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
 			return
@@ -92,6 +104,11 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 			fail(c, err)
 			return
 		}
+		todoMap, err := ws.ReportTodoMap(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
 		out := []store.Report{}
 		for _, v := range rows {
 			if p := c.Query("project"); p != "" && v.ProjectID != p {
@@ -106,6 +123,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 			if p := c.Query("agent"); p != "" && v.Agent != p {
 				continue
 			}
+			v.TodoIDs = todoMap[v.ID]
 			out = append(out, v)
 		}
 		c.JSON(200, gin.H{"items": out})
@@ -118,6 +136,13 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		}
 		for _, r := range rows {
 			if r.ID == c.Param("id") {
+				if ws != nil {
+					r.TodoIDs, err = ws.ReportTodoIDs(c.Request.Context(), principal(c), r.ID)
+					if err != nil {
+						fail(c, err)
+						return
+					}
+				}
 				c.JSON(200, r)
 				return
 			}
@@ -143,7 +168,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		var row store.Report
 		var err error
 		if cfg.Demo {
-			row, err = repo.Save(c.Request.Context(), v)
+			row, err = ws.SaveDemoReport(c.Request.Context(), principal(c), repo, v)
 		} else {
 			row, err = ws.SaveReport(c.Request.Context(), principal(c), v)
 		}
@@ -190,7 +215,10 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 				row.Domain = input.Domain
 				row.Domains = input.Domains
 				row.UpdatedAt = time.Now().UTC()
-				row, err = repo.Save(c.Request.Context(), row)
+				row.TodoIDs = input.TodoIDs
+				row.TodoMoves = input.TodoMoves
+				row.OperationID = input.OperationID
+				row, err = ws.SaveDemoReport(c.Request.Context(), principal(c), repo, row)
 			}
 		} else {
 			row, err = ws.EditReport(c.Request.Context(), principal(c), c.Param("id"), input.Report, input.ExpectedUpdatedAt)

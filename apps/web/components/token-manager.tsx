@@ -27,12 +27,14 @@ const isActive = (token: Token) =>
 export function TokenManager() {
   const { t: tr, date: formatDate } = useI18n();
   const { me, credential, setCredential, refreshTokens } = useAuth();
-  const { copyPrompt, prompt, copied, copyError, origin } =
-    useAgentPrompt();
+
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Codex");
   const [days, setDays] = useState("90");
   const [scope, setScope] = useState("report");
+  const [issuedTaskAccess, setIssuedTaskAccess] = useState(false);
+  const { copyPrompt, prompt, copied, copyError, origin } =
+    useAgentPrompt(issuedTaskAccess);
   const [existing, setExisting] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,11 +78,23 @@ export function TokenManager() {
     setError("");
     try {
       const scopes =
-        scope === "read"
-          ? ["reports:read"]
-          : scope === "comment"
-            ? ["reports:read", "reports:write", "comments:write"]
-            : ["reports:read", "reports:write"];
+        scope === "todo"
+          ? ["todos:read", "todos:write", "comments:write"]
+          : scope === "all"
+            ? [
+                "reports:read",
+                "reports:write",
+                "todos:read",
+                "todos:write",
+                "comments:write",
+              ]
+            : scope === "todo-read"
+              ? ["todos:read"]
+              : scope === "read"
+                ? ["reports:read"]
+                : scope === "comment"
+                  ? ["reports:read", "reports:write", "comments:write"]
+                  : ["reports:read", "reports:write"];
       const v = await request<{
         credential: string;
       }>("/tokens", {
@@ -93,6 +107,9 @@ export function TokenManager() {
       });
       if (!mounted.current) return;
       setCredential(v.credential);
+      setIssuedTaskAccess(
+        scope === "todo" || scope === "todo-read" || scope === "all",
+      );
       setIssued(v.credential);
       await load();
     } catch (e) {
@@ -133,6 +150,11 @@ export function TokenManager() {
         throw new Error("凭证必须属于当前账号和当前团队");
       if (!mounted.current) return;
       setCredential(raw);
+      setIssuedTaskAccess(
+        tokens.some(
+          (t) => raw.startsWith(t.prefix) && t.scopes.includes("todos:read"),
+        ),
+      );
       setIssued(raw);
       setExisting("");
       await load();
@@ -163,6 +185,9 @@ export function TokenManager() {
             onChange={(e) => setScope(e.target.value)}
             disabled={busy}
           >
+            <option value="todo">{tr("读取与管理任务")}</option>
+            <option value="todo-read">{tr("只读任务")}</option>
+            <option value="all">{tr("上报、任务与评论")}</option>
             <option value="report">{tr("读取与上报")}</option>
             <option value="comment">{tr("读取、上报与评论")}</option>
             <option value="read">{tr("只读")}</option>
@@ -214,7 +239,12 @@ export function TokenManager() {
             spellCheck={false}
             onFocus={(e) => e.currentTarget.select()}
           />
-          <p className="credential-next-command">{tr("安装后，对 Agent 说：")}<code>{tr("上报 CoFlow")}</code></p>
+          <p className="credential-next-command">
+            {tr("安装后，对 Agent 说：")}
+            <code>
+              {tr(issuedTaskAccess ? "管理 CoFlow 任务" : "上报 CoFlow")}
+            </code>
+          </p>
           <div className="credential-dialog-actions">
             <Button
               size="sm"
@@ -267,11 +297,18 @@ export function TokenManager() {
                     <code>{t.prefix}…</code>
                   </div>
                   <div className="credential-permissions">
-                    {t.scopes.includes("comments:write")
-                      ? tr("读取、上报与评论")
-                      : t.scopes.includes("reports:write")
-                        ? tr("读取与上报")
-                        : tr("只读")}
+                    {t.scopes.includes("todos:write") &&
+                    t.scopes.includes("reports:write")
+                      ? tr("上报、任务与评论")
+                      : t.scopes.includes("todos:write")
+                        ? tr("读取与管理任务")
+                        : t.scopes.includes("todos:read")
+                          ? tr("只读任务")
+                          : t.scopes.includes("comments:write")
+                            ? tr("读取、上报与评论")
+                            : t.scopes.includes("reports:write")
+                              ? tr("读取与上报")
+                              : tr("只读")}
                     <small>
                       {t.last_used_at
                         ? tr("最近使用 {0}", {

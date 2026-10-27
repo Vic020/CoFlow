@@ -12,7 +12,9 @@
 | Projects | 事项、目标版本、进度及 Issue／PR 链接 | 计划确认、实施进度或验收结果变化 |
 | Release | `docs/releases/vX.Y.Z.md` 的公开发布说明 | 明确要求发布且目标提交通过验证 |
 
-功能事实以源码与实际验收为准；接口以 `docs/openapi.yaml`、Agent 行为以 `skills/coflow-report/SKILL.md` 为准；版本范围以 `docs/ROADMAP.md` 为准。Wiki 和 Projects 不独立制定功能、权限或版本承诺。发现不一致时先修正源文件，再同步摘要。
+功能事实以源码与实际验收为准；接口以 `docs/openapi.yaml`、Agent 行为以 `skills/coflow/SKILL.md` 为准；版本范围以 `docs/ROADMAP.md` 为准。Wiki 和 Projects 不独立制定功能、权限或版本承诺。发现不一致时先修正源文件，再同步摘要。
+
+统一 Skill 的 `metadata.version` 独立于应用 `VERSION`，覆盖入口和全部参考文件，从 1.0.0 开始，不使用 dev 后缀。明确更新版本时，修正递增补丁号、兼容能力递增次版本号、不兼容流程或配置递增主版本号；普通 UI 变化或应用发布不自动改变 Skill 版本。运行 `node scripts/sync-agent-assets.mjs` 生成下载副本和界面版本；`npm run version:check` 只读校验两套版本各自的一致性。更新安装须整套替换并保留凭证与项目关联。
 
 README 默认英文，同时提供中文翻译；Wiki 以英文页面为默认入口，提供 `-zh-CN` 对应页面。正文可按受众精简，但操作步骤、限制和功能状态保持一致，语言切换链接可用。其他详细文档当前以中文维护，通过文档索引提供入口。
 

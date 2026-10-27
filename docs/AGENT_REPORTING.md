@@ -1,6 +1,6 @@
 # Agent 接入
 
-适用版本：0.1.4。支持 Skill 与 HTTP API；CLI、MCP 尚未正式提供。
+记录版本：0.2.0；统一 CoFlow Skill 版本 1.0.0。支持 Skill 与 HTTP API；CLI、MCP 尚未正式提供。
 
 ## 安装一次，持续复用
 
@@ -21,7 +21,7 @@
 
 `project-key` 是项目规范绝对路径的 SHA-256。凭证路径各部分采用 Skill 规定的编码规则，不能直接拼接任意输入。POSIX 目录 `0700`、文件 `0600`；不跟随符号链接，不覆盖不同凭证而不确认。项目关联不存密钥、简报正文或聊天记录，不写入项目或 Git。
 
-读取顺序为 `COFLOW_TOKEN`，否则读取明确指定的凭证文件。环境变量已设置但失效或身份不匹配时停止，不静默换用另一身份，也不扫描目录或旧聊天寻找密钥。完整路径、保存和项目迁移规则以[规范 Skill](../skills/coflow-report/SKILL.md) 为准。
+读取顺序为 `COFLOW_TOKEN`，否则读取明确指定的凭证文件。环境变量已设置但失效或身份不匹配时停止，不静默换用另一身份，也不扫描目录或旧聊天寻找密钥。完整路径、保存和项目迁移规则以[规范 Skill](../skills/coflow/SKILL.md) 为准。
 
 ## 上报内容与持续更新
 
@@ -58,3 +58,19 @@
 先保留工作内容，再按 Skill 的失败表处理，向用户说明一个明确的下一步。凭证缺失／失效需重新安装；身份不一致立即停止；网络超时先核实服务与原简报；成功写入但本机检查点失败不能再次新建简报。
 
 详细排障见[排障指南](TROUBLESHOOTING.md)。服务返回成功后才能报告上报完成，不能把本机保存、安装成功或 HTTP 200 的 HTML 页面当作上报成功。
+
+## Todo 接入（0.2）
+
+统一 [CoFlow Skill](../skills/coflow/SKILL.md) 按需读取 [Todo 操作说明](../skills/coflow/references/todos.md)，复用上报的私有凭证和项目关联，下载路径为 `/agent/coflow/SKILL.md`。先校验团队／成员，再读取 `/todo-board` 和 `/todos`，使用稳定 ID 操作；编辑提供 expected_revision，移动另提供 board_revision，每次写入提供 operation_id。
+
+`todos:read` 可读取必要元数据且不附赠简报权限；`todos:write` 需搭配 todos:read，按创建人／负责人规则维护。评论另需 comments:write，共享列仅网页管理员可管理。旧凭证不自动扩权。
+
+上报可带 todo_ids；联合移动再带 todo_moves 和 operation_id，并具备 reports:write、todos:read/write 和对象权限。整个事务成功才宣称上报及移动成功，重试使用完全相同的载荷与操作标识；修订冲突重新读取和处理。每次独立进展用新简报 source_id，任务与简报标识独立。
+
+## 统一 Skill 入口
+
+全 CoFlow 只安装一个 coflow Skill，规范入口为 skills/coflow/SKILL.md，通过 references/installation.md、reporting.md 和 todos.md 按需加载安装、Timeline 与 Todo 规则。安装时保留目录结构和参考文件；日常上报和管理任务复用同一份私有凭证与项目关联，权限仍按模块分别授予。
+
+旧 /agent/coflow-report/SKILL.md 和 /agent/coflow-todo/SKILL.md 是指向统一入口的兼容说明，不再作为独立 Skill 安装。更新已有安装时保留工作映射、凭证及自定义内容，不因改名重复创建凭证。
+
+Todo 可让 Agent 在授权内创建、分配给团队成员、读取、评论和更新任务进度，关联简报及交付；任务仍归属于成员，Agent 是操作来源。CoFlow 不自动启动或调度其他 Agent，任务分配、评论或移动不等于执行实际工作的授权。

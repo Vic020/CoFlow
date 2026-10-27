@@ -18,6 +18,7 @@ func (s *Service) EditReport(ctx context.Context, p identity.Principal, id strin
 		return out, identity.Denied("编辑简报需要网页登录")
 	}
 	err := s.transaction(ctx, p, func(tx pgx.Tx) error {
+
 		var locked string
 		if err := tx.QueryRow(ctx, `SELECT id FROM reports WHERE team_id=$1 AND id=$2 FOR UPDATE`, p.TeamID, id).Scan(&locked); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -32,6 +33,10 @@ func (s *Service) EditReport(ctx context.Context, p identity.Principal, id strin
 		before := store.FromDB(row)
 		if before.AuthorID != p.UserID && p.Role != "admin" {
 			return store.ErrForbidden
+		}
+		input.SourceID = "edit:" + id
+		if replay, e := beginReportOperation(ctx, tx, p, input, &out); e != nil || replay {
+			return e
 		}
 		if expected.IsZero() || !before.UpdatedAt.Equal(expected) {
 			return &identity.Error{Status: 409, Message: "简报已有新进展，请重新打开后编辑"}
@@ -53,15 +58,27 @@ func (s *Service) EditReport(ctx context.Context, p identity.Principal, id strin
 			}
 			out.ClassificationLocked = true
 		}
+		out.TodoIDs = input.TodoIDs
+		out.TodoMoves = input.TodoMoves
+		out.OperationID = input.OperationID
 		out.UpdatedAt = time.Now().UTC()
 		out, err = store.SaveWith(ctx, db.New(tx), out)
 		if err != nil {
 			return err
 		}
+		out.TodoIDs = input.TodoIDs
+		out.TodoMoves = input.TodoMoves
+		out.OperationID = input.OperationID
+		if err = reportTodos(ctx, tx, p, out); err != nil {
+			return err
+		}
 		if err = audit(ctx, tx, p, before, out, "编辑简报"); err != nil {
 			return err
 		}
-		return notify(ctx, tx, p, append(append([]string{}, out.Mentions...), out.AuthorID), out.ID, "", "report", "简报已更新："+out.Title)
+		if err = notify(ctx, tx, p, append(append([]string{}, out.Mentions...), out.AuthorID), out.ID, "", "report", "简报已更新："+out.Title); err != nil {
+			return err
+		}
+		return finishReportOperation(ctx, tx, p, input, out)
 	})
 	return out, err
 }

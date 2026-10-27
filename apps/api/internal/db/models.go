@@ -47,6 +47,7 @@ type CollaborationRequest struct {
 	Status     string             `json:"status"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	TodoID     string             `json:"todo_id"`
 }
 
 type CollaborationUpdate struct {
@@ -97,13 +98,14 @@ type Notification struct {
 	ID        string             `json:"id"`
 	TeamID    string             `json:"team_id"`
 	UserID    string             `json:"user_id"`
-	ReportID  string             `json:"report_id"`
+	ReportID  pgtype.Text        `json:"report_id"`
 	RequestID string             `json:"request_id"`
 	Kind      string             `json:"kind"`
 	Title     string             `json:"title"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	ReadAt    pgtype.Timestamptz `json:"read_at"`
 	CommentID string             `json:"comment_id"`
+	TodoID    string             `json:"todo_id"`
 }
 
 type Project struct {
@@ -167,6 +169,12 @@ type Team struct {
 	Name      string             `json:"name"`
 	Timezone  string             `json:"timezone"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type TodoBoard struct {
+	TeamID    string             `json:"team_id"`
+	Document  []byte             `json:"document"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {

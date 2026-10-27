@@ -18,6 +18,7 @@ type Update struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 type Collaboration struct {
+	TodoID     string    `json:"todo_id"`
 	ID         string    `json:"id"`
 	ReportID   string    `json:"report_id"`
 	AuthorID   string    `json:"author_id"`
@@ -30,6 +31,7 @@ type Collaboration struct {
 	Updates    []Update  `json:"updates"`
 }
 type Notification struct {
+	TodoID    string     `json:"todo_id"`
 	ID        string     `json:"id"`
 	ReportID  string     `json:"report_id"`
 	RequestID string     `json:"request_id"`
@@ -63,7 +65,7 @@ func notify(ctx context.Context, tx pgx.Tx, p identity.Principal, ids []string, 
 	return nil
 }
 func (s *Service) Collaborations(ctx context.Context, p identity.Principal) ([]Collaboration, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,author_id,assignee_id,title,body,status,created_at,updated_at FROM collaboration_requests WHERE team_id=$1 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) ORDER BY updated_at DESC`, p.TeamID)
+	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,author_id,assignee_id,title,body,status,created_at,updated_at,todo_id FROM collaboration_requests WHERE team_id=$1 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) ORDER BY updated_at DESC`, p.TeamID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func (s *Service) Collaborations(ctx context.Context, p identity.Principal) ([]C
 	for rows.Next() {
 		var v Collaboration
 		v.Updates = []Update{}
-		if err = rows.Scan(&v.ID, &v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Body, &v.Status, &v.CreatedAt, &v.UpdatedAt); err != nil {
+		if err = rows.Scan(&v.ID, &v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Body, &v.Status, &v.CreatedAt, &v.UpdatedAt, &v.TodoID); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -154,7 +156,7 @@ func (s *Service) UpdateCollaboration(ctx context.Context, p identity.Principal,
 	}
 	return s.transaction(ctx, p, func(tx pgx.Tx) error {
 		var v Collaboration
-		err := tx.QueryRow(ctx, `SELECT report_id,author_id,assignee_id,title,status FROM collaboration_requests WHERE team_id=$1 AND id=$2 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) FOR UPDATE`, p.TeamID, id).Scan(&v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Status)
+		err := tx.QueryRow(ctx, `SELECT report_id,author_id,assignee_id,title,status FROM collaboration_requests WHERE team_id=$1 AND id=$2 AND todo_id='' AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) FOR UPDATE`, p.TeamID, id).Scan(&v.ReportID, &v.AuthorID, &v.AssigneeID, &v.Title, &v.Status)
 		if err == pgx.ErrNoRows {
 			return store.ErrNotFound
 		}
@@ -231,7 +233,7 @@ func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Com
 	return c, err
 }
 func (s *Service) Inbox(ctx context.Context, p identity.Principal) ([]Notification, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id,report_id,request_id,kind,title,created_at,read_at FROM notifications WHERE team_id=$1 AND user_id=$2 AND report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL) AND (comment_id='' OR EXISTS(SELECT 1 FROM comments WHERE id=notifications.comment_id AND deleted_at IS NULL)) ORDER BY created_at DESC LIMIT 200`, p.TeamID, p.UserID)
+	rows, err := s.Pool.Query(ctx, `SELECT id,COALESCE(report_id,''),request_id,kind,title,created_at,read_at,todo_id FROM notifications WHERE team_id=$1 AND user_id=$2 AND (todo_id<>'' OR report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL)) AND (comment_id='' OR EXISTS(SELECT 1 FROM comments WHERE id=notifications.comment_id AND deleted_at IS NULL)) ORDER BY created_at DESC LIMIT 200`, p.TeamID, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +241,7 @@ func (s *Service) Inbox(ctx context.Context, p identity.Principal) ([]Notificati
 	out := []Notification{}
 	for rows.Next() {
 		var v Notification
-		if err = rows.Scan(&v.ID, &v.ReportID, &v.RequestID, &v.Kind, &v.Title, &v.CreatedAt, &v.ReadAt); err != nil {
+		if err = rows.Scan(&v.ID, &v.ReportID, &v.RequestID, &v.Kind, &v.Title, &v.CreatedAt, &v.ReadAt, &v.TodoID); err != nil {
 			return nil, err
 		}
 		out = append(out, v)

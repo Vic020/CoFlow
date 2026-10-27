@@ -22,6 +22,7 @@ export type Category = {
   merged_into: string;
 };
 export type Collaboration = {
+ todo_id?: string;
   id: string;
   report_id: string;
   author_id: string;
@@ -40,6 +41,7 @@ export type Collaboration = {
   }[];
 };
 export type Notification = {
+ todo_id?: string;
   id: string;
   report_id: string;
   request_id: string;
@@ -58,6 +60,7 @@ export type Comment = {
   created_at: string;
 };
 export type Report = {
+ todo_ids?: string[];
   deleted_at?: string;
   id: string;
   team_id: string;

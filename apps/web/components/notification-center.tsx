@@ -9,38 +9,46 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Bell } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { publicBasePath } from "@/lib/runtime";
 import { Notification, request } from "@/lib/types";
 export function NotificationCenter({
   team,
   onSelect,
+  onTodo,
 }: {
   team: string;
   onSelect: (id: string) => void;
+  onTodo?: (id: string) => void;
 }) {
   const { t: tr, date: formatDate } = useI18n();
   const [items, setItems] = useState<Notification[]>([]),
     [open, setOpen] = useState(false),
     [error, setError] = useState("");
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     try {
-      setItems(
-        (
-          await request<{
-            items: Notification[];
-          }>("/notifications")
-        ).items,
-      );
+      const result = (
+        await request<{
+          items: Notification[];
+        }>("/notifications")
+      ).items;
+      if (version !== loadVersion.current) return;
+      setItems(result);
       setError("");
     } catch (e) {
-      setError((e as Error).message);
+      if (version === loadVersion.current) setError((e as Error).message);
     }
-  }, []);
+  }, [team]);
   useEffect(() => {
     setItems([]);
     void load();
     const timer = setInterval(() => void load(), 30000);
-    return () => clearInterval(timer);
+    return () => {
+      loadVersion.current++;
+      clearInterval(timer);
+    };
   }, [load, team]);
   async function read(id: string) {
     try {
@@ -87,10 +95,18 @@ export function NotificationCenter({
                 onClick={() => {
                   void read(v.id);
                   setOpen(false);
-                  onSelect(v.report_id);
+                  if (v.todo_id) {
+                    if (onTodo) onTodo(v.todo_id);
+                    else
+                      window.location.assign(
+                        `${publicBasePath}/todo?todo=${encodeURIComponent(v.todo_id)}`,
+                      );
+                  } else onSelect(v.report_id);
                 }}
               >
-                <strong>{tr(v.title)}</strong>
+                <strong>
+                  {v.kind.startsWith("todo-") ? v.title : tr(v.title)}
+                </strong>
                 <small>
                   {formatDate(v.created_at, {
                     dateStyle: "medium",

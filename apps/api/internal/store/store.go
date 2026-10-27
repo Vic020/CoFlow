@@ -28,7 +28,15 @@ type Comment struct {
 	Body      string     `json:"body"`
 	CreatedAt time.Time  `json:"created_at"`
 }
+type TodoMove struct {
+	ID               string `json:"id"`
+	ColumnID         string `json:"column_id"`
+	ExpectedRevision int    `json:"expected_revision"`
+}
 type Report struct {
+	TodoIDs              []string        `json:"todo_ids,omitempty"`
+	TodoMoves            []TodoMove      `json:"todo_moves,omitempty"`
+	OperationID          string          `json:"operation_id,omitempty"`
 	DeletedAt            *time.Time      `json:"deleted_at,omitempty"`
 	ID                   string          `json:"id"`
 	TeamID               string          `json:"team_id"`

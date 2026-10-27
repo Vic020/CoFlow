@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  defaultColumnName,
+  type Todo,
+  type TodoColumn,
+  type TodoBoardData,
+} from "@/lib/todo";
 import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -137,6 +143,32 @@ function RequestCard({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   useEffect(() => setStatus(v.status), [v.status]);
+  const [takeover, setTakeover] = useState<{
+    task: Todo;
+    column?: TodoColumn;
+  } | null>(null);
+  useEffect(() => {
+    setTakeover(null);
+    if (!v.todo_id) return;
+    let active = true;
+    Promise.all([
+      request<Todo>(`/todos/${v.todo_id}`),
+      request<TodoBoardData>("/todo-board"),
+    ])
+      .then(([task, board]) => {
+        if (active)
+          setTakeover({
+            task,
+            column: board.columns.find((c) => c.id === task.column_id),
+          });
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [v, meta.team.id]);
   const name = (id: string) =>
     meta.members.find((m) => m.id === id)?.name || tr("已离开成员");
   const canUpdate =
@@ -148,7 +180,15 @@ function RequestCard({
       <div className="section-heading">
         <strong>{v.title}</strong>
         <span className={`request-status ${v.status}`}>
-          {tr(collaborationStatuses[v.status])}
+          {v.todo_id
+            ? takeover?.task.archived
+              ? tr("已归档")
+              : takeover?.column
+                ? defaultColumnName(takeover.column)
+                  ? tr(takeover.column.name)
+                  : takeover.column.name
+                : tr("由 Todo 跟进")
+            : tr(collaborationStatuses[v.status])}
         </span>
       </div>
       <p className="muted">
@@ -157,6 +197,35 @@ function RequestCard({
         {name(v.assignee_id)}
         {tr("负责")}
       </p>
+      {!v.todo_id && canUpdate && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const board = await request<{
+                columns: { id: string; done: boolean; archived: boolean }[];
+              }>("/todo-board");
+              await request(`/collaborations/${v.id}/todo`, {
+                method: "POST",
+                body: JSON.stringify({
+                  column_id: board.columns.find((c) => !c.done && !c.archived)
+                    ?.id,
+                }),
+              });
+              onChange();
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {tr("转为任务")}
+        </Button>
+      )}
       {v.body && <p className="request-body">{v.body}</p>}
       <div className="request-updates">
         {v.updates.map((u) => (
@@ -169,68 +238,72 @@ function RequestCard({
           </div>
         ))}
       </div>
-      {canUpdate && (
-        <details>
-          <summary>{tr("更新进展")}</summary>
-          <form
-            className="workspace-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError("");
-              try {
-                await request(`/collaborations/${v.id}`, {
-                  method: "PATCH",
-                  body: JSON.stringify({
-                    status,
-                    body,
-                  }),
-                });
-                setBody("");
-                onChange();
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              {tr("处理状态")}
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                {Object.entries(collaborationStatuses).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {tr(label)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {tr("后续进展")}
-              <textarea
-                rows={2}
-                maxLength={3000}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={tr("处理结果、阻塞原因或下一步…")}
-              />
-            </label>
-            <Button
-              size="sm"
-              disabled={busy || (status === v.status && !body.trim())}
+      {v.todo_id ? (
+        <a href={`/todo?todo=${v.todo_id}`}>{tr("由 Todo 跟进")}</a>
+      ) : (
+        canUpdate && (
+          <details>
+            <summary>{tr("更新进展")}</summary>
+            <form
+              className="workspace-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setBusy(true);
+                setError("");
+                try {
+                  await request(`/collaborations/${v.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                      status,
+                      body,
+                    }),
+                  });
+                  setBody("");
+                  onChange();
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
             >
-              {tr("更新协作")}
-            </Button>
-            {error && (
-              <p className="error-text" role="alert">
-                {tr(error)}
-              </p>
-            )}
-          </form>
-        </details>
+              <label>
+                {tr("处理状态")}
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  {Object.entries(collaborationStatuses).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {tr(label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {tr("后续进展")}
+                <textarea
+                  rows={2}
+                  maxLength={3000}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder={tr("处理结果、阻塞原因或下一步…")}
+                />
+              </label>
+              <Button
+                size="sm"
+                disabled={busy || (status === v.status && !body.trim())}
+              >
+                {tr("更新协作")}
+              </Button>
+              {error && (
+                <p className="error-text" role="alert">
+                  {tr(error)}
+                </p>
+              )}
+            </form>
+          </details>
+        )
       )}
     </article>
   );

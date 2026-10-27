@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/i18n-provider";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { publicDemo } from "@/lib/runtime";
 import { Button } from "@/components/ui/button";
@@ -13,18 +13,21 @@ import {
   request,
   statuses,
 } from "@/lib/types";
+import type { Todo, TodoBoardData } from "@/lib/todo";
 export function ReportCompose({
   meta,
   onDone,
   report,
   onCancel,
   onStale,
+  initialTodo,
 }: {
   meta: Meta;
   onDone: () => void;
   report?: Report;
   onCancel?: () => void;
   onStale?: () => void;
+  initialTodo?: Todo;
 }) {
   const { t: tr } = useI18n();
   const [title, setTitle] = useState(report?.title || ""),
@@ -35,10 +38,12 @@ export function ReportCompose({
           ? report.project_id
           : meta.projects.find((p) => p.id === report.project_id)?.name ||
             report.project_id
-        : "",
+        : initialTodo?.project_id || "",
     ),
     [domain, setDomain] = useState(
-      report ? reportDomains(report).join("，") : "",
+      report
+        ? reportDomains(report).join("，")
+        : initialTodo?.domains.join("，") || "",
     ),
     [agent, setAgent] = useState(report?.agent || "手动上报"),
     [status, setStatus] = useState(report?.status || "progress"),
@@ -60,6 +65,45 @@ export function ReportCompose({
       key: crypto.randomUUID(),
     })),
   );
+  const [todoIds, setTodoIds] = useState<string[]>(
+    report?.todo_ids || (initialTodo ? [initialTodo.id] : []),
+  );
+  const [todos, setTodos] = useState<Todo[]>(initialTodo ? [initialTodo] : []),
+    [todoBoard, setTodoBoard] = useState<TodoBoardData | null>(null),
+    [moves, setMoves] = useState<Record<string, string>>({}),
+    [todoQuery, setTodoQuery] = useState("");
+  const [operationId, setOperationId] = useState(() => crypto.randomUUID());
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const b = await request<TodoBoardData>("/todo-board");
+        let all: Todo[] = [];
+        let cursor = "";
+        do {
+          const page = await request<{
+            items: Todo[];
+            next_cursor: string;
+          }>(`/todos?limit=200&cursor=${cursor}`);
+          all = all.concat(page.items);
+          cursor = page.next_cursor;
+        } while (cursor);
+        for (const id of todoIds) {
+          if (!all.some((t) => t.id === id))
+            all.push(await request<Todo>(`/todos/${id}`));
+        }
+        if (active) {
+          setTodoBoard(b);
+          setTodos(all);
+        }
+      } catch (e) {
+        if (active) setError((e as Error).message);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
   const [sourceId] = useState(() => crypto.randomUUID());
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +115,15 @@ export function ReportCompose({
         method: report ? "PUT" : "POST",
         body: JSON.stringify({
           source_id: report?.source_id || sourceId,
+          todo_ids: todoIds,
+          operation_id: operationId,
+          todo_moves: todoIds
+            .filter((id) => moves[id])
+            .map((id) => ({
+              id,
+              column_id: moves[id],
+              expected_revision: todos.find((t) => t.id === id)?.revision,
+            })),
           expected_updated_at: expectedUpdatedAt,
           title,
           body,
@@ -107,7 +160,16 @@ export function ReportCompose({
       onDone();
     } catch (e) {
       setError((e as Error).message);
-      if (e instanceof ApiError && e.status === 409) onStale?.();
+      if (e instanceof ApiError && e.status === 409) {
+        onStale?.();
+        try {
+          const fresh = await Promise.all(
+            todos.map((t) => request<Todo>(`/todos/${t.id}`)),
+          );
+          setTodos(fresh);
+          setOperationId(crypto.randomUUID());
+        } catch {}
+      }
     } finally {
       setBusy(false);
     }
@@ -115,9 +177,75 @@ export function ReportCompose({
   return (
     <form onSubmit={submit}>
       <div className="compose-fields">
+        <fieldset className="todo-report-picker">
+          <legend>{tr("关联任务")}</legend>
+          <input
+            aria-label={tr("搜索任务")}
+            placeholder={tr("搜索任务")}
+            value={todoQuery}
+            onChange={(e) => setTodoQuery(e.target.value)}
+          />
+          {[...todos]
+            .sort(
+              (a, b) =>
+                Number(b.project_id === project) -
+                Number(a.project_id === project),
+            )
+            .filter(
+              (t) =>
+                todoIds.includes(t.id) ||
+                !todoQuery ||
+                t.title.toLowerCase().includes(todoQuery.toLowerCase()),
+            )
+            .map((t) => (
+              <div key={t.id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={todoIds.includes(t.id)}
+                    onChange={(e) => {
+                      setTodoIds(
+                        e.target.checked
+                          ? [...todoIds, t.id]
+                          : todoIds.filter((id) => id !== t.id),
+                      );
+                      setOperationId(crypto.randomUUID());
+                    }}
+                  />
+                  {t.title}
+                </label>
+                {todoIds.includes(t.id) && (
+                  <select
+                    aria-label={tr("上报后移动到")}
+                    value={moves[t.id] || ""}
+                    onChange={(e) => {
+                      setMoves({
+                        ...moves,
+                        [t.id]: e.target.value,
+                      });
+                      setOperationId(crypto.randomUUID());
+                    }}
+                  >
+                    <option value="">{tr("保持任务状态")}</option>
+                    {todoBoard?.columns
+                      .filter((c) => !c.archived)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.revision === 1 &&
+                          ["backlog", "doing", "review", "done"].includes(c.id)
+                            ? tr(c.name)
+                            : c.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+            ))}
+        </fieldset>
         <label>
           <span className="compose-field-title">
-            {tr("简报标题")}<span aria-hidden="true">*</span>
+            {tr("简报标题")}
+            <span aria-hidden="true">*</span>
           </span>
           <input
             autoFocus

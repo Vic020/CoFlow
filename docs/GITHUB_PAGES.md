@@ -4,7 +4,7 @@
 
 2026-10-24：Pages [构建与部署已通过](https://github.com/Vic020/CoFlow/actions/runs/40090413102)。经维护者明确授权，已解除个人主页的旧自定义域名绑定，恢复默认 github.io 地址；浏览器已验证 HTTPS 演示团队加载成功。若曾访问过旧跳转，浏览器可能缓存重定向，可清除缓存或使用无痕窗口。DNS 记录未改动。
 
-演示使用合成的 Flow Studio 团队、Alice／Bob／Carol／Dan、公开 Wiki 和仓库链接。展示 Timeline、筛选、日报、详情、手动上报与评论；修改仅在当前标签页内存中有效，刷新重置。不是多人共享的真实服务，不提供账号、邀请、凭证或 Agent 上报接口。浏览器不向后端上传内容，也不将试填内容保存到 localStorage。
+演示使用合成的 Flow Studio 团队、Alice／Bob／Carol／Dan、公开 Wiki 和仓库链接。0.2 源码展示 Timeline、筛选、日报、详情、手动上报与评论，以及六条覆盖四列的 Todo 联动示例；修改仅在当前标签页内存中有效，刷新重置。不是多人共享的真实服务，不提供账号、邀请、凭证或 Agent 上报接口。浏览器不向后端上传内容，也不将试填内容保存到 localStorage。
 
 购买的服务器用于维护者自用的真实团队，与 GitHub 公开演示分开。不得把真实 API 地址、数据库、Cookie、token、用户内容或私有交付链接注入 Pages 构建。普通自托管模式仍然使用 Next.js + Go + PostgreSQL，权限在 Go 中处理。
 

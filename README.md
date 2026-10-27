@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Explore the demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.5-087354" alt="Version 0.1.5" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-087354" alt="Version 0.2.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,7 +28,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.1.5.**
+> **Current version: 0.2.0.**
 
 ## Features
 
@@ -47,6 +47,8 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 - **Personal profile**: avatars, team-specific nicknames, password changes, and a searchable display time zone.
 - **Responsive layout**: desktop and mobile views.
 
+**Todo workspace (0.2):** Todo boards with custom columns, owners, priorities, due dates, comments and history. Link tasks and Timeline reports in both directions, and explicitly move tasks when reporting progress. “New task” groups Manual, Agent, Skill and API methods; “Manage with Agent” copies instructions for the installed CoFlow Skill. Task details open in a centered reading view; double-click a field or use its pencil to edit in place. Task assignment records responsibility; it does not automatically launch an Agent.
+
 ## Preview
 
 ![CoFlow Timeline with synthetic demo data](docs/design/public-preview.png)
@@ -55,19 +57,20 @@ The preview uses synthetic identities and example delivery links.
 
 ## Roadmap
 
-**Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge.**
+**Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-Version **0.1.5** is available in source. Versions 0.2–0.5 are planned, with no fixed release dates.
+The current version is **0.2.0**, including Todo and Timeline integration. Versions 0.3–0.6 are planned, with no fixed release dates.
 
 | Version | Status | Focus |
 | --- | --- | --- |
-| **0.1 · Timeline** | Available (0.1.5) | Team reports, delivery links, and collaboration |
-| **0.2 · Todo** | Planned | Customizable boards, with tasks managed by people and Agents |
+| **0.1 · Timeline** | Available (0.2.0) | Team reports, delivery links, and collaboration |
+| **0.2 · Todo** | Available (0.2.0) | Customizable boards, scoped Agent access, and atomic Timeline integration |
 | **0.3 · Calendar** | Planned | Calendar and Gantt scheduling, Big Days, and version milestones |
 | **0.4 · AI Assistant** | Planned | Manage modules through conversation; custom APIs, with DeepSeek first |
 | **0.5 · Context** | Planned | Capture important cross-module knowledge for teams and AI |
+| **0.6 · Analytics** | Planned | Progress, task flow, and delivery trends with filters and source drill-down |
 
-See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria.
+See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria, and the [0.2 Todo implementation plan](docs/TODO_V0.2.md) for execution details.
 
 <a id="快速开始"></a>
 
@@ -90,13 +93,17 @@ Open [127.0.0.1:3000](http://127.0.0.1:3000). For real teams, see the [developme
 
 ## Agent integration
 
-Skill and HTTP API reporting use personal credentials tied to a member and team. Reuse a `source_id` to keep updating the same report.
+Install one CoFlow Skill for reporting and Todo; it reads linked instructions as needed. Skill and HTTP API operations use personal credentials tied to a member and team, with separate module permissions. Reuse a `source_id` to keep updating the same report.
 
-[Agent Skill](skills/coflow-report/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
+The unified Skill starts at **v1.0.0**, without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
+
+[Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
 
 ## Self-hosting and the public demo
 
 CoFlow provides source code, self-hosting configuration, and a separate [GitHub Pages demo](https://vic020.github.io/CoFlow/). The demo uses synthetic data; edits stay in the current tab’s memory and reset on refresh. It has no real accounts, credentials, or backend connection.
+
+The 0.2 offline demo includes six Todo examples across Backlog, In progress, Review and Done, linked to six Timeline reports. Explore owners, comments, delivery links and completion history; follow the links in either direction. Source releases and deployments are verified separately.
 
 Private servers for real teams are independent of the public demo. Pages must never connect to their APIs, databases, or credentials.
 

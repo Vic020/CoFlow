@@ -31,6 +31,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { DeleteAction, TrashList } from "@/components/content-actions";
+import { defaultColumnName, type Todo, type TodoBoardData } from "@/lib/todo";
+import { TodoBoard } from "@/components/todo-board";
+import { ReportTodos } from "@/components/report-todos";
 import { ReportCompose } from "@/components/report-compose";
 import { ReportHub, type ReportTab } from "@/components/report-hub";
 import Link from "next/link";
@@ -94,7 +97,11 @@ function Avatar({
       className={`avatar ${member?.color || "mint"} ${small ? "small" : ""}`}
       aria-hidden="true"
     >
-      {member?.avatar_data ? <img src={member.avatar_data} alt="" /> : member?.name.slice(0, 1) || "?"}
+      {member?.avatar_data ? (
+        <img src={member.avatar_data} alt="" />
+      ) : (
+        member?.name.slice(0, 1) || "?"
+      )}
     </span>
   );
 }
@@ -105,7 +112,9 @@ function Agent({ name }: { name: string }) {
       <span className={name.includes("Claude") ? "claude-mark" : "codex-mark"}>
         {name.includes("Claude") ? "✳" : "◉"}
       </span>
-      {["手动上报", "其他 Agent"].includes(name) ? tr(name) : name || tr("手动上报")}
+      {["手动上报", "其他 Agent"].includes(name)
+        ? tr(name)
+        : name || tr("手动上报")}
     </span>
   );
 }
@@ -174,7 +183,8 @@ function Markdown({ children }: { children: string }) {
 export function Workspace({ children }: { children: React.ReactNode }) {
   const { t: tr, locale, timeZone, date: formatDate } = useI18n();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname().replace(/\/$/, "") || "/";
+  const todoPage = pathname === "/todo";
   const credentialsPage = pathname === "/credentials";
   const settingsPage = pathname === "/settings";
   const newTeamPage = pathname === "/teams/new";
@@ -182,6 +192,19 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const activeTeam = useRef(auth.me?.current_team);
   activeTeam.current = auth.me?.current_team;
   const loadVersion = useRef(0);
+  const [todoColumns, setTodoColumns] = useState<TodoBoardData["columns"]>([]);
+  const [todoIndex, setTodoIndex] = useState<Todo[]>([]);
+  const [todoCompletions, setTodoCompletions] = useState<
+    {
+      todo_id: string;
+      completed_at: string;
+      assignee_id: string;
+      project_id: string;
+      domains: string[];
+      creator_id: string;
+      agent: string;
+    }[]
+  >([]);
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [scope, setScope] = useState<"all" | "related" | "todo">("all");
   const [meta, setMeta] = useState<Meta | null>(null),
@@ -208,10 +231,23 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     const user = auth.me?.user;
     if (!user) return;
     setMeta((previous) => {
-      if (!previous || previous.team.id !== auth.me?.current_team) return previous;
-      return { ...previous, members: previous.members.map((member) => member.id === user.id ? { ...member, name: user.name, avatar_data: user.avatar_data } : member) };
+      if (!previous || previous.team.id !== auth.me?.current_team)
+        return previous;
+      return {
+        ...previous,
+        members: previous.members.map((member) =>
+          member.id === user.id
+            ? { ...member, name: user.name, avatar_data: user.avatar_data }
+            : member,
+        ),
+      };
     });
-  }, [auth.me?.user.name, auth.me?.user.avatar_data, auth.me?.current_team, auth.me?.user.id]);
+  }, [
+    auth.me?.user.name,
+    auth.me?.user.avatar_data,
+    auth.me?.current_team,
+    auth.me?.user.id,
+  ]);
   function toggleSidebar() {
     setSidebarCollapsed((previous) => {
       const next = !previous;
@@ -229,11 +265,12 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         team === activeTeam.current && version === loadVersion.current;
       if (initial) setLoading(true);
       try {
-        const [m, r] = await Promise.all([
+        const [m, r, boardData] = await Promise.all([
           request<Meta>("/meta"),
           request<{
             items: Report[];
           }>("/reports"),
+          request<TodoBoardData>("/todo-board"),
         ]);
         if (m.mode !== "local-demo") {
           const [reads, cs] = await Promise.all([
@@ -251,6 +288,32 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           setCollaborations([]);
         }
         if (!current()) return;
+        const allTasks: Todo[] = [];
+        for (const archived of [false, true]) {
+          let cursor = "";
+          do {
+            const page = await request<{ items: Todo[]; next_cursor: string }>(
+              `/todos?limit=200&archived=${archived}&cursor=${cursor}`,
+            );
+            allTasks.push(...page.items);
+            cursor = page.next_cursor;
+          } while (cursor);
+        }
+        const completed = await request<{
+          items: {
+            todo_id: string;
+            completed_at: string;
+            assignee_id: string;
+            project_id: string;
+            domains: string[];
+            creator_id: string;
+            agent: string;
+          }[];
+        }>("/todo-completions");
+        if (!current()) return;
+        setTodoIndex(allTasks);
+        setTodoColumns(boardData.columns);
+        setTodoCompletions(completed.items);
         setMeta(m);
         setReports(r.items);
         setError("");
@@ -271,6 +334,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     setTrashOpen(false);
     setSeen({});
     setReports([]);
+    setTodoIndex([]);
+    setTodoCompletions([]);
     setMeta(null);
     void load(true);
     try {
@@ -283,20 +348,46 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     const timer = setInterval(() => void load(), 30000);
     return () => clearInterval(timer);
   }, [load]);
+  const previousPath = useRef(pathname);
+  useEffect(() => {
+    if (previousPath.current !== pathname) {
+      previousPath.current = pathname;
+      setDetail(null);
+      linkedTeam.current = null;
+      void load();
+    }
+  }, [pathname, load]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
   useEffect(() => {
-    if (loading || !meta || credentialsPage || settingsPage || newTeamPage || linkedTeam.current === meta.team.id) return;
-    linkedTeam.current = meta.team.id;
+    if (
+      loading ||
+      !meta ||
+      todoPage ||
+      credentialsPage ||
+      settingsPage ||
+      newTeamPage
+    )
+      return;
     const id = new URL(window.location.href).searchParams.get("report");
-    if (!id) return;
-    const found = reports.find(r => r.id === id);
+    const key = `${meta.team.id}:${id}`;
+    if (!id || linkedTeam.current === key) return;
+    linkedTeam.current = key;
+    const found = reports.find((r) => r.id === id);
     if (found) setDetail(id);
     else setNotice("简报不存在、已删除或不属于当前团队");
-  }, [loading, meta, reports, credentialsPage, settingsPage, newTeamPage]);
+  }, [
+    loading,
+    meta,
+    reports,
+    todoPage,
+    credentialsPage,
+    settingsPage,
+    newTeamPage,
+  ]);
   const member = (id: string) => meta?.members.find((m) => m.id === id);
   const project = (id: string) => meta?.projects.find((p) => p.id === id);
   const markRead = (r: Report) => {
@@ -362,6 +453,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           collaborations.some(
             (c) =>
               c.report_id === r.id &&
+              !c.todo_id &&
+              !c.todo_id &&
               !["done", "cancelled"].includes(c.status) &&
               c.assignee_id === meta?.current_user,
           )) &&
@@ -389,18 +482,49 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     onlyAttention,
     collaborations,
   ]);
+  const filteredCompletions = useMemo(
+    () =>
+      todoCompletions.filter(
+        (e) =>
+          (!filters.project || e.project_id === filters.project) &&
+          (!filters.domain || e.domains.includes(filters.domain)) &&
+          (!filters.member || e.assignee_id === filters.member) &&
+          (!filters.agent || e.agent === filters.agent) &&
+          (!filters.days ||
+            Date.parse(e.completed_at) >=
+              Date.now() - Number(filters.days) * 86400000) &&
+          (!query ||
+            todoIndex
+              .find((t) => t.id === e.todo_id)
+              ?.title.toLowerCase()
+              .includes(query.toLowerCase())) &&
+          (scope !== "todo" || e.assignee_id === meta?.current_user) &&
+          (scope !== "related" ||
+            e.creator_id === meta?.current_user ||
+            e.assignee_id === meta?.current_user),
+      ),
+    [todoCompletions, filters, query, todoIndex, scope, meta],
+  );
   const groups = useMemo(() => {
     const map = new Map<string, Report[]>();
     for (const r of filtered) {
       const key = dateKey(r.created_at, timeZone);
       map.set(key, [...(map.get(key) || []), r]);
     }
-    return [...map.entries()];
-  }, [filtered, timeZone]);
+    if (view === "daily" && !unread && !onlyAttention)
+      for (const e of filteredCompletions) {
+        const key = dateKey(e.completed_at, timeZone);
+        if (!map.has(key)) map.set(key, []);
+      }
+    return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
+  }, [filtered, timeZone, view, filteredCompletions, unread, onlyAttention]);
   const selected = reports.find((r) => r.id === detail);
   const today = dateKey(new Date().toISOString(), timeZone);
   const dayLabel = (key: string) => {
-    const yesterday = dateKey(new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString(), "UTC");
+    const yesterday = dateKey(
+      new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString(),
+      "UTC",
+    );
     const prefix =
       key === today ? tr("今天 · ") : key === yesterday ? tr("昨天 · ") : "";
     return (
@@ -421,6 +545,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const pendingCount = collaborations.filter(
     (c) =>
       c.assignee_id === meta?.current_user &&
+      !c.todo_id &&
+      !c.todo_id &&
       !["done", "cancelled"].includes(c.status),
   ).length;
   const domainFilter = (
@@ -562,14 +688,29 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       <nav>
         <Link
           href="/"
-          className={!credentialsPage && !settingsPage ? "nav-active" : ""}
-          aria-current={!credentialsPage && !settingsPage ? "page" : undefined}
+          className={
+            !todoPage && !credentialsPage && !settingsPage ? "nav-active" : ""
+          }
+          aria-current={
+            !todoPage && !credentialsPage && !settingsPage ? "page" : undefined
+          }
           aria-label="Timeline"
           title="Timeline"
           onClick={() => setNav(false)}
         >
           <Clock3 size={18} />
           <span className="nav-label">Timeline</span>
+        </Link>
+        <Link
+          href="/todo"
+          className={todoPage ? "nav-active" : ""}
+          aria-current={todoPage ? "page" : undefined}
+          title="Todo"
+          aria-label="Todo"
+          onClick={() => setNav(false)}
+        >
+          <Check size={18} />
+          <span className="nav-label">Todo</span>
         </Link>
       </nav>
       <div className="nav-bottom">
@@ -640,7 +781,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       {children}
       <aside className="sidebar">{navigation}</aside>
-      <main className="main-shell">
+      <main className={`main-shell${todoPage ? " todo-main" : ""}`}>
         {publicDemo && (
           <div className="public-demo-banner" role="note">
             <span>
@@ -668,23 +809,25 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               </Button>
               <div className="heading-copy">
                 <h1>
-                  {credentialsPage
-                    ? tr("Agent 凭证")
-                    : settingsPage
-                      ? tr("团队设置")
-                      : tr("团队动态")}
-                  {!credentialsPage && !settingsPage && (
+                  {todoPage
+                    ? "Todo"
+                    : credentialsPage
+                      ? tr("Agent 凭证")
+                      : settingsPage
+                        ? tr("团队设置")
+                        : tr("团队动态")}
+                  {!todoPage && !credentialsPage && !settingsPage && (
                     <span className="heading-dot" />
                   )}
                 </h1>
-                {!credentialsPage && !settingsPage && (
+                {!todoPage && !credentialsPage && !settingsPage && (
                   <span className="heading-caption">
                     {tr("每一次推进，都在这里汇合。")}
                   </span>
                 )}
               </div>
             </div>
-            {!credentialsPage && !settingsPage && (
+            {!todoPage && !credentialsPage && !settingsPage && (
               <div className="top-actions">
                 <label className="search">
                   <Search size={16} />
@@ -739,7 +882,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </header>
-          {settingsPage ? (
+          {todoPage ? (
+            meta ? (
+              <TodoBoard key={meta.team.id} meta={meta} />
+            ) : (
+              <Loader2 className="animate-spin" />
+            )
+          ) : settingsPage ? (
             <div className="team-settings-content">
               {meta ? (
                 <TeamSettings
@@ -783,7 +932,16 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                       {tr("日报汇总")}
                     </button>
                   </div>
-                  {auth.mode !== "local-demo" && <button type="button" className="trash-toggle" onClick={() => setTrashOpen(true)}><Trash2 size={14}/>{tr("回收站")}</button>}
+                  {auth.mode !== "local-demo" && (
+                    <button
+                      type="button"
+                      className="trash-toggle"
+                      onClick={() => setTrashOpen(true)}
+                    >
+                      <Trash2 size={14} />
+                      {tr("回收站")}
+                    </button>
+                  )}
                 </div>
                 <div className="desktop-filters">
                   {filtersContent}
@@ -1000,11 +1158,26 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               count: collaborations.filter(
                                 (c) =>
                                   rows.some((r) => r.id === c.report_id) &&
+                                  !c.todo_id &&
                                   !["done", "cancelled"].includes(c.status),
                               ).length,
                             })}
                           </span>
                         </div>
+                      )}
+                      {view === "daily" && (
+                        <p className="muted">
+                          {tr("{count} 项任务完成", {
+                            count: new Set(
+                              filteredCompletions
+                                .filter(
+                                  (e) =>
+                                    dateKey(e.completed_at, timeZone) === date,
+                                )
+                                .map((e) => e.todo_id),
+                            ).size,
+                          })}
+                        </p>
                       )}
                       {view === "daily" ? (
                         <div className="daily-list">
@@ -1088,7 +1261,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                             <div className="report-content">
                               <div className="report-meta">
                                 <Agent name={r.agent} />
-                                <time>{clock(r.created_at, locale, timeZone)}</time>
+                                <time>
+                                  {clock(r.created_at, locale, timeZone)}
+                                </time>
                                 {(!seen[r.id] ||
                                   Date.parse(seen[r.id]) <
                                     Date.parse(r.updated_at)) && (
@@ -1104,6 +1279,29 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               >
                                 {r.title}
                               </button>
+                              <div className="todo-report-badges">
+                                {(r.todo_ids || []).map((id) => {
+                                  const task = todoIndex.find(
+                                      (t) => t.id === id,
+                                    ),
+                                    column = todoColumns.find(
+                                      (c) => c.id === task?.column_id,
+                                    );
+                                  return (
+                                    <Link key={id} href={`/todo?todo=${id}`}>
+                                      {task?.title || tr("任务详情")} ·{" "}
+                                      {column
+                                        ? defaultColumnName(column)
+                                          ? tr(column.name)
+                                          : column.name
+                                        : tr("未完成")}
+                                      {task?.archived
+                                        ? ` · ${tr("已归档")}`
+                                        : ""}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
                               <p>{r.body.split("\n")[0]}</p>
                               <div className="report-links">
                                 {r.links.map((l, i) => (
@@ -1129,6 +1327,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                                 {collaborations.some(
                                   (c) =>
                                     c.report_id === r.id &&
+                                    !c.todo_id &&
                                     !["done", "cancelled"].includes(c.status),
                                 ) && <small>{tr("· 有待办协作")}</small>}
                               </button>
@@ -1317,8 +1516,18 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
         <DialogContent className="info-dialog trash-dialog">
           <DialogTitle className="modal-title">{tr("已删除简报")}</DialogTitle>
-          <DialogDescription className="sr-only">{tr("恢复自己或有权管理的简报")}</DialogDescription>
-          {trashOpen && <TrashList key={meta?.team.id} onRestored={() => { void load(); setNotice("简报已恢复"); }}/>}
+          <DialogDescription className="sr-only">
+            {tr("恢复自己或有权管理的简报")}
+          </DialogDescription>
+          {trashOpen && (
+            <TrashList
+              key={meta?.team.id}
+              onRestored={() => {
+                void load();
+                setNotice("简报已恢复");
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
       <Dialog
@@ -1338,7 +1547,11 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               meta={meta}
               onChange={() => void load()}
               onSaved={setNotice}
-              onDeleted={() => { setDetail(null); void load(); setNotice("简报已移至回收站"); }}
+              onDeleted={() => {
+                setDetail(null);
+                void load();
+                setNotice("简报已移至回收站");
+              }}
             />
           )}
         </DialogContent>
@@ -1487,13 +1700,47 @@ function Detail({
               {tr("编辑")}
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={async () => {
-            try { const url = new URL(window.location.href); url.search = ""; url.hash = ""; url.searchParams.set("report", r.id); await navigator.clipboard.writeText(url.toString()); onSaved("链接已复制"); } catch { setError("复制失败，请重试"); }
-          }}><Link2 size={14}/>{tr("复制链接")}</Button>
-          <Button variant="ghost" size="sm" onClick={async () => {
-            try { await navigator.clipboard.writeText(r.source_id); onSaved("source_id 已复制"); } catch { setError("复制失败，请重试"); }
-          }}><Copy size={14}/>{tr("复制 source_id")}</Button>
-          {meta.mode !== "local-demo" && canEdit && <DeleteAction path={`/reports/${r.id}`} updatedAt={r.updated_at} onDeleted={onDeleted}/>}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              try {
+                const url = new URL(window.location.href);
+                url.search = "";
+                url.hash = "";
+                url.searchParams.set("report", r.id);
+                await navigator.clipboard.writeText(url.toString());
+                onSaved("链接已复制");
+              } catch {
+                setError("复制失败，请重试");
+              }
+            }}
+          >
+            <Link2 size={14} />
+            {tr("复制链接")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(r.source_id);
+                onSaved("source_id 已复制");
+              } catch {
+                setError("复制失败，请重试");
+              }
+            }}
+          >
+            <Copy size={14} />
+            {tr("复制 source_id")}
+          </Button>
+          {meta.mode !== "local-demo" && canEdit && (
+            <DeleteAction
+              path={`/reports/${r.id}`}
+              updatedAt={r.updated_at}
+              onDeleted={onDeleted}
+            />
+          )}
           <Status value={r.status} />
           {(r.author_id === meta.current_user ||
             (meta.mode !== "local-demo" && meta.role === "admin")) &&
@@ -1536,6 +1783,9 @@ function Detail({
             {r.model}
           </p>
         )}
+        {(meta.mode !== "local-demo" || publicDemo) && (
+          <ReportTodos report={r} meta={meta} onChange={onChange} />
+        )}
         {meta.mode !== "local-demo" && (
           <>
             <CollaborationPanel
@@ -1561,7 +1811,17 @@ function Detail({
                   <div className="comment-source">
                     <strong>{m?.name}</strong>
                     <time>{clock(c.created_at, locale, timeZone)}</time>
-                    {meta.mode !== "local-demo" && (c.author_id === meta.current_user || meta.role === "admin") && <DeleteAction path={`/reports/${r.id}/comments/${c.id}`} onDeleted={() => { onChange(); onSaved("评论已移至回收站"); }}/>}
+                    {meta.mode !== "local-demo" &&
+                      (c.author_id === meta.current_user ||
+                        meta.role === "admin") && (
+                        <DeleteAction
+                          path={`/reports/${r.id}/comments/${c.id}`}
+                          onDeleted={() => {
+                            onChange();
+                            onSaved("评论已移至回收站");
+                          }}
+                        />
+                      )}
                   </div>
                   <Markdown>{c.body}</Markdown>
                 </div>
@@ -1574,7 +1834,19 @@ function Detail({
           </p>
         )}
       </div>
-      {meta.mode !== "local-demo" && <details className="deleted-comments"><summary>{tr("已删除评论")}</summary><TrashList key={r.updated_at} reportId={r.id} onRestored={() => { onChange(); onSaved("评论已恢复"); }}/></details>}
+      {meta.mode !== "local-demo" && (
+        <details className="deleted-comments">
+          <summary>{tr("已删除评论")}</summary>
+          <TrashList
+            key={r.updated_at}
+            reportId={r.id}
+            onRestored={() => {
+              onChange();
+              onSaved("评论已恢复");
+            }}
+          />
+        </details>
+      )}
       <form className="comment-form" onSubmit={comment}>
         <label htmlFor="comment-body">
           {tr("以")}

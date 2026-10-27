@@ -6,8 +6,9 @@ import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { skillPath, useAgentPrompt } from "@/lib/agent-prompt";
-import { publicDemo, repositoryURL } from "@/lib/runtime";
+import { publicDemo, repositoryURL, publicBasePath } from "@/lib/runtime";
 import { Meta } from "@/lib/types";
+import { coflowSkillVersion } from "@/lib/skill-version";
 import type { ReportTab } from "@/components/report-hub";
 function CopyBlock({
   value,
@@ -89,7 +90,7 @@ export function AgentAccess({
     checkingCredential,
   } = useAgentPrompt();
   const service = origin || tr("<服务地址>");
-  const skillURL = `${service}${skillPath}`;
+  const skillURL = `${service}${publicBasePath}${skillPath}`;
   const project = meta.projects.find((p) => p.status !== "archived")?.id || "";
   const domain = meta.domains.includes("研发") ? "研发" : meta.domains[0] || "";
   const sample = JSON.stringify(
@@ -113,7 +114,7 @@ export function AgentAccess({
     2,
   );
   const apiCommand = `export COFLOW_URL=${shellQuote(service)}\ncurl --fail-with-body "$COFLOW_URL/api/v1/reports" \\\n  -H 'Content-Type: application/json' \\\n${demo ? "" : '  -H "Authorization: Bearer $COFLOW_TOKEN" \\\n'}  --data-binary @report.json`;
-  if (publicDemo)
+  if (publicDemo && method !== "skill")
     return (
       <section className="report-method">
         <h3>
@@ -164,7 +165,9 @@ export function AgentAccess({
               ? tr("已复制，粘贴给 Agent 即可上报。")
               : demo
                 ? tr("演示模式无需凭证。")
-                : tr("先在 Agent 凭证中完成安装；已安装可直接说「上报 CoFlow」。"))}
+                : tr(
+                    "先在 Agent 凭证中完成安装；已安装可直接说「上报 CoFlow」。",
+                  ))}
         </p>
         {!demo && (
           <Link
@@ -181,20 +184,23 @@ export function AgentAccess({
   if (method === "skill")
     return (
       <section className="report-method">
-        <h3>{tr("CoFlow 上报 Skill")}</h3>
+        <h3>
+          {tr("CoFlow Skill")}{" "}
+          <span className="muted">v{coflowSkillVersion}</span>
+        </h3>
         <p className="report-method-note">
-          {tr("安装到 Agent 后可重复使用，无需每次读取链接。")}
+          {tr("一个入口管理任务与上报，按需读取具体说明。")}
         </p>
         <CopyBlock value={skillURL} label={tr("Skill 链接")} rows={2} />
         <div className="report-method-actions">
           <Button asChild size="sm" variant="outline">
-            <a href={skillPath} download="SKILL.md">
+            <a href={`${publicBasePath}${skillPath}`} download="SKILL.md">
               <Download />
               {tr("下载 SKILL.md")}
             </a>
           </Button>
           <a
-            href={skillPath}
+            href={`${publicBasePath}${skillPath}`}
             target="_blank"
             rel="noopener noreferrer"
             className="report-text-link"

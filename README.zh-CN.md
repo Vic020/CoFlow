@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.5-087354" alt="Version 0.1.5" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-087354" alt="Version 0.2.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,7 +30,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.1.5。**
+> **当前版本：0.2.0。**
 
 ## 功能
 
@@ -49,6 +49,8 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 - **个人资料**：头像、团队昵称、密码修改和可搜索的展示时区。
 - **响应式界面**：桌面侧栏与信息流，手机抽屉导航、筛选面板与单列阅读。
 
+**Todo 工作空间（0.2）：** Todo 看板支持自定义列、负责人、优先级、截止日期、评论与历史；任务和 Timeline 简报双向关联，上报进展时可显式移动任务。“新建任务”整合手动、Agent、Skill、API 分类，“Agent 一键管理”复制供已安装 CoFlow Skill 使用的操作提示词。任务详情使用居中阅读弹窗，双击字段或点击铅笔原位编辑。分配任务记录责任归属，不会自动启动 Agent。
+
 更多操作见 [Wiki 使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)，验证范围见 [验收记录](docs/VERIFICATION.md)。
 
 ## 界面预览
@@ -59,19 +61,20 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 ## 路线图
 
-**Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识。**
+**Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前源码版本 **0.1.5**。0.2–0.5 均为规划，按本地验收结果推进，不预设发布日期。
+当前版本为 **0.2.0**，包含 Todo 与 Timeline 联动。0.3–0.6 为规划，按验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 源码可用（0.1.5） | 团队简报、交付链接与协作跟进 |
-| **0.2 · Todo** | 规划中 | 自定义看板，人工与 Agent 共同管理任务 |
+| **0.1 · Timeline** | 源码可用（0.2.0） | 团队简报、交付链接与协作跟进 |
+| **0.2 · Todo** | 源码可用（0.2.0） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
 | **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
 | **0.5 · Context** | 规划中 | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
+| **0.6 · 数据统计** | 规划中 | 进展、任务流转与交付趋势，支持筛选与原始记录回溯 |
 
-详细范围与验收标准见[版本工作计划](docs/ROADMAP.md)。
+详细范围与验收标准见[版本工作计划](docs/ROADMAP.md)；0.2 的具体实施见[Todo 功能与实施计划](docs/TODO_V0.2.md)。
 
 ## 快速开始
 
@@ -92,9 +95,11 @@ npm run dev
 
 ## Agent 接入
 
-支持 Skill 与 HTTP API，使用绑定成员和团队的个人凭证；同一 `source_id` 持续更新原简报。
+全 CoFlow 只安装一个 Skill，上报与 Todo 规则按需读取链接文档。Skill 与 HTTP API 使用绑定成员和团队的个人凭证，各模块权限分别授予；同一 `source_id` 持续更新原简报。
 
-[Agent Skill](skills/coflow-report/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
+统一 Skill 从 **v1.0.0** 开始独立计版，不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
+
+[Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
 ## 部署与备份
 
@@ -103,6 +108,8 @@ npm run dev
 ## 公开演示与自用部署
 
 [GitHub Pages 演示站](https://vic020.github.io/CoFlow/)展示虚拟的 Flow Studio 团队。可筛选、查看日报与详情、试填简报和评论；操作只在当前页面内存中有效，刷新恢复示例，不向服务器上传。无需登录，不连接 Go、数据库或真实团队。请勿输入真实项目或个人信息。
+
+0.2 离线演示包含六条 Todo 示例，覆盖待办、进行中、待确认与已完成，分别关联六条 Timeline 简报；可查看负责人、评论、交付链接与完成历史，并双向跳转。源码发布与部署结果分别验收。
 
 **购买的服务器用于维护者自用的真实团队，与 GitHub 公开演示无关。** 自托管用户使用自己的服务和凭证；公开 Pages 不依赖、不代理或访问这些服务器。
 
@@ -129,7 +136,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.1.5
+├── VERSION           # 当前版本：0.2.0
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 
@@ -156,7 +163,7 @@ npm run version:check
 
 - [文档导航](docs/README.zh-CN.md)：使用、Agent 接入、开发、部署与排障。
 - [Release](https://github.com/Vic020/CoFlow/releases)：版本说明与源码下载。
-- [路线图](docs/ROADMAP.md)：0.2 Todo、0.3 Calendar、0.4 AI 助手、0.5 Context 的版本范围与验收标准。
+- [路线图](docs/ROADMAP.md)：0.2 Todo、0.3 Calendar、0.4 AI 助手、0.5 Context、0.6 数据统计的版本范围与验收标准。
 - [Projects](https://github.com/users/Vic020/projects/1)：产品事项跟踪，版本规划以路线图文档为准。
 - [Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)：基本使用指南。
 - [Issues](https://github.com/Vic020/CoFlow/issues/new/choose)：Bug 与功能建议。

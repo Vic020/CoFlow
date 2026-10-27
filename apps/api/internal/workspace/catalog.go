@@ -16,7 +16,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Service struct{ Pool *pgxpool.Pool }
+type Service struct {
+	Pool     *pgxpool.Pool
+	TodoDemo *TodoMemory
+}
 type Category struct {
 	ID         string   `json:"id"`
 	Kind       string   `json:"kind"`
@@ -199,8 +202,12 @@ func audit(ctx context.Context, tx pgx.Tx, p identity.Principal, before, after s
 }
 func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.Report) (store.Report, error) {
 	var out store.Report
+	requestInput := r
 	r.ClassificationLocked = false // Only the browser correction endpoint may set this flag.
 	err := s.transaction(ctx, p, func(tx pgx.Tx) error {
+		if replay, e := beginReportOperation(ctx, tx, p, requestInput, &out); e != nil || replay {
+			return e
+		}
 		var old store.Report
 		var deleted bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE team_id=$1 AND author_id=$2 AND source_id=$3 AND deleted_at IS NOT NULL)`, p.TeamID, p.UserID, r.SourceID).Scan(&deleted); err != nil {
@@ -218,6 +225,18 @@ func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.
 			if v.AuthorID == p.UserID && v.SourceID == r.SourceID {
 				old = store.FromDB(v)
 				break
+			}
+		}
+		if old.ID != "" && r.TodoIDs != nil {
+			b, e := loadTodoBoard(ctx, tx, p.TeamID)
+			if e != nil {
+				return e
+			}
+			old.TodoIDs = []string{}
+			for _, t := range b.Tasks {
+				if stringIn(t.ReportIDs, old.ID) {
+					old.TodoIDs = append(old.TodoIDs, t.ID)
+				}
 			}
 		}
 		if old.ClassificationLocked {
@@ -238,6 +257,12 @@ func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.
 		}
 		out, err = store.SaveWith(ctx, q, r)
 		if err != nil {
+			return err
+		}
+		out.TodoIDs = r.TodoIDs
+		out.TodoMoves = r.TodoMoves
+		out.OperationID = r.OperationID
+		if err = reportTodos(ctx, tx, p, out); err != nil {
 			return err
 		}
 		if old.ID != "" {
@@ -278,7 +303,10 @@ func (s *Service) SaveReport(ctx context.Context, p identity.Principal, r store.
 				return e
 			}
 		}
-		return notify(ctx, tx, p, recipients, out.ID, "", "report", action+"："+out.Title)
+		if err = notify(ctx, tx, p, recipients, out.ID, "", "report", action+"："+out.Title); err != nil {
+			return err
+		}
+		return finishReportOperation(ctx, tx, p, requestInput, out)
 	})
 	return out, err
 }
@@ -406,6 +434,11 @@ func (s *Service) ChangeCategory(ctx context.Context, p identity.Principal, kind
 			_, err = tx.Exec(ctx, `INSERT INTO classifications(team_id,kind,id,name,normalized,aliases,state,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT(team_id,kind,id) DO UPDATE SET name=EXCLUDED.name,normalized=EXCLUDED.normalized,aliases=EXCLUDED.aliases,state=EXCLUDED.state`, p.TeamID, kind, id, out.Name, key(out.Name), aliases, out.State, p.UserID)
 			if err != nil {
+				return err
+			}
+		}
+		if old.ID != "" && (target != "" || old.Name != out.Name) {
+			if err = reclassifyTodos(ctx, tx, p, kind, old, out); err != nil {
 				return err
 			}
 		}

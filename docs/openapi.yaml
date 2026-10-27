@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.1.5
+  version: 0.2.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -29,7 +29,7 @@ paths:
       operationId: getMetadata
       responses:
         '200':
-          description: Current authenticated member and team, members, projects, domains, role, mode and timezone.
+          description: Current authenticated member and team, members, projects, domains, role, mode and timezone. Requires reports:read or todos:read.
           content:
             application/json:
               schema:
@@ -768,6 +768,8 @@ paths:
                   items:
                     type: string
                     enum:
+                    - todos:read
+                    - todos:write
                     - reports:read
                     - reports:write
                     - comments:write
@@ -1324,7 +1326,7 @@ paths:
       security:
       - sessionCookie: []
       responses:
-        '200': {description: Restored}
+        '200': {description: "Restored"}
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
   /reports/{id}/comments/trash:
@@ -1367,7 +1369,7 @@ paths:
       security:
       - sessionCookie: []
       responses:
-        '200': {description: Moved to trash}
+        '200': {description: "Moved to trash"}
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
   /reports/{id}/comments/{comment}/restore:
@@ -1386,9 +1388,173 @@ paths:
       security:
       - sessionCookie: []
       responses:
-        '200': {description: Restored}
+        '200': {description: "Restored"}
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
+  /todo-completions:
+    get:
+      operationId: listTodoCompletionEvents
+      description: Requires todos:read. Task completion events for daily summaries; includes event-time classification and assignee. Count distinct task IDs per local calendar day, separately from report deliveries.
+      responses:
+        '200':
+          description: Completion events, including archived task history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        todo_id: {type: string}
+                        completed_at: {type: string, format: date-time}
+                        assignee_id: {type: string}
+                        project_id: {type: string}
+                        domains: {type: array, items: {type: string}}
+                        creator_id: {type: string}
+                        agent: {type: string}
+  /todo-board:
+    get:
+      operationId: getTodoBoard
+      description: Requires todos:read. Team board, stable column IDs, default completed column and ordering revision. First read initializes defaults idempotently.
+      responses:
+        '200':
+          description: Board metadata; tasks and idempotency records are not exposed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoBoard'
+  /todos:
+    get:
+      operationId: listTodos
+      description: Requires todos:read. Team-isolated filtered tasks ordered by column, position and ID. Use a column filter for per-column pagination; only visible anchors may be used to move a task.
+      parameters:
+      - {name: q, in: query, schema: {type: string}}
+      - {name: project, in: query, schema: {type: string}}
+      - {name: domain, in: query, schema: {type: string}}
+      - {name: assignee, in: query, schema: {type: string}}
+      - {name: column, in: query, schema: {type: string}}
+      - {name: scope, in: query, schema: {type: string, enum: [all, related, todo]}}
+      - {name: archived, in: query, schema: {type: boolean, default: false}}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}
+      - {name: cursor, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: Filtered page, total and next_cursor. Missing cursor after concurrent movement returns 409; reload the board.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Todo'}}
+                  total: {type: integer}
+                  next_cursor: {type: string}
+    post:
+      operationId: createTodo
+      description: Requires todos:read/write. Deduplicated by team/member/source_id; identical operation_id retries replay the result. A different payload with the same operation_id returns 409. Optional report_ids require reports:read and accessible reports.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/TodoInput'
+              - {required: [title, column_id, source_id, operation_id]}
+      responses:
+        '200':
+          description: Created task or replay of the existing task.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Todo'}
+        '409': {description: "Operation ID reused with a different payload."}
+  /todos/{id}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getTodo
+      description: Requires todos:read. Includes comments, event history and report IDs only when readable; report bodies require reports:read.
+      responses:
+        '200':
+          description: Task details.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Todo'}
+        '404': {description: "Task absent from current team."}
+    patch:
+      operationId: changeTodo
+      description: Requires todos:read/write and creator or assignee permission; browser admins may maintain all team tasks. Comment requires todos:read plus comments:write. Delete/restore comment is browser-only and author/admin only. Every write requires expected_revision and operation_id. Edit is partial; moves also require board_revision and at most one destination before_id/after_id anchor. Moving never authorizes execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/TodoInput'
+              - {required: [operation_id, expected_revision]}
+      responses:
+        '200':
+          description: Updated task, or original result for identical retry.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Todo'}
+        '403': {description: "Missing scope or object permission."}
+        '409': {description: "Stale revision or reused operation ID; reread and reconcile before a new operation."}
+  /todo-columns:
+    post:
+      operationId: createTodoColumn
+      description: Browser team admin only. Requires name, operation_id and current board_revision.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TodoColumnInput'}
+      responses:
+        '200':
+          description: Updated board.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TodoBoard'}
+  /todo-columns/{id}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    patch:
+      operationId: changeTodoColumn
+      description: Browser team admin only. Atomic completion changes or archive-and-migrate, including archived tasks. At least one active incomplete and completed column remain. Change default before archiving or unmarking it. Order supplies every column ID exactly once; default selects an active completed column.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TodoColumnInput'}
+      responses:
+        '200':
+          description: Updated board.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TodoBoard'}
+        '409': {description: "Stale column or board revision."}
+  /collaborations/{id}/todo:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    post:
+      operationId: transferCollaborationToTodo
+      description: Requires reports:read, todos:read/write and collaboration creator/assignee permission (browser admins may manage all). Creates at most one takeover task; repeats return it. Original discussion stays attached to the report, todo_id marks takeover and independent collaboration status updates cease. Team mode only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [column_id]
+              properties:
+                column_id: {type: string}
+      responses:
+        '200':
+          description: Task taking over this collaboration.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Todo'}
 components:
   responses:
     Error:
@@ -1451,6 +1617,25 @@ components:
       required:
       - title
       properties:
+        todo_ids:
+          type: array
+          maxItems: 20
+          items: {type: string}
+          description: Requires todos:read. Stable task references; absent preserves links, [] clears them.
+        operation_id:
+          type: string
+          description: Required for joint task movement; identical request retries replay atomically.
+        todo_moves:
+          type: array
+          maxItems: 20
+          description: Requires todos:read/write and task maintenance permission. Each task must be in todo_ids. Report, links, moves, history and notifications commit together or all roll back on 409.
+          items:
+            type: object
+            required: [id, column_id, expected_revision]
+            properties:
+              id: {type: string}
+              column_id: {type: string}
+              expected_revision: {type: integer}
         source_id:
           type: string
           description: Stable key for retries; maximum 200 UTF-8 bytes.
@@ -1610,6 +1795,101 @@ components:
           - string
           - 'null'
           format: date-time
+
+    TodoBoard:
+      type: object
+      properties:
+        revision: {type: integer}
+        default_done_id: {type: string}
+        history: {type: array, items: {type: object}, description: "Audited column and default/order changes."}
+        columns: {type: array, items: {$ref: '#/components/schemas/TodoColumn'}}
+    TodoColumn:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        done: {type: boolean}
+        archived: {type: boolean}
+        revision: {type: integer}
+        task_count: {type: integer, description: "All tasks in the column including archived tasks."}
+    TodoColumnInput:
+      type: object
+      required: [operation_id, board_revision]
+      properties:
+        name: {type: string, description: "1–160 UTF-8 bytes for create/edit."}
+        done: {type: boolean}
+        expected_revision: {type: integer, description: "Required for editing or archiving/restoring an existing column."}
+        board_revision: {type: integer}
+        operation_id: {type: string, maxLength: 160}
+        action: {type: string, enum: [edit, archive, restore, order, default]}
+        target_id: {type: string, description: "Destination for every task when archiving a nonempty column."}
+        ids: {type: array, items: {type: string}, description: "Every column ID exactly once for order."}
+    TodoInput:
+      type: object
+      properties:
+        title: {type: string, description: "Required on create; 1–500 UTF-8 bytes."}
+        body: {type: string, description: "Markdown; at most 50000 UTF-8 bytes."}
+        column_id: {type: string}
+        assignee_id: {type: string, description: "Existing team member ID or empty for unassigned."}
+        project_id: {type: string}
+        domains: {type: array, maxItems: 20, items: {type: string}}
+        priority: {type: string, enum: [none, low, medium, high], default: none}
+        due_date: {type: string, description: "Empty or YYYY-MM-DD date without an implicit time zone."}
+        links: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/Link'}}
+        report_ids: {type: array, maxItems: 20, items: {type: string}, description: "Optional source reports on create; requires reports:read."}
+        source_id: {type: string, maxLength: 160}
+        agent: {type: string, maxLength: 160}
+        model: {type: string, maxLength: 160}
+        operation_id: {type: string, maxLength: 160}
+        expected_revision: {type: integer}
+        board_revision: {type: integer}
+        action: {type: string, enum: [edit, move, complete, reopen, archive, restore, comment, delete-comment, restore-comment]}
+        before_id: {type: string}
+        after_id: {type: string}
+        comment_id: {type: string}
+        mentions: {type: array, maxItems: 50, items: {type: string}}
+    Todo:
+      allOf:
+      - $ref: '#/components/schemas/TodoInput'
+      - type: object
+        properties:
+          id: {type: string}
+          creator_id: {type: string}
+          previous_column_id: {type: string}
+          collaboration_id: {type: string}
+          unavailable_reports: {type: integer, readOnly: true, description: Count of deleted source reports without exposing their content.}
+          revision: {type: integer}
+          archived: {type: boolean}
+          position: {type: integer}
+          completed_at: {type: [string, 'null'], format: date-time}
+          created_at: {type: string, format: date-time}
+          updated_at: {type: string, format: date-time}
+          comments:
+            type: array
+            items:
+              type: object
+              properties:
+                id: {type: string}
+                author_id: {type: string}
+                body: {type: string}
+                mentions: {type: array, items: {type: string}}
+                deleted: {type: boolean}
+                created_at: {type: string, format: date-time}
+          history:
+            type: array
+            items:
+              type: object
+              properties:
+                id: {type: string}
+                actor_kind: {type: string}
+                actor_id: {type: string}
+                agent: {type: string}
+                model: {type: string}
+                action: {type: string}
+                before: {type: object}
+                after: {type: object}
+                created_at: {type: string, format: date-time}
+
   securitySchemes:
     sessionCookie:
       type: apiKey

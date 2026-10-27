@@ -2,6 +2,21 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const text = (path) => readFile(new URL(path, root), "utf8");
 const expected = (await text("VERSION")).trim();
+const skillVersion = (await text("skills/coflow/SKILL.md")).match(
+  /^  version: "(\d+\.\d+\.\d+)"$/m,
+)?.[1];
+if (!skillVersion)
+  throw new Error(
+    "CoFlow Skill metadata.version must be a stable semantic version",
+  );
+if (
+  !(await text("apps/web/lib/skill-version.ts")).includes(
+    `export const coflowSkillVersion = "${skillVersion}";`,
+  )
+)
+  throw new Error(
+    "Skill display version is stale; run node scripts/sync-agent-assets.mjs",
+  );
 if (!/^\d+\.\d+\.\d+$/.test(expected))
   throw new Error("VERSION must contain a semantic version");
 const records = [];
@@ -39,11 +54,16 @@ for (const [path, label] of [
   ["README.zh-CN.md", "当前版本："],
 ]) {
   const readme = await text(path);
-  if (!readme.includes(`version-${expected}-`) || !readme.includes(`${label}${expected}`)) {
+  if (!readme.includes(`**v${skillVersion}**`))
+    throw new Error(`${path} Skill version display must match ${skillVersion}`);
+  if (
+    !readme.includes(`version-${expected}-`) ||
+    !readme.includes(`${label}${expected}`)
+  ) {
     throw new Error(`${path} version display must match ${expected}`);
   }
 }
 
 console.log(
-  `Version records consistent: ${expected}. No version changes made.`,
+  `Version records consistent: app ${expected}, Skill ${skillVersion}. No version changes made.`,
 );

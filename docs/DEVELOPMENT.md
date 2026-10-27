@@ -1,6 +1,6 @@
 # 开发指南
 
-CoFlow 0.1.4 支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
+CoFlow 当前版本为 0.2.0，包含 Todo。支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
 
 ## 环境
 
@@ -45,7 +45,7 @@ npm run dev
 
 完整凭证仅创建时返回，数据库只存哈希、前缀和管理元数据。一次性弹窗提供安装提示词，关闭后清除内存中的密钥，不写入浏览器本地存储。Agent 校验服务与目标身份后安装用户级 Skill、保存本机凭证并关联当前项目；日常通过「上报 CoFlow」或页面复制的简短指令复用。同一工作沿用 source_id。
 
-HTTP 使用 `Authorization: Bearer <个人凭证>`。本机路径、权限、调度建议和失败恢复见 [Agent 接入](AGENT_REPORTING.md) 与[规范 Skill](../skills/coflow-report/SKILL.md)。不要在开发文档中粘贴安装提示词中的真实密钥。CLI、MCP 暂未正式支持。
+HTTP 使用 `Authorization: Bearer <个人凭证>`。本机路径、权限、调度建议和失败恢复见 [Agent 接入](AGENT_REPORTING.md) 与[规范 Skill](../skills/coflow/SKILL.md)。不要在开发文档中粘贴安装提示词中的真实密钥。CLI、MCP 暂未正式支持。
 
 不要把真实凭证写进示例文件、源码或日志。Agent 身份来自 Token，不采信请求体的作者或团队字段；Agent 无权管理账号、邀请和凭证，管理员 Token 也不获得管理他人简报的权限。
 
@@ -118,10 +118,20 @@ COFLOW_TEST_DATABASE_URL='postgres://coflow:coflow_dev@127.0.0.1:5432/coflow?ssl
 | `apps/api/internal/workspace` | 分类、简报修订、协作、通知等团队业务 |
 | `apps/api/db/migrations` | 内嵌数据库迁移；新增文件，不修改已应用内容 |
 | `apps/api/db/queries` | sqlc 查询源文件 |
-| `skills/coflow-report`、`docs/openapi.yaml` | Agent 与 HTTP 协议规范源文件 |
+| `skills/coflow`、`docs/openapi.yaml` | Agent 与 HTTP 协议规范源文件 |
 
 迁移 006–008 分别增加个人语言偏好、头像与展示时区。昵称使用成员关系中的 display_name，头像与语言／展示时区属于账号；修改密码撤销其他网页会话，不自动撤销 Agent Token。身份与授权逻辑在 Go 中完成，不依赖隐藏前端按钮。
 
 新增个人资料或日期界面时遵循 [I18N.md](I18N.md)。个人偏好 PATCH 支持部分字段更新，缺省字段不能覆盖现有值；时间戳保持原值，日期分组使用展示时区。
 
 测试只使用合成身份和独立测试 schema。不要把生产 DATABASE_URL 传给测试，也不要提交 `.local/`、数据库导出、浏览器会话或 QA 截图。完成前检查 `git diff --check` 和拟提交内容；验收事实与限制记录到 [VERIFICATION.md](VERIFICATION.md)，功能变化写入 CHANGELOG 的 Unreleased。
+
+## Todo 实现（0.2）
+
+迁移 010 增加 todo_boards 团队 JSONB 文档、通知 todo_id 和协作接管引用。Go internal/workspace/todo.go 沿用团队事务锁，维护列、任务、来源幂等、修订、顺序和事件快照；路由在 internal/httpapi/todo.go。简报写入复用同一事务更新任务引用和移动，冲突全部回滚，联合重试通过独立操作记录去重。
+
+首版看板文档保留任务历史及幂等结果，尚未验证大规模任务／历史容量，按实测增长再拆分存储。只读操作不重写未变化文档；查询按列与游标分页，写入用单个前后锚点，不覆盖整列。排序修订针对移动和列变化，内容修订针对单个任务。新团队与已有团队首次访问均幂等建立默认列。
+
+本地 demo 的任务仅在 Go 进程内存，重启重置；Pages 的任务只在页面模块内存。团队模式使用 PostgreSQL。`/todo-completions` 返回完成事件及当时分类，前端日报按展示时区／任务 ID 去重，不等同 0.6 的完整统计。
+
+统一规范 Skill 为 skills/coflow/SKILL.md，Todo 规则位于 references/todos.md，下载副本由 sync-agent-assets.mjs 生成。Go 集成测试使用随机 schema 验证联合回滚、幂等、并发冲突、团队和 Token 权限；界面与 API 的模拟来源不代表真实 Agent 跨会话已验证。
