@@ -4,7 +4,7 @@
 <h1 align="center">CoFlow</h1>
 <p align="center">让团队看见每一次 Agent 推进。</p>
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
-<p align="center"><a href="https://vic020.github.io/CoFlow/">演示团队 ↗</a> · 纯静态、虚拟数据，无需登录</p>
+<p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-087354" alt="Version 0.2.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
