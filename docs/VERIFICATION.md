@@ -2,14 +2,18 @@
 
 更新：2026-10-28（Asia/Shanghai）；当前版本 0.2.1。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
 
-## 0.2.1 发布候选验收（2026-10-28）
+## 0.2.1 发布与 GitHub 同步（2026-10-28）
 
 - 本地 9 项缓存／分页／请求传输测试通过，覆盖 10 秒过期、去重、快照隔离、有限内存、身份／角色／会话切换、写入失败、跨标签失效、401 及 200 条以上任务的完整分页；新测试加入 CI。
 - TypeScript、8 项 i18n、9 项 Agent Prompt、5 项公开演示、文档／版本与 diff 检查通过。团队生产构建和 `/CoFlow` 前缀静态导出均在隔离副本完成，未停止用户原有开发服务。
 - 合成浏览器验证 Docs 独立阅读、目录跳转、提示词复制、Skill 四文件展示及标签键盘操作；桌面与 390px 手机无页面横向溢出。Todo 新建后立即可见，切换 Timeline 再返回保留新数据；重新加载恢复合成演示基线。
 - 应用版本 0.2.1，Skill 1.1.0；规范下载副本与入口／三份参考文件一致，升级不扩权，不新增数据库迁移或后台调度。
 - 线上只做过无认证性能读取：静态资源已有 CDN 缓存，业务 API 使用 no-store，网络与串行请求会叠加等待。测量环境与真实用户网络不同，不宣称已验证生产加速比例。测试和运维原始记录仅保存在忽略目录。
-- 本机 PostgreSQL／Docker 的既有阻塞未通过重启用户服务处理；本次完整 Go race／数据库回归以目标提交的 GitHub CI 为准，结果待核对。Release、Wiki、Projects 和部署分别记录；本次未部署新版本。
+- 源码 `d2f023dc8e6bafc127754a940ba7ab89273c7c11` 已推送 main，标签 v0.2.1 指向该提交；[发布提交 CI 40670199565](https://github.com/Vic020/CoFlow/actions/runs/40670199565) 的 web、api 均成功，包含 Go race 与隔离 PostgreSQL 回归。本机未重启既有阻塞的 Docker／数据库服务，完整 Go 验证以该云端结果为依据。
+- [v0.2.1 Release](https://github.com/Vic020/CoFlow/releases/tag/v0.2.1) 已发布并标记 Latest，页面核对标签、精确源码、CI 链接、双语说明和两个 GitHub 源码归档；没有附本机 QA、私有数据或凭证。
+- Wiki 提交 `c7c0157` 已推送，更新 Home、Quick-Start、Agent-Reporting、Team-Collaboration、FAQ、Roadmap 的中英页面及侧栏／页脚，共 14 文件；线上中英 Home 已核对版本、Skill、Docs 与部署边界。
+- [GitHub Projects](https://github.com/users/Vic020/projects/1) 四个既有 0.2 工作包按验收依据移至 Done，补充 CI 和验证链接，详情要求同步为居中阅读。新增 [0.2.1 交付项](https://github.com/users/Vic020/projects/1?pane=issue&itemId=285865227) 并记录验收通过；新增 0.4 AI 助手、0.5 Context、0.6 统计规划，含未勾选验收与源文档链接，保留 Todo。真实 Agent 试用、容量验收及其他未实现规划未被改为完成。
+- 本轮没有发布新镜像，没有部署 GitHub Pages 或私有实例。已发布源码与已运行实例分别记录，生产加速比例尚未验证。
 
 ## 0.2.0 自用实例与公开演示部署（2026-10-27）
 

@@ -164,7 +164,7 @@ Agent 关联任务需要 reports:write 和 todos:read；联合移动另需 todos
 
 ## 文档与远端维护
 
-A–E 已实现并验收，归入 0.2.0；实际发布与部署结果以验证记录为准。Roadmap Wiki 中英页面及 Projects 的 0.2 工作包、0.6 统计规划属于待同步项，只有获得对应公开维护授权才修改远端，不以本地检查冒充远端状态更新。
+A–E 已实现并验收，归入 0.2.0；0.2.1 补齐 Docs、Skill 1.1.0 与加载优化。2026-10-28 已按维护授权同步中英 Wiki，并依据验收证据将 Projects 四个 0.2 工作包与 0.2.1 交付项置为 Done，0.4–0.6 规划保留 Todo。Release、CI、Wiki 与 Projects 的远端证据见[验证记录](VERIFICATION.md)；本次未部署新版本。
 
 ## 首版存储与容量边界
 
