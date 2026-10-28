@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.1-087354" alt="Version 0.2.1" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.2-087354" alt="Version 0.2.2" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,7 +28,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.2.1.**
+> **Current version: 0.2.2.**
 
 ## Features
 
@@ -59,12 +59,12 @@ The preview uses synthetic identities and example delivery links.
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.2.1**, including Todo and Timeline integration. Versions 0.3–0.6 are planned, with no fixed release dates.
+The current version is **0.2.2**, including Todo and Timeline integration. Versions 0.3–0.6 are planned, with no fixed release dates.
 
 | Version | Status | Focus |
 | --- | --- | --- |
-| **0.1 · Timeline** | Available (0.2.1) | Team reports, delivery links, and collaboration |
-| **0.2 · Todo** | Available (0.2.1) | Customizable boards, scoped Agent access, and atomic Timeline integration |
+| **0.1 · Timeline** | Available (0.2.2) | Team reports, delivery links, and collaboration |
+| **0.2 · Todo** | Available (0.2.2) | Customizable boards, scoped Agent access, and atomic Timeline integration |
 | **0.3 · Calendar** | Planned | Calendar and Gantt scheduling, Big Days, and version milestones |
 | **0.4 · AI Assistant** | Planned | Manage modules through conversation; custom APIs, with DeepSeek first |
 | **0.5 · Context** | Planned | Capture important cross-module knowledge for teams and AI |
@@ -92,6 +92,8 @@ npm run dev
 Open [127.0.0.1:3000](http://127.0.0.1:3000). For real teams, see the [development guide](docs/DEVELOPMENT.md) and [deployment guide](docs/DEPLOYMENT.md).
 
 ## Agent integration
+
+Todo task cards use priority borders: none, blue (low), yellow (medium), red (high).
 
 Loading improvements in 0.2.1: team context and lists share a 10-second, identity-scoped in-memory cache with request deduplication; writes and session changes invalidate it. Todo loads only its required data and fetches all columns together with complete pagination. Private APIs remain `no-store`; see [loading and caching](docs/TROUBLESHOOTING.md#页面加载与缓存).
 

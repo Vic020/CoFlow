@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.1-087354" alt="Version 0.2.1" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.2-087354" alt="Version 0.2.2" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,7 +30,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.2.1。**
+> **当前版本：0.2.2。**
 
 ## 功能
 
@@ -63,12 +63,12 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.2.1**，包含 Todo 与 Timeline 联动。0.3–0.6 为规划，按验收结果推进，不预设发布日期。
+当前版本为 **0.2.2**，包含 Todo 与 Timeline 联动。0.3–0.6 为规划，按验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 源码可用（0.2.1） | 团队简报、交付链接与协作跟进 |
-| **0.2 · Todo** | 源码可用（0.2.1） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
+| **0.1 · Timeline** | 源码可用（0.2.2） | 团队简报、交付链接与协作跟进 |
+| **0.2 · Todo** | 源码可用（0.2.2） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
 | **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
 | **0.5 · Context** | 规划中 | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
@@ -94,6 +94,8 @@ npm run dev
 打开 [127.0.0.1:3000](http://127.0.0.1:3000)。真实团队配置见[开发指南](docs/DEVELOPMENT.md)，自托管见[部署指南](docs/DEPLOYMENT.md)。
 
 ## Agent 接入
+
+Todo 卡片按优先级显示左边框：无色、蓝（低）、黄（中）、红（高）。
 
 0.2.1 加载优化：团队上下文与列表复用按身份隔离的 10 秒内存缓存，并合并进行中请求；写入、会话变化等会清理。Todo 仅加载所需数据，跨列查询并完整分页；私有 API 继续 `no-store`。详见[加载与缓存](docs/TROUBLESHOOTING.md#页面加载与缓存)。
 
@@ -146,7 +148,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.2.1
+├── VERSION           # 当前版本：0.2.2
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

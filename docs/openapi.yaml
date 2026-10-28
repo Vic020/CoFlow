@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.2.1
+  version: 0.2.2
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
