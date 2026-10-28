@@ -16,6 +16,46 @@ export function credentialFilePath(origin: string, target?: ReportTarget) {
   return `~/.coflow/credentials/${encodeURIComponent(url.origin)}/${segment(target.team)}/${segment(target.member)}.token`;
 }
 
+export type InstallationOptions = {
+  scopes?: string[];
+  replaceExisting?: boolean;
+};
+
+/** Profiles describe granted capability, never a token or Skill version. */
+export function credentialCapabilities(scopes: readonly string[]) {
+  const has = (...required: string[]) => required.every((scope) => scopes.includes(scope));
+  const reports = has("reports:read", "reports:write");
+  const todos = has("todos:read", "todos:write");
+  return {
+    reports, todos, collaboration: reports && todos,
+    comments: scopes.includes("comments:write"),
+    readOnly: !scopes.some((scope) => scope.endsWith(":write")),
+  };
+}
+
+export function installationPrompt(
+  origin: string, credential: string, target: ReportTarget,
+  locale: "en" | "zh-CN" = "zh-CN", options: InstallationOptions = {},
+) {
+  const path = credentialFilePath(origin, target);
+  if (!path || !credential) throw new Error("Missing CoFlow credential or identity");
+  const service = new URL(origin).origin;
+  const en = locale === "en";
+  const replacement = options.replaceExisting
+    ? en
+      ? "I authorize replacing a different local credential for this exact service/team/member after identity verification. Reuse this authorization without asking again; do not revoke server credentials."
+      : "我已授权：身份校验成功后，可替换此服务／团队／成员对应的不同本机凭证；复用本次授权，不再重复确认，不撤销服务器凭证。"
+    : en
+      ? "Reuse an identical credential. If needed, ask before replacing a different credential unless I already explicitly authorized this exact replacement in this session."
+      : "相同凭证复用；不同凭证先确认替换，不直接覆盖。若本会话已明确授权此次替换，复用授权，不重复询问。";
+  const scopes = options.scopes
+    ? options.scopes.join(", ") || (en ? "none" : "无")
+    : en ? "unknown; identity verification does not prove write access" : "未知；身份校验不代表写入权限";
+  return en
+    ? `Install or update the single CoFlow Skill for this project. Read ${service}${skillPath} and its installation reference. Service: ${service}; team_id=${target.team}; member_id=${target.member}. My credential is ${credential}. Declared scopes: ${scopes}. Verify service mode with /api/v1/health, then verify identity with /api/v1/meta; require team mode and stop on mismatch. After successful verification, save only to ${path}, directory permissions 700 and file permissions 600. ${replacement} Install the entry and all three references together in the Agent's user-level skill directory; reuse identical files and preserve customizations. Register the canonical project at ~/.coflow/projects/<sha256-of-project-root>/binding.json, preserving existing bindings, work_units and checkpoints. Default to this single target; if another team is already bound, ask how to handle it. Do not silently switch teams or enable multiple-target reporting. Preserve explicitly configured reporting preferences. Do not modify project files or Git or output the credential. Do not report during installation, create tasks, test write access by writing, or create or recommend automation as part of installation. Identity, scopes and Skill version are separate checks; Todo access does not imply reporting access. Confirm only completed checks and explain cross-session discovery limits. Later requests reuse stable task IDs and source_id under the Skill.`
+    : `为当前项目安装或更新唯一的 CoFlow Skill。读取 ${service}${skillPath} 及其安装说明。服务 ${service}；team_id=${target.team}；member_id=${target.member}。我的凭证是 ${credential}。声明权限：${scopes}。先验证 /api/v1/health 为 team 模式，再用 /api/v1/meta 校验身份；不一致则停止。校验成功后，凭证只保存到 ${path}，目录权限 700、文件权限 600。${replacement}入口及三份参考文件一起安装到用户级技能目录；相同安装复用，自定义文件保留。当前项目关联记录在 ~/.coflow/projects/<sha256-of-project-root>/binding.json，保留已有项目关联、work_units 和检查点。默认只接入本目标；若已关联其他团队，先确认处理方式，不静默切换或开启多目标上报。保留用户明确配置的上报偏好。不修改项目文件或 Git，不输出凭证。本次只安装，不上报、不建任务、不用写入测试权限、不创建或附带建议自动化。身份、凭证权限与 Skill 版本分别核验，任务权限不代表上报权限。仅确认实际完成的检查，说明跨会话发现限制；后续按 Skill 复用稳定任务 ID 和 source_id。`;
+}
+
 export function reportPrompt(
   origin: string,
   credential = "",
@@ -29,19 +69,12 @@ export function reportPrompt(
       ? `Read ${skillURL}. The service URL is ${origin}. Report this project's progress, delivery links, and blockers. This is a local demo; no credential is needed.`
       : `读一下 ${skillURL}，服务地址是 ${origin}，按照要求上报当前项目的进展、交付链接和阻塞。目前是本地演示模式，无需凭证。`;
   const path = credentialFilePath(origin, target);
-  const identity = target
-    ? locale === "en"
-      ? `Target team_id=${target.team}, member_id=${target.member}. Verify identity before reporting; stop on a mismatch or invalid credential.`
-      : `目标 team_id=${target.team}、member_id=${target.member}，上报前校验身份一致；不一致或凭证失效时停止。`
-    : "";
   if (credential) {
     if (!path)
       return locale === "en"
         ? `Read ${skillURL}. My credential is ${credential}. The target identity is missing; ask me for it before installing, saving, or reporting. Never output the credential.`
         : `读取 ${skillURL}。我的凭证是 ${credential}。目标身份未指定，请先向我确认，再安装、保存或上报。不输出凭证。`;
-    return locale === "en"
-      ? `Install CoFlow for this project and Agent using ${skillURL}. The service URL is ${origin}. My credential is ${credential}. ${identity} First check service health and verify the team and member identity with /api/v1/meta. After successful verification, save this credential to ${path}; use directory permissions 700 and file permissions 600. If a different credential already exists, ask before replacing it. Install the single coflow Skill with its linked reference files in this Agent's supported user-level skill directory and register the current project's binding under ~/.coflow/projects/<sha256-of-project-root>/binding.json, following the Skill's installation section. Reuse an existing matching installation; do not modify project files or Git, and never output the credential. Confirm installation only after checking that the Skill, binding, and credential are usable. Do not report during installation. Afterwards I can say “Report to CoFlow” or “上报 CoFlow”; reuse source_id for the same work. If this Agent cannot discover installed Skills in later sessions, explain that limit instead of claiming the short command will work. After installation, recommend a daily task that checks this project for meaningful changes and reports only when something changed; skip reporting when unchanged. Confirm my consent, run time, and time zone before creating the task, and reuse a matching existing task. The task must read the saved local credential, never include the token in its prompt, and reuse source_id for the same work.`
-      : `请为当前项目和 Agent 安装 CoFlow，读取 ${skillURL}，服务地址是 ${origin}。我的凭证是 ${credential}。${identity}先校验服务模式，再通过 /api/v1/meta 校验下述团队和成员身份；校验成功后，将凭证保存到 ${path}，目录权限 700、文件权限 600。若已存在不同凭证，先提示我确认替换，不直接覆盖。按 Skill 的安装章节，将唯一的 coflow Skill 及其链接的参考文件安装到当前 Agent 支持的用户级技能目录，并在 ~/.coflow/projects/<sha256-of-project-root>/binding.json 记录当前项目关联。匹配的安装直接复用，不修改项目文件或 Git，不输出凭证。检查 Skill、项目关联和凭证可用后再确认安装成功；本次只安装，不上报。以后我说“上报 CoFlow”即可，同一工作沿用 source_id 更新。若当前 Agent 不支持跨会话发现 Skill，请说明限制，不要宣称短口令一定可用。安装完成后，建议创建每天检查当前项目变化的定时任务：有实质变化才上报，没有变化就跳过。先征得我同意并确认执行时间和时区，再创建；已有相同任务则复用。任务读取已保存的本机凭证，不把 token 写进任务提示词，同一工作复用 source_id。`;
+    return installationPrompt(origin, credential, target!, locale);
   }
   const targetHint = target
     ? `team_id=${target.team}, member_id=${target.member}`
@@ -51,10 +84,10 @@ export function reportPrompt(
   return locale === "en"
     ? `Report to CoFlow using the installed coflow Skill (fallback: ${skillURL}).
 Credential: COFLOW_TOKEN or ${path || "the configured project binding"}. Target: ${targetHint}.
-Follow the Skill for identity checks, reporting and recovery; reuse source_id for the same work.`
+Follow the Skill for identity checks, reporting and recovery. New progress on a later reporting day uses a new report source_id, even in the same session; retries/corrections retain the original report's source_id. Reuse the same Todo. A date change alone is not progress.`
     : `上报 CoFlow。读取已安装的 coflow Skill（备用：${skillURL}）。
 凭证：COFLOW_TOKEN 或 ${path || "已配置的项目关联"}；身份：${targetHint}。
-按 Skill 校验、上报并处理失败，同一工作复用 source_id。`;
+按 Skill 校验、上报并处理失败。同一会话跨上报日期有新进展时，新建简报 source_id；重试或补正旧简报沿用原 source_id，Todo 继续复用。仅跨天而无新进展不新增。`;
 }
 
 export type AgentTokenMetadata = {

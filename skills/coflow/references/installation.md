@@ -40,7 +40,7 @@ The installation/reporting Prompt or validated local binding contains the exact 
 
 **First-time configuration:** an installation Prompt that supplies a credential authorizes saving that exact credential file plus the private Skill/binding described above. A save-only request authorizes only the credential file. First request the service health without authentication, then validate the supplied credential with `/api/v1/meta` and the target team/member. Save only after a successful exact identity match. Create missing directories under `~/.coflow` privately (POSIX `0700`) and the token file as `0600`, containing only the token and an optional trailing newline. Use restrictive permissions at creation and an exclusive/atomic write; don't create a world-readable temporary file and chmod it afterward. Do not chmod the user's home directory. On systems without POSIX permissions, restrict the equivalent ACL to the current user. If this cannot be done, stop and report the configuration issue.
 
-If the path already contains the same token, keep it and ensure private permissions. If it contains a different token, ask for confirmation before replacing it. Reject symlink or non-regular credential files and symlink directories; do not follow them or write elsewhere. Do not log, echo, commit, back up or upload the secret. A failed write must not be described as saved; stop and explain the local configuration failure.
+If the path already contains the same token, keep it and ensure private permissions. If it contains a different token, ask for confirmation before replacing it unless the user already explicitly authorized this exact service/team/member replacement in this session or installation prompt. Reuse that authorization rather than asking repeatedly. Local replacement does not revoke the old server credential; do not revoke it without a separate request. Reject symlink or non-regular credential files and symlink directories; do not follow them or write elsewhere. Do not log, echo, commit, back up or upload the secret. A failed write must not be described as saved; stop and explain the local configuration failure.
 
 **Daily reporting:** use `COFLOW_TOKEN` when configured; otherwise read only the exact credential file specified in the Prompt or validated current-project binding. Do not search directories, shell history, project files or chat history for alternate credentials. An explicitly supplied credential may be used for this request, but without a save instruction it stays in memory. If neither configured source is available, stop and ask for first-time configuration; do not invent a token, copy a browser session, or generate a new token automatically. Once selected, a credential with invalid identity, a 401 or a 403 must not trigger silent fallback to another credential. Local file deletion does not revoke a server credential; use Agent 凭证 to revoke it when a device is lost or retired.
 
@@ -49,6 +49,37 @@ The web app displays full credentials once and stores no persistent browser secr
 Then GET `<service>/api/v1/meta` with the appropriate authentication. This returns the current member, team, projects, domains and members. The credential fixes the reporter and team; never supply author/team fields to impersonate someone else. If the prompt specifies target `team_id` and `member_id`, verify they match `meta.team.id` and `meta.current_user` before reading briefs or writing. On mismatch, stop and request the matching credential; do not post to the wrong team.
 
 Credentials may grant reports:read/write, todos:read/write and comments:write independently. Do not infer one module's permissions from another; task-only credentials do not permit reporting. On 401 report that the credential is invalid, expired, revoked or its membership removed. On 403 report the missing permission; do not work around it by selecting another identity or using a browser session.
+
+The token format has no capability version. Distinguish service version, the installed Skill bundle version and actual token scopes. A reporting-only credential is still usable for reporting; recommend a newly configured credential with both modules' read/write scopes only when the user wants task/report integration. Read-only and task-only credentials may be intentional. Do not call them obsolete based on age or prefix, infer scopes from a successful `/meta`, or test write permission by creating business data. Declared scopes in an installation prompt describe the issuing UI's selection, not authority to expand permissions. Installation stays installation-only: do not add reports, tasks or unsolicited automation recommendations.
+
+## Optional project reporting preference
+
+**Single-target binding (schema 1) remains the default.** Installing another credential does not authorize reporting to both teams. If the current project is already bound elsewhere, preserve it and resolve the user's intended target; do not silently switch or fan out.
+
+Only when the user explicitly requests reporting this project to several destinations, store that preference privately in the same exact project's `binding.json`, using schema 2:
+
+```json
+{
+  "schema_version": 2,
+  "project_root": "<canonical absolute project root>",
+  "skill_file": "<installed coflow/SKILL.md>",
+  "reporting_mode": "all",
+  "targets": [
+    {
+      "service_url": "<exact canonical origin>",
+      "team_id": "<verified team>",
+      "member_id": "<verified member>",
+      "credential_file": "<derived exact private token path>",
+      "project_id": "<metadata project ID, optional>",
+      "work_units": {}
+    }
+  ]
+}
+```
+
+This is an opt-in local preference, not a server feature or a global Skill default. Preserve schema-1 bindings unless migration was requested. During an authorized migration, retain the original target and its work_units/checkpoints, validate every target using the same identity/path rules, reject duplicate origin/team/member tuples and add only the explicitly selected destinations. Never store tokens in the binding. Preserve schema-2 targets during a credential update; updating one target cannot opt in another or change reporting_mode. Unknown schemas/modes or an explicit request that conflicts with the saved target set require clarification.
+
+For an authorized reporting request, `reporting_mode: "all"` applies only to this exact project; a request naming one destination narrows it for that run without rewriting the preference. Process each target independently with its own credential, metadata, task/report IDs, work_units and successful checkpoint. Never reuse one target's IDs in another, silently fall back to another credential on failure, or copy private reports/comments between teams. Only share the project evidence authorized for the selected audiences. An environment token must match the selected target; it is not a substitute for several identities. Report per-target success/partial failure, retry only unsynced work with its original IDs, and do not duplicate a successful report. The preference does not create a background process or grant continuing coordination/assignment authority.
 
 A direct instruction such as “读一下这个 Skill，我的凭证是 xxx，按照要求上报一下目前进展” authorizes reporting to the specified service. Do not ask again. Loading this skill alone does not authorize a report.
 

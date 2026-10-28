@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAgentPrompt } from "@/lib/agent-prompt";
+import { credentialCapabilities } from "@/lib/report-prompt";
 import { Meta, request } from "@/lib/types";
 type Token = {
   id: string;
@@ -33,8 +34,10 @@ export function TokenManager() {
   const [days, setDays] = useState("90");
   const [scope, setScope] = useState("report");
   const [issuedTaskAccess, setIssuedTaskAccess] = useState(false);
+  const [issuedScopes, setIssuedScopes] = useState<string[] | undefined>();
+  const [replaceExisting, setReplaceExisting] = useState(false);
   const { copyPrompt, prompt, copied, copyError, origin } =
-    useAgentPrompt(issuedTaskAccess);
+    useAgentPrompt(issuedTaskAccess, { scopes: issuedScopes, replaceExisting });
   const [existing, setExisting] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,8 @@ export function TokenManager() {
   function closeSecret() {
     setIssued("");
     setCredential("");
+    setReplaceExisting(false);
+    setIssuedScopes(undefined);
   }
   useEffect(() => {
     mounted.current = true;
@@ -107,6 +112,8 @@ export function TokenManager() {
       });
       if (!mounted.current) return;
       setCredential(v.credential);
+      setIssuedScopes(scopes);
+      setReplaceExisting(false);
       setIssuedTaskAccess(
         scope === "todo" || scope === "todo-read" || scope === "all",
       );
@@ -150,6 +157,9 @@ export function TokenManager() {
         throw new Error("凭证必须属于当前账号和当前团队");
       if (!mounted.current) return;
       setCredential(raw);
+      const matches = tokens.filter((t) => isActive(t) && raw.startsWith(t.prefix));
+      setIssuedScopes(matches.length === 1 ? matches[0].scopes : undefined);
+      setReplaceExisting(false);
       setIssuedTaskAccess(
         tokens.some(
           (t) => raw.startsWith(t.prefix) && t.scopes.includes("todos:read"),
@@ -242,9 +252,14 @@ export function TokenManager() {
           <p className="credential-next-command">
             {tr("安装后，对 Agent 说：")}
             <code>
-              {tr(issuedTaskAccess ? "管理 CoFlow 任务" : "上报 CoFlow")}
+              {tr(issuedScopes?.includes("todos:write") ? "管理 CoFlow 任务" : issuedScopes?.includes("reports:write") ? "上报 CoFlow" : "读取 CoFlow 工作")}
             </code>
           </p>
+          <label className="credential-replacement">
+            <input type="checkbox" checked={replaceExisting}
+              onChange={(e) => setReplaceExisting(e.target.checked)} />
+            {tr("授权替换同团队、同成员的本机旧凭证")}
+          </label>
           <div className="credential-dialog-actions">
             <Button
               size="sm"
@@ -274,6 +289,9 @@ export function TokenManager() {
         </h2>
         <span>{tr("仅当前团队")}</span>
       </div>
+      <p className="credential-guidance">
+        {tr("凭证按权限区分，不代表 Skill 版本。任务与简报联动需同时具备两组读写权限；已有凭证不会自动扩权。")}
+      </p>
       {loading ? (
         <div className="credentials-empty">
           <Loader2 className="animate-spin" />
@@ -285,6 +303,8 @@ export function TokenManager() {
             .sort((a, b) => Number(isActive(b)) - Number(isActive(a)))
             .map((t) => {
               const active = isActive(t);
+              const capability = credentialCapabilities(t.scopes);
+              const upgrade = active && !capability.collaboration && (capability.reports || capability.todos);
               return (
                 <div className="credential-row" key={t.id}>
                   <span
@@ -297,18 +317,9 @@ export function TokenManager() {
                     <code>{t.prefix}…</code>
                   </div>
                   <div className="credential-permissions">
-                    {t.scopes.includes("todos:write") &&
-                    t.scopes.includes("reports:write")
-                      ? tr("上报、任务与评论")
-                      : t.scopes.includes("todos:write")
-                        ? tr("读取与管理任务")
-                        : t.scopes.includes("todos:read")
-                          ? tr("只读任务")
-                          : t.scopes.includes("comments:write")
-                            ? tr("读取、上报与评论")
-                            : t.scopes.includes("reports:write")
-                              ? tr("读取与上报")
-                              : tr("只读")}
+                    <span>{tr(capability.collaboration ? "任务与简报读写" : capability.reports ? "上报读写" : capability.todos ? "任务读写" : "读取与其他权限")}</span>
+                    <small className="credential-scope-list">{t.scopes.join(" · ")}</small>
+                    {upgrade && <span className="credential-upgrade">{tr("联动任务与简报时建议升级")}</span>}
                     <small>
                       {t.last_used_at
                         ? tr("最近使用 {0}", {
@@ -330,6 +341,12 @@ export function TokenManager() {
                     </small>
                   </div>
                   {active ? (
+                    <div className="credential-row-actions">
+                    {upgrade && <Button size="sm" variant="outline" disabled={busy} onClick={() => {
+                      setScope("all");
+                      setName(t.name);
+                      document.querySelector<HTMLSelectElement>(".credentials-create select")?.focus();
+                    }}>{tr("配置协作凭证")}</Button>}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -341,6 +358,7 @@ export function TokenManager() {
                     >
                       {tr("撤销")}
                     </Button>
+                    </div>
                   ) : (
                     <span className="credential-action-spacer" />
                   )}

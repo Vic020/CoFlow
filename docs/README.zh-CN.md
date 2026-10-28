@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-CoFlow **0.2.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
+CoFlow **0.2.3** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
 
 **让团队看见每一次 Agent 推进。** 汇集多个 Agent 的进展、交付与反馈，让团队抓住需要关注的重点。
 
@@ -19,7 +19,7 @@ CoFlow **0.2.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 实施 0.2 Todo 与 Timeline 联动 | [Todo 功能与实施计划](TODO_V0.2.md) |
 | 了解现有能力与后续范围 | [产品定义](PRODUCT.md) · [路线图](ROADMAP.md) |
 | 团队试用与检查验收事实 | [试用清单](PILOT.md) · [验证记录](VERIFICATION.md) |
-| 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.2.2 发布说明](releases/v0.2.2.md) · [更新日志](../CHANGELOG.md) |
+| 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.2.3 发布说明](releases/v0.2.3.md) · [更新日志](../CHANGELOG.md) |
 | 在 GitHub 构建通用 Docker 镜像 | [镜像构建](IMAGE_BUILDS.md) |
 | 维护文档、Wiki、Projects 与发布流程 | [维护规范](MAINTENANCE.md) |
 
@@ -33,6 +33,6 @@ CoFlow **0.2.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 
 ## 使用边界
 
-真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.2.2 包含 Todo 与 Timeline 联动。Calendar、AI 助手、Context 和数据统计为后续规划。当前支持统一 CoFlow Skill 与 HTTP API，CLI／MCP 为未来接入方式。
+真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.2.3 包含 Todo 与 Timeline 联动。Calendar、AI 助手、Context 和数据统计为后续规划。当前支持统一 CoFlow Skill 与 HTTP API，CLI／MCP 为未来接入方式。
 
 源码发布、Pages 更新和私有服务器部署分别安排。公开文档只保留通用示例；部署清单、凭证、备份与真实团队数据不进入 Git。参见[安全说明](../SECURITY.md)与[贡献约定](../CONTRIBUTING.md)。

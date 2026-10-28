@@ -63,6 +63,8 @@ On 409, GET the latest task/board and reconcile with the user's intent; do not b
 
 POST `/reports` accepts `todo_ids` (at most 20) with the fields in [Timeline reporting](reporting.md). Every independent progress update gets a new report source_id; correcting that progress keeps its report source_id. Task and report source IDs are independent. Leaving todo_ids absent preserves existing references; providing [] unlinks them.
 
+When a session crosses the reporting-day boundary, new progress uses a new daily report as specified in the reporting reference, linked to these same tasks. Do not clone tasks per day. Cross-day correction of an old brief or its missing task links still updates that old brief; a date change alone is not a new delivery.
+
 The reporting workflow above reconciles task records by default; it does not automatically move every linked task. For an authorized stage change, add `operation_id` and `todo_moves: [{id, column_id, expected_revision}]`. Each moved task must also occur in todo_ids. Go validates and commits report, links, task moves, history and notifications together, or rolls everything back. Prior task creation is separate. A delivered report does not imply task acceptance or completion. Do not create a report merely because a card moved.
 
 GET `/reports/<id>` includes todo_ids for a token with todos:read. A task can have many progress reports and a report can cover many tasks. Deleted reports cannot be read through task references. Never copy report contents into another object to bypass access rules.

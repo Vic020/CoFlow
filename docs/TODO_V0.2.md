@@ -1,6 +1,6 @@
 # CoFlow 0.2 Todo 功能与实施计划
 
-更新：2026-10-28（Asia/Shanghai）。状态：A–E 已完成实现与隔离验收，归入 0.2.0。当前版本为 0.2.2，验证范围与实际 Agent／容量限制见 [验证记录](VERIFICATION.md)。
+更新：2026-10-29（Asia/Shanghai）。状态：A–E 已完成实现与隔离验收，归入 0.2.0。当前版本为 0.2.3，验证范围与实际 Agent／容量限制见 [验证记录](VERIFICATION.md)。
 
 版本范围以 [ROADMAP](ROADMAP.md) 为准，本文细化 0.2 的行为和实施验收。开发期间将实际用户变化记录到 CHANGELOG 的 Unreleased；接口与 Agent 能力实现时同步到 [OpenAPI](openapi.yaml) 和规范 Skill，不提前把规划写成可用协议。
 

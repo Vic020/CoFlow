@@ -1,4 +1,13 @@
 {
+  "读取 CoFlow 工作": "Read CoFlow work",
+  "授权替换同团队、同成员的本机旧凭证": "Allow replacing the local credential for this team and member",
+  "凭证按权限区分，不代表 Skill 版本。任务与简报联动需同时具备两组读写权限；已有凭证不会自动扩权。": "Credentials describe permissions, not Skill versions. Task/report integration needs read/write access to both modules; existing credentials never gain permissions automatically.",
+  "任务与简报读写": "Task and report read/write",
+  "上报读写": "Report read/write",
+  "任务读写": "Task read/write",
+  "读取与其他权限": "Read and other permissions",
+  "联动任务与简报时建议升级": "For task/report integration, configure both modules",
+  "配置协作凭证": "Configure collaboration access",
   "账号菜单：{0}": "Account menu: {0}",
   "账号菜单": "Account menu",
   "退出登录": "Sign out",

@@ -1,6 +1,6 @@
 # CoFlow 版本工作计划
 
-更新：2026-10-28（Asia/Shanghai）。当前版本为 **0.2.2**，包含 Todo 与 Timeline 联动；0.3–0.6 为规划，均未发布。后续开发变化记录到 CHANGELOG 的 Unreleased。
+更新：2026-10-29（Asia/Shanghai）。当前版本为 **0.2.3**，包含 Todo 与 Timeline 联动；0.3–0.6 为规划，均未发布。后续开发变化记录到 CHANGELOG 的 Unreleased。
 
 [GitHub Projects 产品路线图](https://github.com/users/Vic020/projects/1)
 

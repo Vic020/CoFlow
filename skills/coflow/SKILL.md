@@ -2,7 +2,7 @@
 name: coflow
 description: Connect a project to CoFlow and coordinate delivery when the user requests CoFlow reporting, task management or ongoing project collaboration. Read relevant progress and feedback, maintain authorized Todo work, and report meaningful results to Timeline.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # CoFlow
@@ -39,7 +39,7 @@ These principles apply to future modules such as Calendar only when their actual
 - Verify unauthenticated `/api/v1/health`, then `/api/v1/meta` with the selected credential. Require the configured service mode and exact bound team/member before reading or writing business data. Never send a supplied real credential to demo mode.
 - The token determines the member and team; Agent and Model are descriptive sources. Keep credentials in the private configured location and never print them, include them in prompts, or store them in a repository. Reuse existing credentials and bindings when consolidating an older installation.
 - Respect module scopes and object permissions. Installing this Skill does not grant reporting or Todo access, broaden a token, authorize a business write, or create a schedule. Web-only administrative actions stay web-only.
-- Todo is the ongoing work item; Timeline is progress and delivery evidence. Link them using stable IDs. Each independent progress report has its own report source_id; correcting that progress reuses it. Task and report source IDs are independent.
+- Todo is the ongoing work item; Timeline is progress and delivery evidence. Link them using stable IDs. Each independent progress report has its own report source_id; new progress on a later reporting day creates a new brief even in the same session, while corrections/retries of an older brief retain its source_id. Reuse the Todo across days. Follow the reporting reference's time-zone and no-change rules; date rollover alone does not justify a report. Task and report source IDs are independent.
 - A concrete reported work item should have a corresponding task, including work in progress, confirmed future work and finished work. Reconcile existing tasks first; do not create one task per sentence, report or session. Use the actual stage and evidence, distinguish delivery from acceptance, and make any task/report partial failure visible to the user.
 - Writes need successful API evidence before claiming success. Use stable source IDs, operation IDs and revisions as specified in the relevant reference. Retry uncertain writes with the identical payload; on a conflict reread and reconcile rather than overwriting human changes.
 - Assignment, a card move, a comment or a report is not execution authorization. CoFlow records coordination and progress; it does not automatically start or orchestrate external Agents. Carry out actual work only with the user's authorization and the appropriate tools.

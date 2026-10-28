@@ -3233,7 +3233,7 @@ input[type="checkbox"] {
 }
 .credential-row {
   display: grid;
-  grid-template-columns: 36px minmax(130px, 1fr) minmax(120px, 1fr) 110px 56px;
+  grid-template-columns: 36px minmax(100px, 1fr) minmax(140px, 1.4fr) 110px auto;
   gap: 16px;
   align-items: center;
   padding: 19px 0;
@@ -3268,6 +3268,12 @@ input[type="checkbox"] {
   font-size: 11px;
   color: #718078;
 }
+.credential-scope-list { overflow-wrap: anywhere; }
+.credential-upgrade { display: block; margin-top: 5px; color: #98620b; }
+.credential-guidance { color: #718078; font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
+.credential-row-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.credential-replacement { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.6; }
+.credential-replacement input[type="checkbox"] { appearance: auto; width: 15px; height: 15px; flex: 0 0 15px; padding: 0; margin-top: 2px; accent-color: #087f64; }
 .credential-row small {
   display: block;
   color: #9da9a2;
@@ -3361,6 +3367,11 @@ input[type="checkbox"] {
   .credential-action-spacer {
     grid-column: 3;
     grid-row: 1;
+  }
+  .credential-row-actions {
+    grid-column: 2 / -1;
+    grid-row: 4;
+    justify-content: flex-start;
   }
   .credential-state small {
     display: inline;

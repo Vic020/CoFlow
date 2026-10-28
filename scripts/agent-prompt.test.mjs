@@ -4,7 +4,34 @@ import {
   reportPrompt,
   credentialFilePath,
   hasActiveReportToken,
+  installationPrompt,
+  credentialCapabilities,
 } from "../apps/web/lib/report-prompt.ts";
+
+test("capability profiles require both reads and writes and do not infer comments", () => {
+  const reports = ["reports:read", "reports:write"];
+  const todos = ["todos:read", "todos:write"];
+  assert.equal(credentialCapabilities(reports).todos, false);
+  assert.equal(credentialCapabilities(todos).reports, false);
+  assert.equal(credentialCapabilities([...reports, ...todos]).collaboration, true);
+  assert.equal(credentialCapabilities([...reports, ...todos]).comments, false);
+  assert.equal(credentialCapabilities(["reports:write", "todos:write"]).collaboration, false);
+  assert.equal(credentialCapabilities(["todos:read"]).readOnly, true);
+});
+
+test("installation declares actual scopes and keeps replacement consent opt-in", () => {
+  const target = { team: "synthetic-team", member: "synthetic-member" };
+  for (const locale of ["en", "zh-CN"]) {
+    const initial = installationPrompt("https://coflow.example.test", "cf_synthetic_only", target, locale, { scopes: ["todos:read"] });
+    const replacement = installationPrompt("https://coflow.example.test", "cf_synthetic_only", target, locale, { scopes: ["todos:read"], replaceExisting: true });
+    assert.ok(initial.includes("todos:read") && !initial.includes("reports:write"));
+    assert.ok(!initial.includes("reporting_mode=all") && !initial.includes("schema_version=2"));
+    assert.ok(initial.includes("cf_synthetic_only") && replacement.includes(credentialFilePath("https://coflow.example.test", target)));
+    assert.ok(locale === "en" ? initial.includes("ask before replacing") && replacement.includes("I authorize replacing") : initial.includes("先确认替换") && replacement.includes("我已授权"));
+    assert.ok(locale === "en" ? initial.includes("Default to this single target") : initial.includes("默认只接入本目标"));
+  }
+  assert.throws(() => installationPrompt("https://coflow.example.test", "", target));
+});
 
 test("repeat prompt contains identity and no empty or invented credential", () => {
   const prompt = reportPrompt("https://coflow.example.test", "", false, {
@@ -98,7 +125,8 @@ test("first-time and daily prompts share an exact path but only setup contains t
   const daily = reportPrompt(origin, "", false, target);
   assert.ok(setup.includes(path) && daily.includes(path));
   assert.ok(setup.includes("cf_test_setup_only"));
-  assert.ok(setup.includes("先校验") && setup.includes("校验成功后"));
+  assert.ok(setup.indexOf("/api/v1/health") < setup.indexOf("/api/v1/meta"));
+  assert.ok(setup.includes("校验成功后"));
   assert.ok(
     setup.includes("700") &&
       setup.includes("600") &&
