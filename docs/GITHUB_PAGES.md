@@ -2,6 +2,8 @@
 
 公开入口：https://vic020.github.io/CoFlow/
 
+2026-10-28：0.2.2 演示已通过[独立手动部署](https://github.com/Vic020/CoFlow/actions/runs/40707090708)，源码 `c9ac58f98fe82b2f6355317869639daa0ea7f38e`。六条 Todo 示例的优先级边框、[Docs 阅读页](https://vic020.github.io/CoFlow/docs/)与 Skill 1.1.0 展示已核验；首页／Todo／Docs 为 200，Skill 入口、三份参考与 OpenAPI 哈希匹配规范，`/api/v1/meta` 为 404。此处仅提供合成数据，没有真实后端。
+
 2026-10-27：0.2.0 演示已通过[独立手动构建与部署](https://github.com/Vic020/CoFlow/actions/runs/40493602382)，源码为 `5d863b0077a98b58c4caccf297b1f4692e687914`（与 v0.2.0 相同应用代码，另含发布验证文档）。[Todo 演示](https://vic020.github.io/CoFlow/todo/)包含六条示例、居中阅读与原位编辑入口，已验证与 Timeline 的双向跳转及统一 Skill 1.0.0 展示。此次部署不涉及私有团队服务或生产凭证。
 
 2026-10-24：Pages [构建与部署已通过](https://github.com/Vic020/CoFlow/actions/runs/40090413102)。经维护者明确授权，已解除个人主页的旧自定义域名绑定，恢复默认 github.io 地址；浏览器已验证 HTTPS 演示团队加载成功。若曾访问过旧跳转，浏览器可能缓存重定向，可清除缓存或使用无痕窗口。DNS 记录未改动。
