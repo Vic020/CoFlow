@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-087354" alt="Version 0.2.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.1-087354" alt="Version 0.2.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,7 +30,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.2.0。**
+> **当前版本：0.2.1。**
 
 ## 功能
 
@@ -49,7 +49,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 - **个人资料**：头像、团队昵称、密码修改和可搜索的展示时区。
 - **响应式界面**：桌面侧栏与信息流，手机抽屉导航、筛选面板与单列阅读。
 
-**Todo 工作空间（0.2）：** Todo 看板支持自定义列、负责人、优先级、截止日期、评论与历史；任务和 Timeline 简报双向关联，上报进展时可显式移动任务。“新建任务”整合手动、Agent、Skill、API 分类，“Agent 一键管理”复制供已安装 CoFlow Skill 使用的操作提示词。任务详情使用居中阅读弹窗，双击字段或点击铅笔原位编辑。分配任务记录责任归属，不会自动启动 Agent。
+**Todo 交付流程（0.2）：** 多名成员及其获授权的 Agent 共同分工、推进与验收交付，看板展示流程阶段；任务保留一名负责人，支持优先级、截止日期、评论与历史；任务和 Timeline 简报双向关联，上报进展时可显式移动任务。“新建任务”整合手动、Agent、Skill、API 分类，“Agent 一键管理”复制供已安装 CoFlow Skill 使用的操作提示词。任务详情使用居中阅读弹窗，双击字段或点击铅笔原位编辑。分配任务记录责任归属，不会自动启动 Agent。
 
 更多操作见 [Wiki 使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)，验证范围见 [验收记录](docs/VERIFICATION.md)。
 
@@ -63,12 +63,12 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.2.0**，包含 Todo 与 Timeline 联动。0.3–0.6 为规划，按验收结果推进，不预设发布日期。
+当前版本为 **0.2.1**，包含 Todo 与 Timeline 联动。0.3–0.6 为规划，按验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 源码可用（0.2.0） | 团队简报、交付链接与协作跟进 |
-| **0.2 · Todo** | 源码可用（0.2.0） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
+| **0.1 · Timeline** | 源码可用（0.2.1） | 团队简报、交付链接与协作跟进 |
+| **0.2 · Todo** | 源码可用（0.2.1） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
 | **0.3 · Calendar** | 规划中 | 日历、甘特排期、Big Day 与版本节点 |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
 | **0.5 · Context** | 规划中 | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
@@ -95,9 +95,19 @@ npm run dev
 
 ## Agent 接入
 
+0.2.1 加载优化：团队上下文与列表复用按身份隔离的 10 秒内存缓存，并合并进行中请求；写入、会话变化等会清理。Todo 仅加载所需数据，跨列查询并完整分页；私有 API 继续 `no-store`。详见[加载与缓存](docs/TROUBLESHOOTING.md#页面加载与缓存)。
+
+0.2.1 可从侧栏「协作指南」或 Skill 接入中的「阅读协作指南」直接打开平台 Docs。公开 `/docs` 页面由仓库指南静态生成，不加载团队数据。其中「CoFlow Skill」展示能力、随实例提供的版本与接入入口，可切换阅读四份规范文件、复制和下载。
+
+协作理念、按工具接入、页面操作与日常工作方案见 [CoFlow 协作指南](docs/COLLABORATION_GUIDE.md)，覆盖 Codex、Claude Code、Cursor 与 Gemini CLI，附官方依据及相应 Skill 版本要求。
+
 全 CoFlow 只安装一个 Skill，上报与 Todo 规则按需读取链接文档。Skill 与 HTTP API 使用绑定成员和团队的个人凭证，各模块权限分别授予；同一 `source_id` 持续更新原简报。
 
-统一 Skill 从 **v1.0.0** 开始独立计版，不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
+**Skill 1.1.0 协作规则：** 明确委托持续协作后，Agent 主动读取相关工作与反馈、推进获授权任务、向人说明协作或验收需求，并把实质进展同步回 CoFlow；复用已有授权，不在每个节点重复确认。单次上报仍保持单次范围。后台监控、外部 Agent 调度和未来 Calendar 操作需有相应授权与实际能力。
+
+增强后的 Skill 上报具体工作时，也会复用或补齐进行中、已确认待办与已结束工作的 Todo，并关联简报。多次上报复用同一任务，已交付但待验收的保留待确认。这是客户端流程，保留用户明确仅上报及权限缺失时的处理；API 不会自动创建任务。
+
+统一 Skill 当前为 **v1.1.0**（从 1.0.0 开始独立计版），不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
 
 [Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
@@ -136,7 +146,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.2.0
+├── VERSION           # 当前版本：0.2.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

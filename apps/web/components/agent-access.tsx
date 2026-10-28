@@ -193,6 +193,15 @@ export function AgentAccess({
         </p>
         <CopyBlock value={skillURL} label={tr("Skill 链接")} rows={2} />
         <div className="report-method-actions">
+          <Link
+            href="/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="report-text-link"
+          >
+            {tr("阅读协作指南")}
+            <ExternalLink size={12} />
+          </Link>
           <Button asChild size="sm" variant="outline">
             <a href={`${publicBasePath}${skillPath}`} download="SKILL.md">
               <Download />

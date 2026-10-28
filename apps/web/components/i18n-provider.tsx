@@ -74,17 +74,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
   const path = pathname.replace(/\/$/, "") || "/";
-  const page = path.endsWith("/todo")
-    ? "Todo"
-    : path.endsWith("/teams/new")
-      ? "新建团队"
-      : path.endsWith("/credentials")
-        ? "Agent 凭证"
-        : path.endsWith("/settings")
-          ? "团队设置"
-          : path.endsWith("/invite")
-            ? "加入团队"
-            : "团队动态";
+  const page = path.endsWith("/docs")
+    ? "协作指南"
+    : path.endsWith("/todo")
+      ? "Todo"
+      : path.endsWith("/teams/new")
+        ? "新建团队"
+        : path.endsWith("/credentials")
+          ? "Agent 凭证"
+          : path.endsWith("/settings")
+            ? "团队设置"
+            : path.endsWith("/invite")
+              ? "加入团队"
+              : "团队动态";
   const value = useMemo(
     () => ({ locale, setLocale, timeZone, setTimeZone, t, date }),
     [locale, setLocale, timeZone, setTimeZone, t, date],

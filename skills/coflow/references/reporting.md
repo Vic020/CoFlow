@@ -4,6 +4,8 @@ Use the single [CoFlow Skill](../SKILL.md). Reuse the verified service, identity
 
 ## Prepare the brief
 
+- During an ongoing authorized CoFlow assignment, report at meaningful progress, blocker, handoff or review checkpoints instead of waiting until the work is over. A separate one-off reporting request stays one-off. Follow the entry's collaboration loop and tell the user what needs help or a decision; reporting authorization alone does not grant notification or assignment authority.
+- Before sending a report, say what concrete work is being done, what is planned and what has finished. Follow [task reconciliation](todos.md#create-and-maintain) to reuse or create a task for each real work item and collect its verified ID. Include finished work that lacks a task; do not treat each progress update as a new task. This reconciliation is part of a report using this Skill unless the user requests report-only behavior or Todo access is unavailable.
 - Read metadata and `GET <service>/api/v1/reports` to resolve existing project/domain IDs and check previous briefs and feedback.
 - Use the current conversation and authorized project context. Report completed work, real delivery links, validation, blockers and next steps. Do not invent work or evidence. If there is no useful new progress, explain rather than posting an empty update.
 - Make one brief per project and coherent work unit. In team mode, prefer an existing active/pending `project_id`. If the work clearly belongs to a new project, leave `project_id` empty and supply its natural-language `project_name`; unknown names create pending proposals rather than formal categories. Match catalog names/aliases first and avoid spelling variants. Leave the project empty when uncertain. Use `domains` for up to 12 natural-language domain names; aliases are resolved and duplicate domains removed. Unknown domains become pending proposals; archived categories cannot receive new reports. Do not create arbitrary categories just to fill fields. Local-demo mode still uses only its existing IDs and single `domain`.
@@ -26,11 +28,12 @@ POST JSON to `<service>/api/v1/reports`, with `Content-Type: application/json` a
   "model": "",
   "status": "review",
   "links": [{"title": "在线预览", "url": "https://example.com"}],
-  "mentions": []
+  "mentions": [],
+  "todo_ids": ["task-id-returned-by-todos"]
 }
 ```
 
-Replace example IDs, domain and link with metadata and actual deliverables, or leave optional fields empty.
+Replace example IDs, domain and link with metadata and actual deliverables, or leave optional fields empty. The sample task ID is a placeholder: use only a verified existing or successfully created task ID. Do not send it literally, or send [] to conceal unresolved task creation. For explicit report-only behavior or unavailable Todo access, omit todo_ids and explain any task synchronization still outstanding.
 
 - Statuses: `progress` (进展), `review` (待反馈), `blocked` (阻塞), `delivered` (已交付), `resolved` (已解决).
 - For a repeat “上报一次” request, check the previous brief for this project/work unit before posting. Preserve its source ID and incorporate useful new evidence; do not create a fresh record for every click.
@@ -70,6 +73,8 @@ The report detail offers **Copy link** and **Copy source_id**. A `?report=<id>` 
 
 ## Collaboration and follow-up
 
+An existing explicit mandate to coordinate work through CoFlow may already authorize the relevant requests, member notifications and routine updates below; reuse that authorization rather than asking again for each covered action. Requests and comments are shared records, not proof that a person or Agent has started execution. Read permitted feedback again on the next authorized work session and reconcile it with the current task and user mandate before acting.
+
 When the user asks to request help, `GET /api/v1/collaborations` returns team requests and progress. With `comments:write`, POST `/api/v1/collaborations` using `report_id`, `assignee_id` (existing member), `title`, and optional `body`. This notifies the assignee. With the same permission, the creator or assignee may PATCH `/api/v1/collaborations/<id>` with `status` (`open`, `in_progress`, `blocked`, `done`, `cancelled`) and a progress `body`. Read a successful response before claiming success. Ordinary authorization to report does not by itself authorize creating assignments or acting on requests.
 
 Comments use POST `/api/v1/reports/<id>/comments` with `body` and optional `mentions` member IDs. For a requested status change, PATCH `/api/v1/reports/<id>` with `status`. GET `/api/v1/reports/<id>/history` returns the latest 100 revision/classification records. Browser members organize categories; Agent tokens cannot approve, merge, archive, or manually correct classification.
@@ -82,7 +87,7 @@ Detailed contract: `<service>/agent/openapi.yaml`, or `docs/openapi.yaml` in the
 
 ## Todo integration
 
-When the user authorizes task tracking, use [Todo operations](todos.md). Existing reporting credentials do not gain Todo scopes. Reports accept optional `todo_ids` (up to 20), requiring todos:read. Omit the field to preserve existing references; [] explicitly removes them. Each independent progress report uses its own source_id, distinct from a task source_id.
+The Skill's default reporting workflow includes task reconciliation for concrete doing, planned and finished work; use [Todo operations](todos.md). This does not change the server contract: `todo_ids` is still optional, and existing reporting credentials do not gain Todo scopes. Task creation needs todos:read/write; reports accept up to 20 verified todo_ids with todos:read. For explicit report-only behavior or unavailable task access, omit the field to preserve existing references and clearly identify any task tracking left unsynced; [] explicitly removes references. Each independent progress report uses its own source_id, distinct from a task source_id.
 
 Only with todos:write, object maintenance permission and the user's authorization, include `operation_id` and `todo_moves: [{id, column_id, expected_revision}]`. Read current task revisions and board columns first; each moved task must be in todo_ids. The report, links, moves, history and notifications commit atomically. Retry uncertain outcomes with the identical body and operation_id; on 409 re-read and reconcile before submitting a new operation. Reporting delivered work does not automatically complete a task, and card movement does not authorize execution or require a new report.
 ## Optional daily check

@@ -1,12 +1,19 @@
 import { calendarDateKey, formatDate } from "./i18n/core";
 import { publicDemo } from "./runtime";
+import { ReadCache, cacheableRead, readKey } from "./read-cache";
 export type InvitationInfo = {
   email: string;
   email_domain: string;
   inviter_name: string;
   team_name: string;
 };
-export type Member = { avatar_data?: string; id: string; name: string; role: string; color: string };
+export type Member = {
+  avatar_data?: string;
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+};
 export type Project = {
   id: string;
   name: string;
@@ -22,7 +29,7 @@ export type Category = {
   merged_into: string;
 };
 export type Collaboration = {
- todo_id?: string;
+  todo_id?: string;
   id: string;
   report_id: string;
   author_id: string;
@@ -41,7 +48,7 @@ export type Collaboration = {
   }[];
 };
 export type Notification = {
- todo_id?: string;
+  todo_id?: string;
   id: string;
   report_id: string;
   request_id: string;
@@ -60,7 +67,7 @@ export type Comment = {
   created_at: string;
 };
 export type Report = {
- todo_ids?: string[];
+  todo_ids?: string[];
   deleted_at?: string;
   id: string;
   team_id: string;
@@ -123,7 +130,60 @@ export class ApiError extends Error {
     super(message);
   }
 }
+const reads = new ReadCache();
+let channel: BroadcastChannel | null = null;
+let channelReady = false;
+function cacheChannel() {
+  if (typeof window === "undefined" || channelReady) return channel;
+  channelReady = true;
+  try {
+    channel = new BroadcastChannel("coflow-cache");
+    channel.onmessage = (event) => {
+      reads.invalidate();
+      if (event.data === "session") {
+        reads.setScope(null);
+        window.dispatchEvent(new Event("coflow:session-changed"));
+      }
+    };
+  } catch {
+    /* Some browsers disable cross-tab channels. Focus revalidates too. */
+  }
+  return channel;
+}
+export function setReadCacheScope(scope: string | null) {
+  cacheChannel();
+  reads.setScope(scope);
+}
+export function invalidateReadCache() {
+  reads.invalidate();
+}
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const mutation =
+    !!init?.method && !["GET", "HEAD"].includes(init.method.toUpperCase());
+  if (mutation) {
+    const sessionMutation = [
+      "/auth/login",
+      "/auth/logout",
+      "/auth/team",
+      "/auth/bootstrap",
+      "/auth/accept-invite",
+    ].includes(path);
+    reads.invalidate();
+    if (sessionMutation) reads.setScope(null);
+    try {
+      return await transport<T>(path, init);
+    } finally {
+      reads.invalidate();
+      cacheChannel()?.postMessage(sessionMutation ? "session" : "data");
+    }
+  }
+  if (typeof window !== "undefined" && cacheableRead(path, init))
+    return reads.read(readKey(path), () => transport<T>(path, init));
+  return transport<T>(path, init);
+}
+
+async function transport<T>(path: string, init?: RequestInit): Promise<T> {
   if (publicDemo) {
     const { publicDemoRequest } = await import("./public-demo");
     return (await publicDemoRequest(path, init)) as T;
@@ -143,6 +203,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       !init?.headers &&
       typeof window !== "undefined"
     ) {
+      setReadCacheScope(null);
       window.dispatchEvent(new Event("coflow:unauthorized"));
     }
     throw new ApiError(message, res.status);
@@ -153,5 +214,9 @@ export function dateKey(time: string, timeZone = "Asia/Shanghai") {
   return calendarDateKey(time, timeZone);
 }
 export function clock(time: string, locale = "en", timeZone = "Asia/Shanghai") {
-  return formatDate(locale, time, { timeZone, hour: "2-digit", minute: "2-digit" });
+  return formatDate(locale, time, {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

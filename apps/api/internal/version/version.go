@@ -2,4 +2,4 @@
 package version
 
 // Current changes only when a version update is explicitly requested.
-const Current = "0.2.0"
+const Current = "0.2.1"

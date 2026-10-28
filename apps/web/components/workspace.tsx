@@ -1,8 +1,10 @@
 "use client";
 
+import { loadTodoPages } from "@/lib/todo-loader";
 import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BookOpen,
   Copy,
   Trash2,
   ArrowDownWideNarrow,
@@ -68,6 +70,7 @@ import {
   Meta,
   Report,
   Member,
+  invalidateReadCache,
   request,
   statuses,
 } from "@/lib/types";
@@ -188,10 +191,14 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const credentialsPage = pathname === "/credentials";
   const settingsPage = pathname === "/settings";
   const newTeamPage = pathname === "/teams/new";
+  const timelinePage = useRef(false);
+  timelinePage.current =
+    !todoPage && !credentialsPage && !settingsPage && !newTeamPage;
   const auth = useAuth();
   const activeTeam = useRef(auth.me?.current_team);
   activeTeam.current = auth.me?.current_team;
   const loadVersion = useRef(0);
+  const timelineReady = useRef(false);
   const [todoColumns, setTodoColumns] = useState<TodoBoardData["columns"]>([]);
   const [todoIndex, setTodoIndex] = useState<Todo[]>([]);
   const [todoCompletions, setTodoCompletions] = useState<
@@ -263,54 +270,51 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       const version = ++loadVersion.current;
       const current = () =>
         team === activeTeam.current && version === loadVersion.current;
-      if (initial) setLoading(true);
+      if (timelinePage.current && !timelineReady.current) setLoading(true);
+      if (initial) {
+        invalidateReadCache();
+        setLoading(true);
+      }
       try {
-        const [m, r, boardData] = await Promise.all([
-          request<Meta>("/meta"),
-          request<{
-            items: Report[];
-          }>("/reports"),
-          request<TodoBoardData>("/todo-board"),
+        const read = <T,>(path: string) =>
+          request<T>(path, initial ? { cache: "no-store" } : undefined);
+        // Other pages need team context, not Timeline's entire history and indexes.
+        if (!timelinePage.current) {
+          const m = await read<Meta>("/meta");
+          if (current() && (!team || m.team.id === team)) {
+            setMeta(m);
+            setError("");
+          }
+          return;
+        }
+        const [
+          m,
+          r,
+          boardData,
+          reads,
+          cs,
+          activeTasks,
+          archivedTasks,
+          completed,
+        ] = await Promise.all([
+          read<Meta>("/meta"),
+          read<{ items: Report[] }>("/reports"),
+          read<TodoBoardData>("/todo-board"),
+          auth.mode === "local-demo"
+            ? Promise.resolve({ items: {} })
+            : read<{ items: Record<string, string> }>("/reads"),
+          auth.mode === "local-demo"
+            ? Promise.resolve({ items: [] })
+            : read<{ items: Collaboration[] }>("/collaborations"),
+          loadTodoPages(read, { archived: "false" }),
+          loadTodoPages(read, { archived: "true" }),
+          read<{ items: typeof todoCompletions }>("/todo-completions"),
         ]);
-        if (m.mode !== "local-demo") {
-          const [reads, cs] = await Promise.all([
-            request<{
-              items: Record<string, string>;
-            }>("/reads"),
-            request<{
-              items: Collaboration[];
-            }>("/collaborations"),
-          ]);
-          if (!current()) return;
-          setSeen(reads.items);
-          setCollaborations(cs.items);
-        } else {
-          setCollaborations([]);
-        }
-        if (!current()) return;
-        const allTasks: Todo[] = [];
-        for (const archived of [false, true]) {
-          let cursor = "";
-          do {
-            const page = await request<{ items: Todo[]; next_cursor: string }>(
-              `/todos?limit=200&archived=${archived}&cursor=${cursor}`,
-            );
-            allTasks.push(...page.items);
-            cursor = page.next_cursor;
-          } while (cursor);
-        }
-        const completed = await request<{
-          items: {
-            todo_id: string;
-            completed_at: string;
-            assignee_id: string;
-            project_id: string;
-            domains: string[];
-            creator_id: string;
-            agent: string;
-          }[];
-        }>("/todo-completions");
-        if (!current()) return;
+        if (!current() || (team && m.team.id !== team)) return;
+        const allTasks = [...activeTasks, ...archivedTasks];
+        if (m.mode !== "local-demo") setSeen(reads.items);
+        setCollaborations(cs.items);
+        timelineReady.current = true;
         setTodoIndex(allTasks);
         setTodoColumns(boardData.columns);
         setTodoCompletions(completed.items);
@@ -323,7 +327,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         if (current()) setLoading(false);
       }
     },
-    [auth.me?.current_team],
+    [auth.me?.current_team, auth.me?.user.id, auth.mode],
   );
   useEffect(() => {
     setFilters(initialFilters);
@@ -715,6 +719,15 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       </nav>
       <div className="nav-bottom">
         <Link
+          href="/docs"
+          aria-label={tr("协作指南")}
+          title={tr("协作指南")}
+          onClick={() => setNav(false)}
+        >
+          <BookOpen size={18} />
+          <span className="nav-label">{tr("协作指南")}</span>
+        </Link>
+        <Link
           href="/credentials"
           aria-label={tr("Agent 凭证")}
           title={tr("Agent 凭证")}
@@ -820,6 +833,11 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     <span className="heading-dot" />
                   )}
                 </h1>
+                {todoPage && (
+                  <span className="heading-caption">
+                    {tr("多人、多 Agent 协同交付")}
+                  </span>
+                )}
                 {!todoPage && !credentialsPage && !settingsPage && (
                   <span className="heading-caption">
                     {tr("每一次推进，都在这里汇合。")}

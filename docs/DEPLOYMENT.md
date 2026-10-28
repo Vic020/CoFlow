@@ -2,7 +2,7 @@
 
 本文部署自用／自托管真实团队服务。维护者购买的服务器用于自用，不作为开源仓库的公开演示后端。公开 GitHub Pages 仅运行虚拟数据网页，无 Go API、数据库或真实账号，详见 [Pages 说明](GITHUB_PAGES.md)。
 
-当前版本 0.2.0。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
+当前版本 0.2.1。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
 
 ## 生产拓扑
 
@@ -20,7 +20,7 @@ Compose 的内存上限合计约 1.4GB，给系统留余量；数据库限制 20
 cp deploy/production.env.example .env.production
 # 本地编辑域名、随机十六进制数据库密码与独立的初始化 token（各用 openssl rand -hex 32 生成）；不要把真实值提交到 Git。
 docker compose --env-file .env.production -f compose.production.yaml build
-docker save coflow-api:0.2.0 coflow-web:0.2.0 | gzip > /tmp/coflow-images.tar.gz
+docker save coflow-api:0.2.1 coflow-web:0.2.1 | gzip > /tmp/coflow-images.tar.gz
 ```
 
 将镜像包、compose.production.yaml、deploy/Caddyfile 和私密的 .env.production 通过 SSH 传至自己的服务器，导入后启动：
@@ -77,9 +77,9 @@ cat backups/<备份文件>.dump | docker compose --env-file .env.production -f c
 
 Go 不自动读取 `.env`；生产 Compose 负责注入环境变量。不要打印 `docker compose config` 的完整结果到公开日志，其中可能包含数据库密码与初始化 token。部署不使用 `COFLOW_DEMO=true` 或 `NEXT_PUBLIC_COFLOW_PUBLIC_DEMO=true`。
 
-需保留数据库、Caddy 证书与配置卷，配置文件保持私密权限。迁移是自动执行的 SQL，不需要手工重复执行或重新初始化团队。当前 0.2.0 共 10 个迁移，010 新增团队 Todo 文档、任务通知与协作引用；009 增加简报／评论软删除与评论通知关联，006–008 为个人语言、头像和展示时区；迁移记录表是 `schema_migrations`。
+需保留数据库、Caddy 证书与配置卷，配置文件保持私密权限。迁移是自动执行的 SQL，不需要手工重复执行或重新初始化团队。当前 0.2.1 共 10 个迁移，010 新增团队 Todo 文档、任务通知与协作引用；009 增加简报／评论软删除与评论通知关联，006–008 为个人语言、头像和展示时区；迁移记录表是 `schema_migrations`。
 
-## 升级到 0.2.0
+## 升级到 0.2.1
 
 1. 在隔离环境验证目标源码，确认两个镜像版本和目标 CPU 架构一致。镜像只从已检查的源码构建，不将私密配置、数据库或本机调试产物混入构建包。
 2. 在服务器备份数据库，并私下保存当前 Compose、环境配置、应用镜像标签和镜像 ID。保留旧镜像，确认备份可解码并在隔离数据库演练恢复；备份不上传到 Release。
@@ -99,13 +99,13 @@ Go 不自动读取 `.env`；生产 Compose 负责注入环境变量。不要打�
 curl --fail --silent --show-error https://coflow.example.com/api/v1/health
 ```
 
-预期 `status=ok`、`mode=team`、`version=0.2.0`。同时确认页面可打开，未登录读取 `/api/v1/auth/me` 返回 401，`/agent/coflow/SKILL.md` 与 `/agent/openapi.yaml` 为当前规范内容。CDN 返回 HTML 或拦截页时，先区分边缘规则与应用错误，不关闭应用授权或 TLS 校验来绕过。
+预期 `status=ok`、`mode=team`、`version=0.2.1`。同时确认页面可打开，未登录读取 `/api/v1/auth/me` 返回 401，`/agent/coflow/SKILL.md` 与 `/agent/openapi.yaml` 为当前规范内容。CDN 返回 HTML 或拦截页时，先区分边缘规则与应用错误，不关闭应用授权或 TLS 校验来绕过。
 
 健康检查不能代替完整验收。写入验证使用独立合成团队；不要修改真实成员的密码、简报或凭证来测试。浏览器登录测试、真实 Agent 接入和异地容量分别记录通过范围。
 
 ## 回滚
 
-0.2.0 的迁移 010 为加法变更，但旧应用不理解 Todo、新任务通知和协作转交引用；已有任务写入后不可据此宣称可直接安全回退。回退前限制访问并核对兼容性，不自动修改或丢弃任务数据。旧 Token 不自动扩权；统一 Skill 更新时保留既有项目关联与凭证。
+0.2.1 的迁移 010 为加法变更，但旧应用不理解 Todo、新任务通知和协作转交引用；已有任务写入后不可据此宣称可直接安全回退。回退前限制访问并核对兼容性，不自动修改或丢弃任务数据。旧 Token 不自动扩权；统一 Skill 更新时保留既有项目关联与凭证。
 
 - 应用启动或验收失败时停止继续变更，保留日志和当前备份。将应用镜像引用恢复到升级前记录，重新启动 `api`、`web` 并检查健康状态。
 - 0.1.4 新增迁移是加法变更，但回退应用仍需核对目标旧版的兼容性；不自动删除列、回退迁移记录或恢复数据库。

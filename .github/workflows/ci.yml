@@ -23,6 +23,7 @@ jobs:
       - run: npm run test:images
       - run: npm run test:i18n
       - run: npm run test:agent
+      - run: npm run test:cache
       - run: npm run test:demo
       - run: npm run typecheck
       - run: npm run build

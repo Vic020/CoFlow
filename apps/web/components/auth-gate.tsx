@@ -4,6 +4,7 @@ import { InvitationHint } from "@/components/invitation-hint";
 import type { InvitationInfo } from "@/lib/types";
 import { LanguageSwitcher, useI18n } from "@/components/i18n-provider";
 import {
+  Fragment,
   createContext,
   useContext,
   useEffect,
@@ -20,7 +21,12 @@ import {
   type AgentTokenMetadata,
 } from "@/lib/report-prompt";
 import { isLocale, type Locale } from "@/lib/i18n/core";
-import { request, ApiError } from "@/lib/types";
+import {
+  request,
+  ApiError,
+  setReadCacheScope,
+  invalidateReadCache,
+} from "@/lib/types";
 type User = {
   avatar_data?: string;
   id: string;
@@ -79,7 +85,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (isLocale(me?.preferences?.locale)) setLocale(me.preferences.locale);
   }, [me?.user.id, me?.preferences?.locale, setLocale]);
   useEffect(() => {
-    if (me?.preferences?.display_timezone) setTimeZone(me.preferences.display_timezone);
+    if (me?.preferences?.display_timezone)
+      setTimeZone(me.preferences.display_timezone);
   }, [me?.user.id, me?.preferences?.display_timezone, setTimeZone]);
   const identity = `${me?.current_team || ""}:${me?.user.id || ""}`;
   const currentIdentity = useRef(identity);
@@ -108,26 +115,41 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const timer = setInterval(() => void refreshTokens(), 30000);
     return () => clearInterval(timer);
   }, [refreshTokens]);
-  const refresh = useCallback(async () => {
+  const refreshVersion = useRef(0);
+  const refresh = useCallback(async (background = false) => {
+    const version = ++refreshVersion.current;
     try {
       const state = await request<{
         mode: string;
         initialized: boolean;
       }>("/auth/status");
+      if (version !== refreshVersion.current) return;
       setStatus(state);
       if (state.mode !== "local-demo" && state.initialized) {
         try {
-          setMe(await request<Me>("/auth/me"));
+          const next = await request<Me>("/auth/me");
+          if (version !== refreshVersion.current) return;
+          setReadCacheScope(
+            `${next.user.id}:${next.current_team}:${next.role}`,
+          );
+          setMe(next);
         } catch (e) {
-          if (e instanceof ApiError && e.status === 401) setMe(null);
-          else throw e;
+          if (version !== refreshVersion.current) return;
+          if (e instanceof ApiError && e.status === 401) {
+            setReadCacheScope(null);
+            setMe(null);
+          } else throw e;
         }
-      } else setMe(null);
+      } else {
+        setReadCacheScope(state.mode === "local-demo" ? "local-demo" : null);
+        setMe(null);
+      }
       setError("");
     } catch (e) {
-      setError((e as Error).message);
+      if (version === refreshVersion.current && !background)
+        setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (version === refreshVersion.current) setLoading(false);
     }
   }, []);
   useEffect(() => {
@@ -139,13 +161,31 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     void refresh();
     window.addEventListener("hashchange", readInvite);
     const expired = () => {
+      refreshVersion.current++;
+      setReadCacheScope(null);
       setMe(null);
       setCredential("");
+      setLoading(false);
+    };
+    const revalidate = () => {
+      invalidateReadCache();
+      void refresh(true);
+    };
+    const sessionChanged = () => {
+      invalidateReadCache();
+      setLoading(true);
+      void refresh();
     };
     window.addEventListener("coflow:unauthorized", expired);
+    window.addEventListener("coflow:session-changed", sessionChanged);
+    window.addEventListener("focus", revalidate);
     return () => {
       window.removeEventListener("hashchange", readInvite);
       window.removeEventListener("coflow:unauthorized", expired);
+      window.removeEventListener("coflow:session-changed", sessionChanged);
+      window.removeEventListener("focus", revalidate);
+      refreshVersion.current++;
+      setReadCacheScope(null);
     };
   }, [refresh]);
   async function logout() {
@@ -189,7 +229,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <Button onClick={() => void refresh()}>{tr("重新连接")}</Button>
         </div>
       ) : status?.mode === "local-demo" ? (
-        children
+        <Fragment key="local-demo">{children}</Fragment>
       ) : invite ? (
         <AccountForm
           invite={invite}
@@ -199,7 +239,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           onLogout={logout}
         />
       ) : me ? (
-        children
+        <Fragment key={`${identity}:${me.role}`}>{children}</Fragment>
       ) : (
         <AccountForm
           invite=""
@@ -315,7 +355,9 @@ function AccountForm({
               ? tr("创建管理员账号，邀请伙伴开始协作。")
               : tr("登录后查看团队进展，继续推进协作。")}
         </p>
-        {invite && info && <InvitationHint info={info} className="invitation-hint" />}
+        {invite && info && (
+          <InvitationHint info={info} className="invitation-hint" />
+        )}
         {wrongAccount ? (
           <div className="info-callout">
             {tr("当前登录的是")}

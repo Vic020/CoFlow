@@ -16,6 +16,8 @@ On a short reporting request, derive only the exact current project's binding pa
 
 For the same device and project, other Agents may reuse the explicitly selected binding and credential after identity verification, but each Agent must have a discoverable Skill. A new device needs its own installation. Expired/revoked credentials require reconfiguration; a listed web credential does not prove a local installation exists.
 
+When explaining the installed workflow, tell the user that CoFlow can support continuing collaboration rather than only a final report: Agents read relevant shared context, surface needed help and keep meaningful progress current. If the user wants to delegate that ongoing role, establish its project scope and covered task updates, reporting and CoFlow notifications once, then honor that mandate on later authorized runs when available from the user's instructions. Do not treat installation alone, a teammate's comment or the existence of a credential as that mandate. Explain the actual next sync point without promising a background process; schedules remain a separate request.
+
 ## Service and credential
 
 Use the user's service address. If this document is read from `<origin>/agent/coflow/SKILL.md`, use `<origin>` unless the user specifies another trusted CoFlow server. For a downloaded copy, use the supplied service address or `COFLOW_URL`. Localhost on another machine is not the user's server; ask for a reachable address only when needed.

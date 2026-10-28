@@ -35,6 +35,7 @@ import {
 } from "./ui/dialog";
 import { ReportCompose } from "./report-compose";
 import { NotificationCenter } from "./notification-center";
+import { loadTodoPages } from "@/lib/todo-loader";
 import { ApiError, Meta, Report, request, dateKey } from "@/lib/types";
 import {
   defaultColumnName,
@@ -112,33 +113,21 @@ export function TodoBoard({ meta }: { meta: Meta }) {
   const load = useCallback(async () => {
     const v = ++version.current;
     try {
-      const b = await request<TodoBoardData>("/todo-board");
-      const params = new URLSearchParams({
-        q: query,
-        project,
-        domain,
-        assignee,
-        scope,
-        archived: String(archived),
-        limit: "200",
-      });
-      const all: Todo[] = [];
-      for (const c of b.columns.filter((c) => !c.archived)) {
-        params.set("column", c.id);
-        params.delete("cursor");
-        for (;;) {
-          const page = await request<{
-            items: Todo[];
-            next_cursor: string;
-          }>(`/todos?${params}`);
-          all.push(...page.items);
-          if (!page.next_cursor) break;
-          params.set("cursor", page.next_cursor);
-        }
-      }
+      const [b, all] = await Promise.all([
+        request<TodoBoardData>("/todo-board"),
+        loadTodoPages(request, {
+          q: query,
+          project,
+          domain,
+          assignee,
+          scope,
+          archived: String(archived),
+        }),
+      ]);
       if (v !== version.current || !mounted.current) return;
       setBoard(b);
       setTasks(all);
+      setError("");
     } catch (e) {
       if (v === version.current && mounted.current)
         setError((e as Error).message);
@@ -829,7 +818,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
             {tr(draft?.id ? "任务详情" : "新建任务")}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {tr("安排工作、记录进展与交付")}
+            {tr("共同分工、推进与验收交付")}
           </DialogDescription>
           {draft && (
             <Tabs

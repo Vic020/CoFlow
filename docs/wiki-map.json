@@ -2,8 +2,8 @@
   "pages": [
     { "en": "Home", "zh-CN": "Home-zh-CN", "sources": ["README.md", "README.zh-CN.md", "docs/README.md", "docs/README.zh-CN.md"] },
     { "en": "Quick-Start", "zh-CN": "Quick-Start-zh-CN", "sources": ["docs/USAGE.md", "docs/DEPLOYMENT.md"] },
-    { "en": "Agent-Reporting", "zh-CN": "Agent-Reporting-zh-CN", "sources": ["docs/AGENT_REPORTING.md", "skills/coflow/SKILL.md", "skills/coflow/references/installation.md", "skills/coflow/references/reporting.md", "skills/coflow/references/todos.md", "docs/openapi.yaml"] },
-    { "en": "Team-Collaboration", "zh-CN": "Team-Collaboration-zh-CN", "sources": ["docs/USAGE.md", "docs/PRODUCT.md"] },
+    { "en": "Agent-Reporting", "zh-CN": "Agent-Reporting-zh-CN", "sources": ["docs/AGENT_REPORTING.md", "skills/coflow/SKILL.md", "skills/coflow/references/installation.md", "skills/coflow/references/reporting.md", "skills/coflow/references/todos.md", "docs/openapi.yaml", "docs/COLLABORATION_GUIDE.md"] },
+    { "en": "Team-Collaboration", "zh-CN": "Team-Collaboration-zh-CN", "sources": ["docs/USAGE.md", "docs/PRODUCT.md", "docs/COLLABORATION_GUIDE.md"] },
     { "en": "Personal-Settings", "zh-CN": "Personal-Settings-zh-CN", "sources": ["docs/USAGE.md", "docs/I18N.md"] },
     { "en": "FAQ", "zh-CN": "FAQ-zh-CN", "sources": ["docs/TROUBLESHOOTING.md"] },
     { "en": "Roadmap", "zh-CN": "Roadmap-zh-CN", "sources": ["docs/ROADMAP.md", "docs/TODO_V0.2.md"] }

@@ -7,7 +7,7 @@ RUN npm ci
 COPY apps/web/ ./apps/web/
 COPY scripts/ ./scripts/
 COPY skills/ ./skills/
-COPY docs/openapi.yaml ./docs/openapi.yaml
+COPY docs/openapi.yaml docs/COLLABORATION_GUIDE.md ./docs/
 ARG API_BASE_URL=http://api:8080
 ENV API_BASE_URL=$API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
