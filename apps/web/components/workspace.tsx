@@ -2,8 +2,16 @@
 
 import { loadTodoPages } from "@/lib/todo-loader";
 import { useI18n } from "@/components/i18n-provider";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  CalendarDays,
   BookOpen,
   Copy,
   Trash2,
@@ -34,6 +42,8 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { DeleteAction, TrashList } from "@/components/content-actions";
 import { defaultColumnName, type Todo, type TodoBoardData } from "@/lib/todo";
+import { GlobalFilters, useSharedFilters } from "./shared-filters";
+import { CalendarWorkspace } from "@/components/calendar-workspace";
 import { TodoBoard } from "@/components/todo-board";
 import { ReportTodos } from "@/components/report-todos";
 import { ReportCompose } from "@/components/report-compose";
@@ -81,10 +91,8 @@ type Filters = {
   agent: string;
   days: string;
 };
-const initialFilters: Filters = {
-  project: "",
-  domain: "",
-  member: "",
+type LocalFilters = Pick<Filters, "agent" | "days">;
+const initialFilters: LocalFilters = {
   agent: "",
   days: "7",
 };
@@ -188,13 +196,19 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname().replace(/\/$/, "") || "/";
   const todoPage = pathname === "/todo";
+  const calendarPage = pathname === "/calendar";
   const credentialsPage = pathname === "/credentials";
   const settingsPage = pathname === "/settings";
   const newTeamPage = pathname === "/teams/new";
   const timelinePage = useRef(false);
   timelinePage.current =
-    !todoPage && !credentialsPage && !settingsPage && !newTeamPage;
+    !todoPage &&
+    !calendarPage &&
+    !credentialsPage &&
+    !settingsPage &&
+    !newTeamPage;
   const auth = useAuth();
+  const shared = useSharedFilters();
   const activeTeam = useRef(auth.me?.current_team);
   activeTeam.current = auth.me?.current_team;
   const loadVersion = useRef(0);
@@ -218,10 +232,15 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     [reports, setReports] = useState<Report[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
-  const [filters, setFilters] = useState<Filters>(initialFilters),
+  const [localFilters, setLocalFilters] =
+      useState<LocalFilters>(initialFilters),
     [query, setQuery] = useState(""),
     [view, setView] = useState("all"),
     [unread, setUnread] = useState(false);
+  const filters = useMemo(
+    () => ({ ...localFilters, ...shared.filters }),
+    [localFilters, shared.filters],
+  );
   const [seen, setSeen] = useState<Record<string, string>>({}),
     [detail, setDetail] = useState<string | null>(null),
     [reportTab, setReportTab] = useState<ReportTab | null>(null),
@@ -330,7 +349,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     [auth.me?.current_team, auth.me?.user.id, auth.mode],
   );
   useEffect(() => {
-    setFilters(initialFilters);
+    setLocalFilters(initialFilters);
     setScope("all");
     setUnread(false);
     setDetail(null);
@@ -371,6 +390,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       loading ||
       !meta ||
       todoPage ||
+      calendarPage ||
       credentialsPage ||
       settingsPage ||
       newTeamPage
@@ -388,6 +408,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     meta,
     reports,
     todoPage,
+    calendarPage,
     credentialsPage,
     settingsPage,
     newTeamPage,
@@ -413,20 +434,24 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
-  const updateFilter = (key: keyof Filters, value: string) =>
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+  const updateFilter = (key: keyof Filters, value: string) => {
+    if (key === "project" || key === "domain" || key === "member")
+      shared.update({ [key]: value });
+    else setLocalFilters((prev) => ({ ...prev, [key]: value }));
+  };
   function resetFilters() {
-    setFilters(initialFilters);
+    setLocalFilters(initialFilters);
     setScope("all");
     setUnread(false);
     setOnlyAttention(false);
     setQuery("");
   }
   const needs = reports.filter(
-    (r) => r.status === "blocked" || r.status === "review",
+    (r) =>
+      (r.status === "blocked" || r.status === "review") &&
+      (!filters.project || r.project_id === filters.project) &&
+      (!filters.domain || reportDomains(r).includes(filters.domain)) &&
+      (!filters.member || r.author_id === filters.member),
   );
   const filtered = useMemo(() => {
     const cutoff = filters.days
@@ -541,8 +566,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     );
   };
   const activeFilters =
-    Object.entries(filters).filter(
-      ([k, v]) => v !== initialFilters[k as keyof Filters],
+    Object.entries(localFilters).filter(
+      ([k, v]) => v !== initialFilters[k as keyof LocalFilters],
     ).length +
     Number(scope !== "all") +
     Number(unread);
@@ -553,31 +578,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       !c.todo_id &&
       !["done", "cancelled"].includes(c.status),
   ).length;
-  const domainFilter = (
-    <SelectFilter
-      label={tr("领域")}
-      value={filters.domain}
-      onChange={(v) => updateFilter("domain", v)}
-      options={(meta?.domains || []).map((d) => ({
-        id: d,
-        name: d,
-      }))}
-    />
-  );
   const filtersContent = (
     <>
-      <SelectFilter
-        label={tr("项目")}
-        value={filters.project}
-        onChange={(v) => updateFilter("project", v)}
-        options={meta?.projects || []}
-      />
-      <SelectFilter
-        label={tr("成员")}
-        value={filters.member}
-        onChange={(v) => updateFilter("member", v)}
-        options={meta?.members || []}
-      />
       <SelectFilter
         label="Agent"
         value={filters.agent}
@@ -691,12 +693,16 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       />
       <nav>
         <Link
-          href="/"
+          href={shared.href("/")}
           className={
-            !todoPage && !credentialsPage && !settingsPage ? "nav-active" : ""
+            !todoPage && !calendarPage && !credentialsPage && !settingsPage
+              ? "nav-active"
+              : ""
           }
           aria-current={
-            !todoPage && !credentialsPage && !settingsPage ? "page" : undefined
+            !todoPage && !calendarPage && !credentialsPage && !settingsPage
+              ? "page"
+              : undefined
           }
           aria-label="Timeline"
           title="Timeline"
@@ -706,7 +712,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           <span className="nav-label">Timeline</span>
         </Link>
         <Link
-          href="/todo"
+          href={shared.href("/todo")}
           className={todoPage ? "nav-active" : ""}
           aria-current={todoPage ? "page" : undefined}
           title="Todo"
@@ -715,6 +721,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         >
           <Check size={18} />
           <span className="nav-label">Todo</span>
+        </Link>
+        <Link
+          href={shared.href("/calendar")}
+          className={calendarPage ? "nav-active" : ""}
+          aria-current={calendarPage ? "page" : undefined}
+          title="Calendar"
+          aria-label="Calendar"
+          onClick={() => setNav(false)}
+        >
+          <CalendarDays size={18} />
+          <span className="nav-label">Calendar</span>
         </Link>
       </nav>
       <div className="nav-bottom">
@@ -809,6 +826,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         <div
           className={`workspace-content${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
+          {meta && !credentialsPage && !settingsPage && !newTeamPage && (
+            <GlobalFilters meta={meta} />
+          )}
           <header className="page-heading">
             <div className="heading-start">
               <Button
@@ -824,83 +844,100 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <h1>
                   {todoPage
                     ? "Todo"
-                    : credentialsPage
-                      ? tr("Agent 凭证")
-                      : settingsPage
-                        ? tr("团队设置")
-                        : tr("团队动态")}
-                  {!todoPage && !credentialsPage && !settingsPage && (
-                    <span className="heading-dot" />
-                  )}
+                    : calendarPage
+                      ? "Calendar"
+                      : credentialsPage
+                        ? tr("Agent 凭证")
+                        : settingsPage
+                          ? tr("团队设置")
+                          : tr("团队动态")}
+                  {!todoPage &&
+                    !calendarPage &&
+                    !credentialsPage &&
+                    !settingsPage && <span className="heading-dot" />}
                 </h1>
                 {todoPage && (
                   <span className="heading-caption">
                     {tr("多人、多 Agent 协同交付")}
                   </span>
                 )}
-                {!todoPage && !credentialsPage && !settingsPage && (
-                  <span className="heading-caption">
-                    {tr("每一次推进，都在这里汇合。")}
-                  </span>
-                )}
+                {!todoPage &&
+                  !calendarPage &&
+                  !credentialsPage &&
+                  !settingsPage && (
+                    <span className="heading-caption">
+                      {tr("每一次推进，都在这里汇合。")}
+                    </span>
+                  )}
               </div>
             </div>
-            {!todoPage && !credentialsPage && !settingsPage && (
-              <div className="top-actions">
-                <label className="search">
-                  <Search size={16} />
-                  <input
-                    aria-label={tr("搜索动态")}
-                    placeholder={tr("搜索动态、项目或成员…")}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  {query && (
-                    <button
-                      aria-label={tr("清空搜索")}
-                      onClick={() => setQuery("")}
+            {!todoPage &&
+              !calendarPage &&
+              !credentialsPage &&
+              !settingsPage && (
+                <div className="top-actions">
+                  <label className="search">
+                    <Search size={16} />
+                    <input
+                      aria-label={tr("搜索动态")}
+                      placeholder={tr("搜索动态、项目或成员…")}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    {query && (
+                      <button
+                        aria-label={tr("清空搜索")}
+                        onClick={() => setQuery("")}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                    <kbd>{tr("搜索")}</kbd>
+                  </label>
+                  {meta?.mode !== "local-demo" && meta ? (
+                    <NotificationCenter
+                      key={meta.team.id}
+                      team={meta.team.id}
+                      onSelect={(id) => {
+                        const r = reports.find((r) => r.id === id);
+                        if (r) markRead(r);
+                        else {
+                          setDetail(id);
+                          void load();
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={tr("查看待关注事项")}
+                      className="bell"
+                      onClick={() => {
+                        setOnlyAttention((v) => !v);
+                        setAttention(true);
+                      }}
                     >
-                      <X size={14} />
-                    </button>
+                      <Bell />
+                      {needs.length > 0 && <i />}
+                    </Button>
                   )}
-                  <kbd>{tr("搜索")}</kbd>
-                </label>
-                {meta?.mode !== "local-demo" && meta ? (
-                  <NotificationCenter
-                    key={meta.team.id}
-                    team={meta.team.id}
-                    onSelect={(id) => {
-                      const r = reports.find((r) => r.id === id);
-                      if (r) markRead(r);
-                      else {
-                        setDetail(id);
-                        void load();
-                      }
-                    }}
-                  />
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={tr("查看待关注事项")}
-                    className="bell"
-                    onClick={() => {
-                      setOnlyAttention((v) => !v);
-                      setAttention(true);
-                    }}
-                  >
-                    <Bell />
-                    {needs.length > 0 && <i />}
+                  <Button onClick={() => setReportTab("manual")}>
+                    <Plus />
+                    <span>{tr("上报")}</span>
                   </Button>
-                )}
-                <Button onClick={() => setReportTab("manual")}>
-                  <Plus />
-                  <span>{tr("上报")}</span>
-                </Button>
-              </div>
-            )}
+                </div>
+              )}
           </header>
-          {todoPage ? (
+          {calendarPage ? (
+            meta ? (
+              <Suspense fallback={<Loader2 className="animate-spin" />}>
+                <CalendarWorkspace key={meta.team.id} meta={meta} />
+              </Suspense>
+            ) : (
+              <Loader2 className="animate-spin" />
+            )
+          ) : todoPage ? (
             meta ? (
               <TodoBoard key={meta.team.id} meta={meta} />
             ) : (
@@ -969,7 +1006,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     onClick={resetFilters}
                     disabled={!activeFilters && !onlyAttention && !query}
                   >
-                    {tr("重置")}
+                    {tr("重置本页")}
                   </button>
                   {auth.mode !== "local-demo" && (
                     <button
@@ -1028,27 +1065,6 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     {view === "daily" ? tr("按日报汇总") : tr("按时间排序")}
                   </button>
                 </div>
-                <div className="domain-chips">
-                  {[
-                    "",
-                    ...(meta?.domains || [
-                      "产品",
-                      "研发",
-                      "设计",
-                      "运营",
-                      "内容",
-                      "视频制作",
-                    ]),
-                  ].map((d) => (
-                    <button
-                      key={d}
-                      className={filters.domain === d ? "selected" : ""}
-                      onClick={() => updateFilter("domain", d)}
-                    >
-                      {d || tr("全部领域")}
-                    </button>
-                  ))}
-                </div>
                 {catalogOpen && meta && auth.mode !== "local-demo" && (
                   <div className="timeline-catalog-editor">
                     <CatalogManager
@@ -1071,10 +1087,6 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                         },
                       )}
                     </span>
-                    <button onClick={resetFilters}>
-                      {tr("清除筛选")}
-                      <X size={12} />
-                    </button>
                   </div>
                 )}
                 <button
@@ -1128,8 +1140,23 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     <Search size={30} />
                     <h3>{tr("还没有匹配的动态")}</h3>
                     <p>{tr("调整筛选条件，或者发布第一条进展。")}</p>
-                    <Button variant="outline" onClick={resetFilters}>
-                      {tr("清除全部筛选")}
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        activeFilters || onlyAttention || query
+                          ? resetFilters()
+                          : shared.update({
+                              project: "",
+                              domain: "",
+                              member: "",
+                            })
+                      }
+                    >
+                      {tr(
+                        activeFilters || onlyAttention || query
+                          ? "重置本页"
+                          : "重置全局筛选",
+                      )}
                     </Button>
                   </div>
                 ) : (
@@ -1512,15 +1539,12 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         <DialogContent className="filter-dialog">
           <DialogTitle className="modal-title">{tr("筛选动态")}</DialogTitle>
           <DialogDescription className="modal-description">
-            {tr("组合查看项目、领域、成员和 Agent 的进展。")}
+            {tr("筛选本页的来源、日期与关注范围。")}
           </DialogDescription>
-          <div className="mobile-filter-fields">
-            {filtersContent}
-            {domainFilter}
-          </div>
+          <div className="mobile-filter-fields">{filtersContent}</div>
           <div className="flex gap-3 mt-6">
             <Button variant="outline" onClick={resetFilters}>
-              {tr("重置")}
+              {tr("重置本页")}
             </Button>
             <Button className="flex-1" onClick={() => setMobileFilters(false)}>
               {tr("查看")}

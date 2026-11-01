@@ -31,6 +31,7 @@ export type Todo = {
   domains: string[];
   priority: string;
   due_date: string;
+  schedule?: import("./calendar").Schedule | null;
   links: Link[];
   report_ids: string[];
   collaboration_id: string;

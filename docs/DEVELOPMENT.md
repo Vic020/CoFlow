@@ -1,5 +1,11 @@
 # 开发指南
 
+## 共享工作范围筛选
+
+Timeline、Todo 和 Calendar 通过 `SharedFilterProvider`／`useSharedFilters` 复用项目、领域、成员条件；顶栏仅渲染一份 `GlobalFilters`。公共条件写入 URL，使用按成员／团队隔离的 sessionStorage 作为本标签恢复来源，切换身份时不继承旧身份 URL 条件。它们不改变业务身份或 Go 权限。
+
+新增业务页时在 `apps/web/lib/shared-filters.ts` 的 `sharedFilterPage` 注册，使用共享 hook 映射对应模块的查询字段；成员必须明确是作者还是负责人。页面自己的日期、状态、搜索、归档及重置保留局部，导航通过共享 `href` 保留工作范围，不再复制三组公共控件。设置、凭证等非业务页面不显示公共筛选。运行 `npm run test:filters` 验证 URL、重置和身份恢复边界。
+
 CoFlow 当前版本为 0.2.0，包含 Todo。支持真实团队模式，以及独立的本地演示模式。版本由维护者手动管理。
 
 ## 环境

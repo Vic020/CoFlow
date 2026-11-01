@@ -441,6 +441,9 @@ func (s *Service) ChangeCategory(ctx context.Context, p identity.Principal, kind
 			if err = reclassifyTodos(ctx, tx, p, kind, old, out); err != nil {
 				return err
 			}
+			if err = reclassifyCalendarEvents(ctx, tx, p, kind, old, out); err != nil {
+				return err
+			}
 		}
 		// Reclassify historical rows in the same transaction, preserving original body and raw input.
 		if old.ID != "" && (target != "" || old.Name != out.Name) {

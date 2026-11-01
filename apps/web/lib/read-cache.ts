@@ -72,6 +72,8 @@ export function cacheableRead(path: string, init?: RequestInit) {
   )
     return false;
   return [
+    "/calendar/reports",
+    "/calendar/schedule",
     "/meta",
     "/reports",
     "/todo-board",

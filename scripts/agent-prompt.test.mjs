@@ -17,6 +17,9 @@ test("capability profiles require both reads and writes and do not infer comment
   assert.equal(credentialCapabilities([...reports, ...todos]).comments, false);
   assert.equal(credentialCapabilities(["reports:write", "todos:write"]).collaboration, false);
   assert.equal(credentialCapabilities(["todos:read"]).readOnly, true);
+  assert.equal(credentialCapabilities(["calendar:read"]).calendar, false);
+  assert.equal(credentialCapabilities(["calendar:read", "calendar:write"]).calendar, true);
+  assert.equal(credentialCapabilities(["calendar:read", "calendar:write"]).reports, false);
 });
 
 test("installation declares actual scopes and keeps replacement consent opt-in", () => {

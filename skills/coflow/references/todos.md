@@ -1,5 +1,7 @@
 # CoFlow Todo operations
 
+For an existing task's optional schedule, use [Calendar operations](calendar.md): planning dates are separate from due_date and completion, and edits use this same Todo's revision and permissions. Do not create a second task to put it on a calendar.
+
 Use the single [CoFlow Skill](../SKILL.md), with the verified service, identity and private binding from [installation](installation.md).
 
 This reference maintains the shared work record. Under the user's authorization, create and assign tasks to existing team members, read assigned work, record comments and blockers, move or complete tasks, and link delivery reports. An Agent is an operation source, not a separate account or task assignee. CoFlow does not launch other Agents, deliver external messages or dispatch execution. Multiple Agents can maintain the same authorized team work using their owners' scoped credentials; obtain actual execution authorization and tools separately.

@@ -59,8 +59,9 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		ws = &workspace.Service{TodoDemo: &workspace.TodoMemory{}}
 		registerTodos(protected, ws)
 	}
+	registerCalendar(protected, ws, repo)
 	protected.GET("/api/v1/meta", func(c *gin.Context) {
-		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") {
+		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") && !principal(c).Can("calendar:read") {
 			fail(c, identity.Denied("需要读取权限"))
 			c.Abort()
 			return

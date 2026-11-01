@@ -1,3 +1,5 @@
+import { calendarDemo } from "./calendar-demo.ts";
+import { validSchedule, civilDay } from "./calendar.ts";
 import type { Todo, TodoBoardData } from "./todo";
 import type { Meta, Report } from "./types";
 const repositoryURL = "https://github.com/Vic020/CoFlow";
@@ -229,7 +231,27 @@ const demoTasks: Todo[] = taskExamples.map(
       body,
       previous_column_id: column === "done" ? "review" : "backlog",
       priority,
-      due_date: column === "done" ? "" : ago(-24 * (i + 1)).slice(0, 10),
+      due_date:
+        column === "done" || i === 4 ? "" : ago(-24 * (i + 1)).slice(0, 10),
+      schedule:
+        i === 4
+          ? null
+          : i === 2
+            ? {
+                kind: "time-range",
+                start_at: new Date(
+                  `${civilDay(new Date(), "Asia/Shanghai")}T09:00:00+08:00`,
+                ).toISOString(),
+                end_at: new Date(
+                  `${civilDay(new Date(), "Asia/Shanghai")}T11:30:00+08:00`,
+                ).toISOString(),
+                timezone: "Asia/Shanghai",
+              }
+            : {
+                kind: "date-range",
+                start_date: ago(24 * (3 - i)).slice(0, 10),
+                end_date: ago(-24 * (i + 1)).slice(0, 10),
+              },
       links: structuredClone(report.links),
       report_ids: [report.id],
       collaboration_id: "",
@@ -286,6 +308,14 @@ export async function publicDemoRequest(
 ): Promise<unknown> {
   const method = init?.method?.toUpperCase() || "GET";
   const clone = <T>(value: T): T => structuredClone(value);
+  if (path.startsWith("/calendar/"))
+    return calendarDemo(
+      path,
+      method,
+      typeof init?.body === "string" ? JSON.parse(init.body) : {},
+      reports,
+      todoBoard.tasks,
+    );
   if (path.startsWith("/todo") && path !== "/todo-completions")
     return demoTodoChange(
       path,
@@ -697,6 +727,7 @@ function demoTodoChange(
         domains: payload.domains || [],
         priority: payload.priority || "none",
         due_date: payload.due_date || "",
+        schedule: payload.schedule || null,
         links: payload.links || [],
         report_ids: payload.report_ids || [],
         collaboration_id: "",
@@ -770,6 +801,7 @@ function demoTodoChange(
             "domains",
             "priority",
             "due_date",
+            "schedule",
             "links",
           ] as const)
             if (payload[key] !== undefined)
@@ -779,6 +811,7 @@ function demoTodoChange(
       }
       event(task, before, payload.action || "edit");
     }
+    if (!validSchedule(task.schedule)) throw new Error("Invalid schedule");
     if (!task.title.trim()) throw new Error("请填写标题");
     if (!["none", "low", "medium", "high"].includes(task.priority))
       throw new Error("优先级无效");

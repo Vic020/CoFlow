@@ -455,7 +455,7 @@ func (s *Service) CreateToken(ctx context.Context, p Principal, name string, sco
 	seen := map[string]bool{}
 	clean := []string{}
 	for _, scope := range scopes {
-		if scope != "reports:read" && scope != "reports:write" && scope != "comments:write" && scope != "todos:read" && scope != "todos:write" {
+		if scope != "reports:read" && scope != "reports:write" && scope != "comments:write" && scope != "todos:read" && scope != "todos:write" && scope != "calendar:read" && scope != "calendar:write" {
 			return nil, Invalid("无效的凭证权限")
 		}
 		if !seen[scope] {
@@ -463,11 +463,14 @@ func (s *Service) CreateToken(ctx context.Context, p Principal, name string, sco
 			seen[scope] = true
 		}
 	}
-	if !seen["reports:read"] && !seen["todos:read"] {
-		return nil, Invalid("凭证需要读取简报或任务的权限")
+	if !seen["reports:read"] && !seen["todos:read"] && !seen["calendar:read"] {
+		return nil, Invalid("凭证需要读取简报、任务或日历的权限")
 	}
 	if seen["todos:write"] && !seen["todos:read"] {
 		return nil, Invalid("任务写入需要任务读取权限")
+	}
+	if seen["calendar:write"] && !seen["calendar:read"] {
+		return nil, Invalid("日历写入需要日历读取权限")
 	}
 	raw := secret("cf_")
 	row, err := s.Q.CreateAgentToken(ctx, db.CreateAgentTokenParams{ID: store.ID(), TeamID: p.TeamID, UserID: p.UserID, Name: name, TokenHash: Hash(raw), Prefix: raw[:11], Scopes: clean, ExpiresAt: stamp(time.Now().Add(time.Duration(days) * 24 * time.Hour))})

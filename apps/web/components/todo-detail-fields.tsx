@@ -8,6 +8,9 @@ import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import type { Meta } from "@/lib/types";
 import type { Todo } from "@/lib/todo";
+import Link from "next/link";
+import { ScheduleEditor, ScheduleText } from "./schedule-editor";
+import { validSchedule, pastDeadline, civilDay } from "@/lib/calendar";
 
 type Field =
   | "title"
@@ -15,6 +18,7 @@ type Field =
   | "priority"
   | "project_id"
   | "due_date"
+  | "schedule"
   | "domains"
   | "body"
   | "links";
@@ -137,7 +141,7 @@ export function TodoDetailFields({
   onSave: (patch: Partial<Todo>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
 }) {
-  const { t: tr, date } = useI18n();
+  const { t: tr, date, timeZone } = useI18n();
   const [active, setActive] = useState<Field | null>(null);
   const [values, setValues] = useState(task);
   useEffect(() => {
@@ -187,6 +191,7 @@ export function TodoDetailFields({
         setActive(null);
       }}
       onSave={async () => {
+        if (name === "schedule" && !validSchedule(values.schedule)) return;
         if (await onSave({ [name]: values[name] })) setActive(null);
       }}
     >
@@ -292,6 +297,32 @@ export function TodoDetailFields({
           />,
         )}
       </div>
+      {field(
+        "schedule",
+        tr("排期"),
+        <>
+          <ScheduleText value={task.schedule} />{" "}
+          <Link
+            href={`/calendar?mode=schedule&date=${task.schedule?.start_date || (task.schedule?.start_at ? civilDay(task.schedule.start_at, timeZone) : "") || task.due_date || ""}`}
+          >
+            {tr("在日历中查看")}
+          </Link>
+          {pastDeadline(task.schedule, task.due_date) && (
+            <small className="calendar-risk">{tr("计划晚于截止日期")}</small>
+          )}
+        </>,
+        <>
+          <ScheduleEditor
+            value={values.schedule}
+            onChange={(s) => set("schedule", s)}
+          />
+          {pastDeadline(values.schedule, values.due_date) && (
+            <p className="calendar-risk">
+              {tr("计划晚于截止日期；保存不会移动截止日期。")}
+            </p>
+          )}
+        </>,
+      )}
       {field(
         "domains",
         tr("领域"),

@@ -31,6 +31,7 @@ export function SelectMenu({
     >
       <Select.Trigger
         aria-label={label}
+        title={options.find((option) => option.value === value)?.label || label}
         className={cn("choice-trigger", className)}
         data-active={value !== ""}
       >

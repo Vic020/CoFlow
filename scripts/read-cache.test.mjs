@@ -113,6 +113,8 @@ test("cache is limited to ordinary context/list GETs, never credentials, details
     "/reads",
     "/collaborations",
     "/todo-completions",
+    "/calendar/reports?from=2026-11-01&to=2026-12-01&timezone=UTC",
+    "/calendar/schedule?from=2026-11-01&to=2026-12-01&timezone=Asia%2FShanghai",
   ])
     assert.equal(cacheableRead(path), true, path);
   for (const path of [
@@ -121,6 +123,7 @@ test("cache is limited to ordinary context/list GETs, never credentials, details
     "/tokens",
     "/reports/id",
     "/todos/id",
+    "/calendar/events/id",
     "/invitations",
   ])
     assert.equal(cacheableRead(path), false, path);

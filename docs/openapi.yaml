@@ -1,13 +1,136 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.2.3
+  version: 0.3.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /calendar/reports:
+    get:
+      operationId: calendarReports
+      description: Requires reports:read only. Bounded read-only projection of original reports by created_at in the display time zone. No duplicated reports. Deleted reports are excluded. Counts, previews and page share a repeatable-read snapshot. All filters apply to report metadata; member means author. One report counts once even with multiple domains/tasks. HTTP responses are private no-store.
+      parameters:
+      - {$ref: '#/components/parameters/CalendarFrom'}
+      - {$ref: '#/components/parameters/CalendarTo'}
+      - {$ref: '#/components/parameters/CalendarTimezone'}
+      - {$ref: '#/components/parameters/CalendarCursor'}
+      - {$ref: '#/components/parameters/CalendarRevision'}
+      - {$ref: '#/components/parameters/CalendarLimit'}
+      - {name: day, in: query, schema: {type: string, format: date}, description: Optional selected day inside the range. Restricts items/total but leaves range counts/previews intact.}
+      - {name: project, in: query, schema: {type: string}}
+      - {name: domain, in: query, schema: {type: string}}
+      - {name: member, in: query, schema: {type: string}, description: Author member ID.}
+      - {name: agent, in: query, schema: {type: string}}
+      - {name: model, in: query, schema: {type: string}}
+      - {name: status, in: query, schema: {type: string, enum: [progress, review, blocked, delivered, resolved]}}
+      - {name: q, in: query, schema: {type: string, maxLength: 500}, description: Case-insensitive title/body substring.}
+      responses:
+        '200':
+          description: Daily counts, up to three title previews per day, and a page of original report summaries. Read full body/comments/linked tasks from the original report with their own permissions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Report'}}
+                  days: {type: object, additionalProperties: {type: integer}}
+                  previews: {type: object, additionalProperties: {type: array, maxItems: 3, items: {type: object, properties: {id: {type: string}, title: {type: string}}}}}
+                  total: {type: integer}
+                  revision: {type: string}
+                  next_cursor: {type: string}
+                  timezone: {type: string}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /calendar/schedule:
+    get:
+      operationId: calendarSchedule
+      description: Requires todos:read or calendar:read. Combines only readable sources in a bounded date range. A task appears when its schedule overlaps OR its independent due_date is in range; it is returned once with both fields. Member means assignee. Counts and pagination use a common team-locked read and revision. Missing source scopes are reported in capabilities, never disguised as empty authorized sources.
+      parameters:
+      - {$ref: '#/components/parameters/CalendarFrom'}
+      - {$ref: '#/components/parameters/CalendarTo'}
+      - {$ref: '#/components/parameters/CalendarTimezone'}
+      - {$ref: '#/components/parameters/CalendarCursor'}
+      - {$ref: '#/components/parameters/CalendarRevision'}
+      - {$ref: '#/components/parameters/CalendarLimit'}
+      - {name: project, in: query, schema: {type: string}}
+      - {name: domain, in: query, schema: {type: string}}
+      - {name: member, in: query, schema: {type: string}}
+      - {name: kind, in: query, schema: {type: string, enum: [todo, phase, big_day, version]}}
+      - {name: task_status, in: query, schema: {type: string, enum: [open, completed]}, description: Filters only tasks; independent planning nodes have no task completion state.}
+      - {name: archived, in: query, schema: {type: boolean, default: false}, description: Include archived sources instead of active ones. Source details retain their original restore actions.}
+      - {name: q, in: query, schema: {type: string, maxLength: 500}, description: Title substring.}
+      - {name: unscheduled, in: query, schema: {type: boolean}, description: Requires todos:read. Lists tasks with neither schedule nor due_date; the date range still bounds the query contract but does not exclude these undated tasks.}
+      responses:
+        '200':
+          description: Stable source references, planning summaries and readable-source capabilities. No report bodies or independent task copies.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/CalendarItem'}}
+                  capabilities: {type: object, properties: {todos: {type: boolean}, events: {type: boolean}, reports: {type: boolean}}}
+                  total: {type: integer}
+                  revision: {type: string}
+                  next_cursor: {type: string}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /calendar/events:
+    post:
+      operationId: createCalendarEvent
+      description: Requires calendar:read/write. Creates an independent phase, Big Day or version milestone, deduplicated by team/creator/source_id. Identical operation_id retries replay; changed payload returns 409. Explicit todo_ids/report_ids require corresponding read scopes and same-team accessible objects. Planning never dispatches work, creates reports or releases software.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CalendarEventInput'}
+      responses:
+        '200':
+          description: Created event or existing event with matching source_id.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CalendarEvent'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /calendar/events/{id}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getCalendarEvent
+      description: Requires calendar:read. Includes archived objects and audit history. References and history are filtered by source read permissions; deleted reports are omitted. A link grants no access to its source.
+      responses:
+        '200':
+          description: Original independent planning event.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CalendarEvent'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+    patch:
+      operationId: updateCalendarEvent
+      description: Requires calendar:read/write and creator/assignee permission; browser admins may manage team events. Partial edit or archive/restore, with expected_revision and operation_id. Absent references remain unchanged. Read fresh state after 409; never overwrite another actor's schedule automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CalendarEventInput'}
+      responses:
+        '200':
+          description: Updated event with new revision and history.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CalendarEvent'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
   /health:
     get:
       operationId: health
@@ -29,7 +152,7 @@ paths:
       operationId: getMetadata
       responses:
         '200':
-          description: Current authenticated member and team, members, projects, domains, role, mode and timezone. Requires reports:read or todos:read.
+          description: Current authenticated member and team, members, projects, domains, role, mode and timezone. Requires reports:read, todos:read or calendar:read.
           content:
             application/json:
               schema:
@@ -773,6 +896,8 @@ paths:
                     - reports:read
                     - reports:write
                     - comments:write
+                    - calendar:read
+                    - calendar:write
                 expires_in_days:
                   type: integer
                   minimum: 1
@@ -1556,6 +1681,13 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Todo'}
 components:
+  parameters:
+    CalendarFrom: {name: from, in: query, required: true, schema: {type: string, format: date}, description: Inclusive civil date in timezone.}
+    CalendarTo: {name: to, in: query, required: true, schema: {type: string, format: date}, description: Exclusive civil date. Range must be 1–93 civil days including DST transitions.}
+    CalendarTimezone: {name: timezone, in: query, schema: {type: string, default: UTC}, description: Valid IANA time zone. All-day dates never shift with it.}
+    CalendarCursor: {name: cursor, in: query, schema: {type: string, maxLength: 1000}, description: Opaque next_cursor from the prior page; requires revision and unchanged filters.}
+    CalendarRevision: {name: revision, in: query, schema: {type: string, maxLength: 160}, description: Prior response revision. A changed source or query returns 409.}
+    CalendarLimit: {name: limit, in: query, schema: {type: integer, default: 100, minimum: 1, maximum: 200}}
   responses:
     Error:
       description: A validation, ownership or storage error.
@@ -1569,6 +1701,72 @@ components:
               error:
                 type: string
   schemas:
+    Schedule:
+      description: Null clears an optional Todo plan. Date ranges include both civil dates and never carry a timezone; time ranges normalize RFC3339 offsets to UTC and retain an IANA planning timezone. Time ranges require end greater than start; independent Big Day/version points require equal ends. Missing endpoints are invalid. due_date is independent and is never shifted by planning.
+      oneOf:
+      - type: object
+        required: [kind, start_date, end_date]
+        properties:
+          kind: {type: string, const: date-range}
+          start_date: {type: string, format: date}
+          end_date: {type: string, format: date}
+        additionalProperties: false
+      - type: object
+        required: [kind, start_at, end_at, timezone]
+        properties:
+          kind: {type: string, const: time-range}
+          start_at: {type: string, format: date-time}
+          end_at: {type: string, format: date-time}
+          timezone: {type: string}
+        additionalProperties: false
+    CalendarItem:
+      type: object
+      properties:
+        id: {type: string}
+        creator_id: {type: string, description: Original creator; source write permissions are still enforced by Go.}
+        key: {type: string, description: Source-prefixed projection key; use id with the original source endpoint to mutate.}
+        source: {type: string, enum: [todo, event]}
+        kind: {type: string, enum: [todo, phase, big_day, version]}
+        title: {type: string}
+        project_id: {type: string}
+        domains: {type: array, items: {type: string}}
+        member_id: {type: string}
+        schedule: {oneOf: [{$ref: '#/components/schemas/Schedule'}, {type: 'null'}]}
+        due_date: {type: string}
+        completed: {type: boolean}
+        revision: {type: integer}
+    CalendarEventInput:
+      type: object
+      required: [operation_id]
+      properties:
+        title: {type: string, description: Required on create; 1–500 UTF-8 bytes.}
+        body: {type: string, maxLength: 50000}
+        kind: {type: string, enum: [phase, big_day, version], description: Required on create. big_day/version require a single date or instant.}
+        schedule: {$ref: '#/components/schemas/Schedule'}
+        source_id: {type: string, maxLength: 160, description: Required on create; scoped to team/creator.}
+        assignee_id: {type: string}
+        project_id: {type: string}
+        domains: {type: array, maxItems: 20, items: {type: string}}
+        todo_ids: {type: array, maxItems: 20, items: {type: string}}
+        report_ids: {type: array, maxItems: 20, items: {type: string}}
+        links: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/Link'}}
+        agent: {type: string, maxLength: 160}
+        model: {type: string, maxLength: 160}
+        expected_revision: {type: integer, description: Required for changes to an existing event.}
+        operation_id: {type: string, maxLength: 160}
+        action: {type: string, enum: [edit, archive, restore]}
+    CalendarEvent:
+      allOf:
+      - {$ref: '#/components/schemas/CalendarEventInput'}
+      - type: object
+        properties:
+          id: {type: string}
+          creator_id: {type: string}
+          revision: {type: integer}
+          archived: {type: boolean}
+          created_at: {type: string, format: date-time}
+          updated_at: {type: string, format: date-time}
+          history: {type: array, items: {type: object}, description: Actor, agent/model, action, timestamps and before/after snapshots with source-scoped references.}
     Status:
       type: string
       enum:
@@ -1835,6 +2033,7 @@ components:
         domains: {type: array, maxItems: 20, items: {type: string}}
         priority: {type: string, enum: [none, low, medium, high], default: none}
         due_date: {type: string, description: "Empty or YYYY-MM-DD date without an implicit time zone."}
+        schedule: {oneOf: [{$ref: '#/components/schemas/Schedule'}, {type: 'null'}], description: "Optional plan, independent of the deadline and workflow. Absent on edit preserves it; null clears it."}
         links: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/Link'}}
         report_ids: {type: array, maxItems: 20, items: {type: string}, description: "Optional source reports on create; requires reports:read."}
         source_id: {type: string, maxLength: 160}

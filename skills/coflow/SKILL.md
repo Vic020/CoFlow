@@ -2,7 +2,7 @@
 name: coflow
 description: Connect a project to CoFlow and coordinate delivery when the user requests CoFlow reporting, task management or ongoing project collaboration. Read relevant progress and feedback, maintain authorized Todo work, and report meaningful results to Timeline.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # CoFlow
@@ -16,6 +16,7 @@ Use this one Skill for CoFlow operations. Read only the reference needed for the
 | Install, update, verify identity, or resolve a missing binding or credential | [Installation and identity](references/installation.md) |
 | Report progress, revise a brief, read feedback or request collaboration | [Timeline reporting](references/reporting.md) |
 | Read, create, assign, move or maintain Todo tasks and link delivery reports | [Todo operations](references/todos.md) |
+| Review reporting days, schedule existing Todos, or maintain phases and milestones | [Calendar operations](references/calendar.md) |
 
 Reporting concrete work also needs the task-reconciliation section of [Todo operations](references/todos.md): identify what is being done, planned or already finished, reuse or create the corresponding tasks, and link the report to them. This is part of a reporting request under this Skill, not a mandate to execute future work or coordinate indefinitely. Respect an explicit report-only instruction and the available Todo scopes.
 
@@ -23,7 +24,7 @@ For a new session, reuse the exact current project's validated private binding, 
 
 ## Agent-led collaboration loop
 
-CoFlow is a shared delivery workflow for people and their Agents. Treat it as working context throughout an authorized assignment, not just a destination for a final report. Todo carries responsibility and current work; Timeline carries progress and delivery evidence. The board is one view of that workflow.
+CoFlow is a shared delivery workflow for people and their Agents. Treat it as working context throughout an authorized assignment, not just a destination for a final report. Todo carries responsibility and current work; Timeline carries progress and delivery evidence. Calendar projects actual reporting dates and keeps plans distinct from progress. The board is one view of that workflow.
 
 - **Explain the working relationship.** At the start of a CoFlow collaboration assignment, briefly tell the user what relevant work you will read, what you can advance within the existing mandate, and when you will sync progress. Make coordination needs visible to the user; do not wait for them to discover a blocker in the board. An installation-only or one-off reporting request retains its narrower scope.
 - **Read before advancing.** On starting or resuming work, verify the binding and identity, then read the relevant tasks, linked reports and permitted feedback. Identify the owner, actual progress, unresolved dependencies and next useful action. Stay within the authorized project and module scopes; do not scan unrelated team work.

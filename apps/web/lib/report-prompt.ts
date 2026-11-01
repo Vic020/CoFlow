@@ -23,22 +23,30 @@ export type InstallationOptions = {
 
 /** Profiles describe granted capability, never a token or Skill version. */
 export function credentialCapabilities(scopes: readonly string[]) {
-  const has = (...required: string[]) => required.every((scope) => scopes.includes(scope));
+  const has = (...required: string[]) =>
+    required.every((scope) => scopes.includes(scope));
   const reports = has("reports:read", "reports:write");
   const todos = has("todos:read", "todos:write");
   return {
-    reports, todos, collaboration: reports && todos,
+    reports,
+    todos,
+    collaboration: reports && todos,
+    calendar: has("calendar:read", "calendar:write"),
     comments: scopes.includes("comments:write"),
     readOnly: !scopes.some((scope) => scope.endsWith(":write")),
   };
 }
 
 export function installationPrompt(
-  origin: string, credential: string, target: ReportTarget,
-  locale: "en" | "zh-CN" = "zh-CN", options: InstallationOptions = {},
+  origin: string,
+  credential: string,
+  target: ReportTarget,
+  locale: "en" | "zh-CN" = "zh-CN",
+  options: InstallationOptions = {},
 ) {
   const path = credentialFilePath(origin, target);
-  if (!path || !credential) throw new Error("Missing CoFlow credential or identity");
+  if (!path || !credential)
+    throw new Error("Missing CoFlow credential or identity");
   const service = new URL(origin).origin;
   const en = locale === "en";
   const replacement = options.replaceExisting
@@ -50,10 +58,12 @@ export function installationPrompt(
       : "相同凭证复用；不同凭证先确认替换，不直接覆盖。若本会话已明确授权此次替换，复用授权，不重复询问。";
   const scopes = options.scopes
     ? options.scopes.join(", ") || (en ? "none" : "无")
-    : en ? "unknown; identity verification does not prove write access" : "未知；身份校验不代表写入权限";
+    : en
+      ? "unknown; identity verification does not prove write access"
+      : "未知；身份校验不代表写入权限";
   return en
-    ? `Install or update the single CoFlow Skill for this project. Read ${service}${skillPath} and its installation reference. Service: ${service}; team_id=${target.team}; member_id=${target.member}. My credential is ${credential}. Declared scopes: ${scopes}. Verify service mode with /api/v1/health, then verify identity with /api/v1/meta; require team mode and stop on mismatch. After successful verification, save only to ${path}, directory permissions 700 and file permissions 600. ${replacement} Install the entry and all three references together in the Agent's user-level skill directory; reuse identical files and preserve customizations. Register the canonical project at ~/.coflow/projects/<sha256-of-project-root>/binding.json, preserving existing bindings, work_units and checkpoints. Default to this single target; if another team is already bound, ask how to handle it. Do not silently switch teams or enable multiple-target reporting. Preserve explicitly configured reporting preferences. Do not modify project files or Git or output the credential. Do not report during installation, create tasks, test write access by writing, or create or recommend automation as part of installation. Identity, scopes and Skill version are separate checks; Todo access does not imply reporting access. Confirm only completed checks and explain cross-session discovery limits. Later requests reuse stable task IDs and source_id under the Skill.`
-    : `为当前项目安装或更新唯一的 CoFlow Skill。读取 ${service}${skillPath} 及其安装说明。服务 ${service}；team_id=${target.team}；member_id=${target.member}。我的凭证是 ${credential}。声明权限：${scopes}。先验证 /api/v1/health 为 team 模式，再用 /api/v1/meta 校验身份；不一致则停止。校验成功后，凭证只保存到 ${path}，目录权限 700、文件权限 600。${replacement}入口及三份参考文件一起安装到用户级技能目录；相同安装复用，自定义文件保留。当前项目关联记录在 ~/.coflow/projects/<sha256-of-project-root>/binding.json，保留已有项目关联、work_units 和检查点。默认只接入本目标；若已关联其他团队，先确认处理方式，不静默切换或开启多目标上报。保留用户明确配置的上报偏好。不修改项目文件或 Git，不输出凭证。本次只安装，不上报、不建任务、不用写入测试权限、不创建或附带建议自动化。身份、凭证权限与 Skill 版本分别核验，任务权限不代表上报权限。仅确认实际完成的检查，说明跨会话发现限制；后续按 Skill 复用稳定任务 ID 和 source_id。`;
+    ? `Install or update the single CoFlow Skill for this project. Read ${service}${skillPath} and its installation reference. Service: ${service}; team_id=${target.team}; member_id=${target.member}. My credential is ${credential}. Declared scopes: ${scopes}. Verify service mode with /api/v1/health, then verify identity with /api/v1/meta; require team mode and stop on mismatch. After successful verification, save only to ${path}, directory permissions 700 and file permissions 600. ${replacement} Install the entry and all linked references together in the Agent's user-level skill directory; reuse identical files and preserve customizations. Register the canonical project at ~/.coflow/projects/<sha256-of-project-root>/binding.json, preserving existing bindings, work_units and checkpoints. Default to this single target; if another team is already bound, ask how to handle it. Do not silently switch teams or enable multiple-target reporting. Preserve explicitly configured reporting preferences. Do not modify project files or Git or output the credential. Do not report during installation, create tasks, test write access by writing, or create or recommend automation as part of installation. Identity, scopes and Skill version are separate checks; Todo access does not imply reporting access. Confirm only completed checks and explain cross-session discovery limits. Later requests reuse stable task IDs and source_id under the Skill.`
+    : `为当前项目安装或更新唯一的 CoFlow Skill。读取 ${service}${skillPath} 及其安装说明。服务 ${service}；team_id=${target.team}；member_id=${target.member}。我的凭证是 ${credential}。声明权限：${scopes}。先验证 /api/v1/health 为 team 模式，再用 /api/v1/meta 校验身份；不一致则停止。校验成功后，凭证只保存到 ${path}，目录权限 700、文件权限 600。${replacement}入口及全部关联参考文件一起安装到用户级技能目录；相同安装复用，自定义文件保留。当前项目关联记录在 ~/.coflow/projects/<sha256-of-project-root>/binding.json，保留已有项目关联、work_units 和检查点。默认只接入本目标；若已关联其他团队，先确认处理方式，不静默切换或开启多目标上报。保留用户明确配置的上报偏好。不修改项目文件或 Git，不输出凭证。本次只安装，不上报、不建任务、不用写入测试权限、不创建或附带建议自动化。身份、凭证权限与 Skill 版本分别核验，任务权限不代表上报权限。仅确认实际完成的检查，说明跨会话发现限制；后续按 Skill 复用稳定任务 ID 和 source_id。`;
 }
 
 export function reportPrompt(

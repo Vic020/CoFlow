@@ -59,6 +59,7 @@ type Todo struct {
 	Domains            []string      `json:"domains"`
 	Priority           string        `json:"priority"`
 	DueDate            string        `json:"due_date"`
+	Schedule           *Schedule     `json:"schedule"`
 	Links              []store.Link  `json:"links"`
 	ReportIDs          []string      `json:"report_ids"`
 	CollaborationID    string        `json:"collaboration_id"`
@@ -78,12 +79,14 @@ type TodoReplay struct {
 	Result json.RawMessage `json:"result"`
 }
 type TodoBoard struct {
-	History       []TodoEvent           `json:"history"`
-	Revision      int                   `json:"revision"`
-	DefaultDoneID string                `json:"default_done_id"`
-	Columns       []TodoColumn          `json:"columns"`
-	Tasks         []Todo                `json:"tasks"`
-	Operations    map[string]TodoReplay `json:"operations,omitempty"`
+	CalendarEvents     []CalendarEvent       `json:"calendar_events,omitempty"`
+	CalendarOperations map[string]TodoReplay `json:"calendar_operations,omitempty"`
+	History            []TodoEvent           `json:"history"`
+	Revision           int                   `json:"revision"`
+	DefaultDoneID      string                `json:"default_done_id"`
+	Columns            []TodoColumn          `json:"columns"`
+	Tasks              []Todo                `json:"tasks"`
+	Operations         map[string]TodoReplay `json:"operations,omitempty"`
 }
 type TodoMemory struct {
 	mu    sync.Mutex
@@ -236,7 +239,14 @@ func saveTodoReplay(b *TodoBoard, p identity.Principal, id string, input, out an
 }
 func (s *Service) TodoBoard(ctx context.Context, p identity.Principal) (TodoBoard, error) {
 	var out TodoBoard
-	err := s.todoTransaction(ctx, p, func(_ pgx.Tx, b *TodoBoard) error { out = *b; out.Tasks = nil; out.Operations = nil; return nil })
+	err := s.todoTransaction(ctx, p, func(_ pgx.Tx, b *TodoBoard) error {
+		out = *b
+		out.Tasks = nil
+		out.Operations = nil
+		out.CalendarEvents = nil
+		out.CalendarOperations = nil
+		return nil
+	})
 	return out, err
 }
 func (s *Service) Todos(ctx context.Context, p identity.Principal) ([]Todo, error) {
@@ -290,6 +300,9 @@ func (s *Service) GetTodo(ctx context.Context, p identity.Principal, id string) 
 	return out, err
 }
 func validateTodo(ctx context.Context, tx pgx.Tx, p identity.Principal, b *TodoBoard, t *Todo, old *Todo) error {
+	if err := t.Schedule.Validate(false); err != nil {
+		return err
+	}
 	t.Title = strings.TrimSpace(t.Title)
 	if t.Title == "" || len(t.Title) > 500 || len(t.Body) > 50000 {
 		return identity.Invalid("任务标题或描述长度无效")
@@ -621,6 +634,9 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				if _, ok := in.Fields["due_date"]; ok {
 					candidate.DueDate = in.DueDate
 				}
+				if _, ok := in.Fields["schedule"]; ok {
+					candidate.Schedule = in.Schedule
+				}
 				if _, ok := in.Fields["links"]; ok {
 					candidate.Links = in.Links
 				}
@@ -800,6 +816,8 @@ func (s *Service) ChangeTodoColumn(ctx context.Context, p identity.Principal, id
 		}
 		out.Tasks = nil
 		out.Operations = nil
+		out.CalendarEvents = nil
+		out.CalendarOperations = nil
 		saveTodoReplay(b, p, in.OperationID, struct {
 			ID    string
 			Input ColumnInput

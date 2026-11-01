@@ -107,6 +107,7 @@ const skillLabels = [
   "安装与身份",
   "Timeline 上报",
   "Todo 管理",
+  "Calendar",
 ];
 
 function SkillShowcase({ files }: { files: SkillFile[] }) {

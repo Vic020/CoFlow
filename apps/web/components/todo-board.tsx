@@ -18,6 +18,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { useSharedFilters } from "./shared-filters";
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { SelectMenu } from "./ui/select-menu";
@@ -60,12 +61,11 @@ function ManualTaskPanel({
 
 export function TodoBoard({ meta }: { meta: Meta }) {
   const { t: tr, locale, timeZone, date } = useI18n();
+  const shared = useSharedFilters();
+  const { project, domain, member: assignee } = shared.filters;
   const [board, setBoard] = useState<TodoBoardData | null>(null),
     [tasks, setTasks] = useState<Todo[]>([]),
     [query, setQuery] = useState(""),
-    [project, setProject] = useState(""),
-    [domain, setDomain] = useState(""),
-    [assignee, setAssignee] = useState(""),
     [scope, setScope] = useState("all"),
     [archived, setArchived] = useState(false);
   const [selected, setSelected] = useState<Todo | null>(null),
@@ -454,33 +454,6 @@ export function TodoBoard({ meta }: { meta: Meta }) {
             </button>
           ))}
         </div>
-        <SelectMenu
-          label={tr("项目")}
-          value={project}
-          onChange={setProject}
-          options={[
-            { value: "", label: tr("全部项目") },
-            ...meta.projects.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-        />
-        <SelectMenu
-          label={tr("领域")}
-          value={domain}
-          onChange={setDomain}
-          options={[
-            { value: "", label: tr("全部领域") },
-            ...meta.domains.map((d) => ({ value: d, label: d })),
-          ]}
-        />
-        <SelectMenu
-          label={tr("负责人")}
-          value={assignee}
-          onChange={setAssignee}
-          options={[
-            { value: "", label: tr("全部负责人") },
-            ...meta.members.map((m) => ({ value: m.id, label: m.name })),
-          ]}
-        />
         <button
           aria-pressed={archived}
           className={archived ? "active" : ""}
@@ -491,14 +464,11 @@ export function TodoBoard({ meta }: { meta: Meta }) {
         <button
           onClick={() => {
             setQuery("");
-            setProject("");
-            setDomain("");
-            setAssignee("");
             setScope("all");
             setArchived(false);
           }}
         >
-          {tr("重置")}
+          {tr("重置本页")}
         </button>
         {admin && (
           <ActionMenu label={tr("更多操作")}>
