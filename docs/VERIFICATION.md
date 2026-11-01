@@ -1,6 +1,14 @@
 # 验证记录
 
-更新：2026-11-01（Asia/Shanghai）；当前版本 0.3.0。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
+更新：2026-11-01（Asia/Shanghai）；当前版本 0.3.1。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
+
+## 0.3.1 发布、镜像与双环境部署（2026-11-01）
+
+- 应用 0.3.1、Skill 1.3.0；[标签与 Release](https://github.com/Vic020/CoFlow/releases/tag/v0.3.1) 指向 `9a6b84a70d92865d3686f5d82b77df58f88231c0`。[源码 CI 41286747069](https://github.com/Vic020/CoFlow/actions/runs/41286747069) 成功，Web 与 Go race／隔离 PostgreSQL 通过；57 项本地 JavaScript、类型／文档／版本检查及隔离双模式 webpack 构建通过。
+- [镜像 41287042908](https://github.com/Vic020/CoFlow/actions/runs/41287042908) 成功，匿名 manifest 摘要与 Summary 一致且包含 linux/amd64。API：`ghcr.io/vic020/coflow-api@sha256:6180a16499befc9f638021cd667573f7a8ec9c1c99d22dcaa628f9349d9523e9`；Web：`ghcr.io/vic020/coflow-web@sha256:789ce2da3ddc09b61ec77f6977ff0ccf1c4a31651b368939af6a73c5db1981eb`。
+- 自用实例升级前完整备份解码通过，保留回滚配置；固定摘要仅更新 API／Web，数据库／网关容器不变，既有数据计数未减少，11 个迁移与备份定时器通过。拉取 8.292 秒，切换及内部健康 2.370 秒；外网 team／ok／0.3.1、应用路由及未登录任务接口 401 均通过，Skill、四参考文件和 OpenAPI 六文件与源码逐字节一致。既有浏览器会话可打开 Calendar 三个入口；未向真实团队写入验收数据。
+- [Pages 41287068129](https://github.com/Vic020/CoFlow/actions/runs/41287068129) 从同一源码独立部署成功；首页／Todo／Calendar／Docs 与六文件哈希通过，API 路径 404。线上 Chrome 核对日历内简报详情及关闭后留在日历、紧凑甘特入口（按钮实测 27px）、日期范围预填与周历 08:00–09:00 时间范围预填，均取消草稿；无真实 API／账号／数据库。
+- README 中英、发布说明、使用手册和本机忽略发布流程已同步。追加验证文档不移动发布标签；Wiki／Projects 本轮未修改，未额外上报。真实 Agent 长期试用、异地网络与历史容量专项仍独立待验。
 
 ## 周历时间块拖选（本地未发布，2026-11-01）
 
