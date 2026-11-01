@@ -25,6 +25,13 @@ export class ReadCache {
     this.entries.clear();
     this.pending.clear();
   }
+  peek<T>(key: string): T | undefined {
+    if (!this.scope) return undefined;
+    const cached = this.entries.get(key);
+    return cached && cached.expires > this.now()
+      ? (structuredClone(cached.value) as T)
+      : undefined;
+  }
   async read<T>(key: string, load: () => Promise<T>): Promise<T> {
     const identity = this.identity;
     if (!this.scope) {

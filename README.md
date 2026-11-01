@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-087354" alt="Version 0.3.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.1-087354" alt="Version 0.3.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,9 +28,11 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.3.0.**
+> **Current version: 0.3.1.**
 
-**New in 0.3.0:** Calendar has primary Reports, Schedule and Gantt tabs. Reports and Schedule offer month and hourly week views, with an upper-right mini month navigator, all-day rows and timed entries. Reports mark creation instants, not work duration. Shared Todo scheduling and phases/Big Days/version milestones use the same source data. Actual reports appear automatically by their original creation date; Agents do not create calendar copies. Plans never complete tasks or trigger releases. See the [Calendar guide and implementation status](docs/CALENDAR_V0.3.md). Deployment is verified separately; see the [verification log](docs/VERIFICATION.md).
+**New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
+
+**Calendar:** Calendar has primary Reports, Schedule and Gantt tabs. Reports and Schedule offer month and hourly week views, with an upper-right mini month navigator, all-day rows and timed entries. Reports mark creation instants, not work duration. Shared Todo scheduling and phases/Big Days/version milestones use the same source data. Actual reports appear automatically by their original creation date; Agents do not create calendar copies. Plans never complete tasks or trigger releases. See the [Calendar guide and implementation status](docs/CALENDAR_V0.3.md). Deployment is verified separately; see the [verification log](docs/VERIFICATION.md).
 
 Timeline, Todo and Calendar now share project, domain and member filters in the top bar. Selection follows page navigation and survives refresh in the same tab, with URL history and account/team isolation. Member means reporter for Timeline/report calendars and assignee for Todo/schedule calendars; the label shows the current meaning. Page-specific filters and **Reset page** remain independent.
 
@@ -55,7 +57,7 @@ Timeline, Todo and Calendar now share project, domain and member filters in the 
 
 ## Preview
 
-Version 0.3.0 credential improvements distinguish granted scopes from Skill versions, offer optional task/report access setup, and let installation prompts carry explicit local replacement consent. Skill 1.3.0 creates a new report for new progress on a later reporting day, while retaining the same Todo. Projects connect to one space by default; additional reporting destinations require a private, explicit project preference. See [Agent setup](docs/AGENT_REPORTING.md).
+Version 0.3.1 credential improvements distinguish granted scopes from Skill versions, offer optional task/report access setup, and let installation prompts carry explicit local replacement consent. Skill 1.3.0 creates a new report for new progress on a later reporting day, while retaining the same Todo. Projects connect to one space by default; additional reporting destinations require a private, explicit project preference. See [Agent setup](docs/AGENT_REPORTING.md).
 
 ![CoFlow Timeline with synthetic demo data](docs/design/public-preview.png)
 
@@ -65,13 +67,13 @@ The preview uses synthetic identities and example delivery links.
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.3.0**, including Todo and Timeline integration. Calendar is included; versions 0.4–0.6 remain planned, with no fixed release dates.
+The current version is **0.3.1**, including Todo and Timeline integration. Calendar is included; versions 0.4–0.6 remain planned, with no fixed release dates.
 
 | Version | Status | Focus |
 | --- | --- | --- |
-| **0.1 · Timeline** | Available (0.3.0) | Team reports, delivery links, and collaboration |
-| **0.2 · Todo** | Available (0.3.0) | Customizable boards, scoped Agent access, and atomic Timeline integration |
-| **0.3 · Calendar** | Available (0.3.0) | Default report calendar linked to Timeline/Todo, scheduling, Gantt, Big Days and version milestones; [implementation plan](docs/CALENDAR_V0.3.md) |
+| **0.1 · Timeline** | Available (0.3.1) | Team reports, delivery links, and collaboration |
+| **0.2 · Todo** | Available (0.3.1) | Customizable boards, scoped Agent access, and atomic Timeline integration |
+| **0.3 · Calendar** | Available (0.3.1) | Default report calendar linked to Timeline/Todo, scheduling, Gantt, Big Days and version milestones; [implementation plan](docs/CALENDAR_V0.3.md) |
 | **0.4 · AI Assistant** | Planned | Manage modules through conversation; custom APIs, with DeepSeek first |
 | **0.5 · Context** | Planned | Capture important cross-module knowledge for teams and AI |
 | **0.6 · Analytics** | Planned | Progress, task flow, and delivery trends with filters and source drill-down |

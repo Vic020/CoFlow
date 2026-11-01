@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-087354" alt="Version 0.3.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.1-087354" alt="Version 0.3.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -30,9 +30,11 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.3.0。**
+> **当前版本：0.3.1。**
 
-**0.3.0 新增：** Calendar 一级入口为“进度／排期／甘特”。进度与排期支持月历和小时周历；周视图右上角提供小月历导航，全天区与具体时间分开，简报按创建时刻定位、不表示工时。同一 Todo 的排期、阶段／Big Day／版本节点复用原始数据。真实简报按原始创建日期自动展示，Agent 无需创建日历副本；改期不完成任务，版本计划不触发发版。见 [Calendar 使用与实现状态](docs/CALENDAR_V0.3.md)。部署状态单独记录于[验证记录](docs/VERIFICATION.md)。
+**0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
+
+**Calendar：** Calendar 一级入口为“进度／排期／甘特”。进度与排期支持月历和小时周历；周视图右上角提供小月历导航，全天区与具体时间分开，简报按创建时刻定位、不表示工时。同一 Todo 的排期、阶段／Big Day／版本节点复用原始数据。真实简报按原始创建日期自动展示，Agent 无需创建日历副本；改期不完成任务，版本计划不触发发版。见 [Calendar 使用与实现状态](docs/CALENDAR_V0.3.md)。部署状态单独记录于[验证记录](docs/VERIFICATION.md)。
 
 Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。切页及同标签刷新保留选择，URL 支持返回，按账号／团队隔离。成员在 Timeline／上报日历中指上报人，在 Todo／排期日历中指负责人，界面明确标注；各页专属条件和“重置本页”独立保留。
 
@@ -69,13 +71,13 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.3.0**，包含 Todo 与 Timeline 联动。已包含 Calendar；0.4–0.6 保持规划，按验收结果推进，不预设发布日期。
+当前版本为 **0.3.1**，包含 Todo 与 Timeline 联动。已包含 Calendar；0.4–0.6 保持规划，按验收结果推进，不预设发布日期。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
-| **0.1 · Timeline** | 源码可用（0.3.0） | 团队简报、交付链接与协作跟进 |
-| **0.2 · Todo** | 源码可用（0.3.0） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
-| **0.3 · Calendar** | 源码可用（0.3.0） | 默认上报日历与 Timeline／Todo 联动、日历／甘特排期、Big Day 和版本节点；[实施计划](docs/CALENDAR_V0.3.md) |
+| **0.1 · Timeline** | 源码可用（0.3.1） | 团队简报、交付链接与协作跟进 |
+| **0.2 · Todo** | 源码可用（0.3.1） | 自定义看板、Agent 授权维护、Timeline 原子联动 |
+| **0.3 · Calendar** | 源码可用（0.3.1） | 默认上报日历与 Timeline／Todo 联动、日历／甘特排期、Big Day 和版本节点；[实施计划](docs/CALENDAR_V0.3.md) |
 | **0.4 · AI 助手** | 规划中 | 通过对话管理各模块，支持自定义 API，优先适配 DeepSeek |
 | **0.5 · Context** | 规划中 | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
 | **0.6 · 数据统计** | 规划中 | 进展、任务流转与交付趋势，支持筛选与原始记录回溯 |
@@ -154,7 +156,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.3.0
+├── VERSION           # 当前版本：0.3.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

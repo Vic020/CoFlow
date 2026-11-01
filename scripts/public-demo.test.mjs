@@ -215,3 +215,26 @@ test("offline Todo retries, conflict, ordering and linked report stay in memory"
     globalThis.fetch = originalFetch;
   }
 });
+
+test("standalone demo report details include fresh comments and task links without a Timeline visit", async () => {
+  const fresh = await import("../apps/web/lib/public-demo.ts?report-dialog");
+  const read = fresh.publicDemoRequest;
+  const report = await read("/reports/demo-report-1");
+  assert.ok(report.body);
+  assert.ok(report.todo_ids.length);
+  const originalTitle = report.title;
+  report.title = "local mutation";
+  await read("/reports/demo-report-1/comments", {
+    method: "POST",
+    body: JSON.stringify({ body: "Synthetic Calendar feedback" }),
+  });
+  const detail = await read("/reports/demo-report-1");
+  assert.equal(detail.title, originalTitle);
+  assert.equal(detail.comments.at(-1).body, "Synthetic Calendar feedback");
+  assert.deepEqual(
+    detail.todo_ids,
+    (await read("/reports")).items.find((item) => item.id === detail.id)
+      .todo_ids,
+  );
+  await assert.rejects(read("/reports/demo-report-missing"), /简报不存在/);
+});

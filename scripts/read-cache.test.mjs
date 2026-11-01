@@ -247,19 +247,32 @@ test("request transport invalidates on writes, bypasses token reads and synchron
       });
     return new Response(JSON.stringify({ revision }), { status: 200 });
   };
-  const { request, setReadCacheScope } = await import(
-    pathToFileURL(join(folder, "request.mjs")).href
-  );
+  const { request, setReadCacheScope, peekCalendarView, readCalendarView } =
+    await import(pathToFileURL(join(folder, "request.mjs")).href);
   setReadCacheScope("synthetic-member:synthetic-team:member");
   await Promise.all([request("/meta"), request("/meta")]);
   assert.equal(calls, 1);
   await request("/meta");
   assert.equal(calls, 1);
+  const viewKey = "/calendar/schedule?from=2026-11-01&to=2026-12-01";
+  let viewCalls = 0;
+  const loadView = async () => {
+    viewCalls++;
+    return { items: [{ id: "page-1" }, { id: "page-2" }] };
+  };
+  await Promise.all([
+    readCalendarView(viewKey, loadView),
+    readCalendarView(viewKey, loadView),
+  ]);
+  assert.equal(viewCalls, 1);
+  assert.equal(peekCalendarView(viewKey).items.length, 2);
+  assert.equal(peekCalendarView(viewKey + "&project=another"), undefined);
   revision = 2;
   await request("/todos", { method: "POST", body: "{}" });
   assert.equal((await request("/meta")).revision, 2);
   assert.equal(calls, 3);
   assert.equal(channel.messages.at(-1), "data");
+  assert.equal(peekCalendarView(viewKey), undefined);
   failWrite = true;
   await assert.rejects(
     request("/todos", { method: "POST", body: "{}" }),
@@ -304,4 +317,26 @@ test("logging out and back into the same identity still rejects a previous sessi
   cache.setScope("a");
   pending.resolve({ old: true });
   await assert.rejects(old, /请求身份已变化/);
+});
+
+test("synchronous previews are private copies and disappear on expiry, invalidation or identity changes", async () => {
+  let now = 0;
+  const cache = new ReadCache(() => now);
+  assert.equal(cache.peek("calendar"), undefined);
+  cache.setScope("a");
+  await cache.read("calendar", async () => ({ days: { "2026-11-01": 2 } }));
+  const preview = cache.peek("calendar");
+  preview.days["2026-11-01"] = 99;
+  assert.equal(cache.peek("calendar").days["2026-11-01"], 2);
+  now = 10000;
+  assert.equal(cache.peek("calendar"), undefined);
+  await cache.read("calendar", async () => ({ days: {} }));
+  cache.invalidate();
+  assert.equal(cache.peek("calendar"), undefined);
+  await cache.read("calendar", async () => ({ days: {} }));
+  cache.setScope("b");
+  assert.equal(cache.peek("calendar"), undefined);
+  cache.setScope(null);
+  await cache.read("calendar", async () => ({ days: {} }));
+  assert.equal(cache.peek("calendar"), undefined);
 });

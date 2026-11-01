@@ -5,6 +5,7 @@ import {
   weekSegments,
   positionWeekSegments,
   isoWeek,
+  weekTimeSelection,
 } from "../apps/web/lib/calendar-week.ts";
 
 test("primary Calendar tabs preserve legacy links and use the right data source", () => {
@@ -149,4 +150,13 @@ test("mini month week numbers retain ISO year boundaries", () => {
   assert.equal(isoWeek("2021-01-01"), 53);
   assert.equal(isoWeek("2021-01-04"), 1);
   assert.equal(isoWeek("2026-11-02"), 45);
+});
+
+test("week drag ranges snap in either direction, keep exact ends and clamp at midnight", () => {
+  assert.deepEqual(weekTimeSelection(480, 630), { start: 480, end: 630 });
+  assert.deepEqual(weekTimeSelection(620, 490), { start: 480, end: 630 });
+  assert.deepEqual(weekTimeSelection(480, 480), { start: 480, end: 510 });
+  assert.deepEqual(weekTimeSelection(1439, 1500), { start: 1410, end: 1440 });
+  assert.deepEqual(weekTimeSelection(-10, 15), { start: 0, end: 30 });
+  assert.throws(() => weekTimeSelection(NaN, 600), /日期范围无效/);
 });

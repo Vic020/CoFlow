@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   addDays,
+  calendarReportHref,
+  calendarDateSelection,
+  quickCalendarSchedule,
   calendarDays,
   civilDay,
   onDay,
@@ -166,4 +169,87 @@ test("offline calendar projects original reports and shares Todo plans", async (
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("Calendar report overlays retain date, view, source, scope and node context", () => {
+  const context =
+    "date=2026-11-01&day=2026-11-02&mode=schedule&view=week&project=sample&domain=Design&member=alice&event=phase-1&filters=1";
+  const href = calendarReportHref(context, "report + /&");
+  assert.equal(href.split("?")[0], "/calendar");
+  const opened = new URLSearchParams(href.split("?")[1]);
+  assert.equal(opened.get("report"), "report + /&");
+  for (const [key, value] of new URLSearchParams(context))
+    assert.equal(opened.get(key), value);
+  const closed = new URLSearchParams(
+    calendarReportHref(opened.toString(), "").split("?")[1],
+  );
+  assert.equal(closed.has("report"), false);
+  assert.equal(closed.toString(), new URLSearchParams(context).toString());
+  assert.equal(calendarReportHref("", ""), "/calendar");
+});
+
+test("quick creation keeps inclusive dates and reverses a backwards Gantt selection", () => {
+  const days = ["2026-10-31", "2026-11-01", "2026-11-02"];
+  assert.deepEqual(calendarDateSelection(days, 2, 0), {
+    kind: "date-range",
+    start_date: days[0],
+    end_date: days[2],
+  });
+  assert.equal(calendarDateSelection(days, 1, 1).end_date, days[1]);
+  assert.throws(() => calendarDateSelection(days, -1, 2), /日期范围无效/);
+  assert.deepEqual(
+    quickCalendarSchedule(days[0], undefined, "Asia/Shanghai").schedule,
+    { kind: "date-range", start_date: days[0], end_date: days[0] },
+  );
+});
+
+test("week quick creation snaps to half-hour slots and handles midnight without date drift", () => {
+  const seed = quickCalendarSchedule(
+    "2026-11-01",
+    9 * 60 + 17,
+    "Asia/Shanghai",
+  );
+  assert.equal(seed.needsTimeChoice, false);
+  assert.equal(seed.schedule.start_at, "2026-11-01T01:00:00.000Z");
+  assert.equal(seed.schedule.end_at, "2026-11-01T01:30:00.000Z");
+  const late = quickCalendarSchedule("2026-11-01", 1439, "Asia/Shanghai");
+  assert.equal(late.schedule.start_at, "2026-11-01T15:30:00.000Z");
+  assert.equal(late.schedule.end_at, "2026-11-01T16:00:00.000Z");
+  assert.ok(validSchedule(late.schedule));
+});
+
+test("quick creation leaves DST gaps and folds unresolved for explicit editing", () => {
+  for (const [day, minute] of [
+    ["2026-03-08", 120],
+    ["2026-11-01", 90],
+  ]) {
+    const seed = quickCalendarSchedule(day, minute, "America/New_York");
+    assert.equal(seed.needsTimeChoice, true);
+    assert.equal(seed.schedule.kind, "time-range");
+    assert.equal(seed.schedule.start_at, "");
+    assert.equal(validSchedule(seed.schedule), false);
+  }
+});
+
+test("week dragged durations survive into the event seed and use the display zone", () => {
+  const seed = quickCalendarSchedule("2026-11-01", 480, "Asia/Shanghai", 630);
+  assert.equal(seed.schedule.start_at, "2026-11-01T00:00:00.000Z");
+  assert.equal(seed.schedule.end_at, "2026-11-01T02:30:00.000Z");
+  assert.ok(validSchedule(seed.schedule));
+  const midnight = quickCalendarSchedule(
+    "2026-11-01",
+    1410,
+    "Asia/Shanghai",
+    1440,
+  );
+  assert.equal(midnight.schedule.end_at, "2026-11-01T16:00:00.000Z");
+  assert.equal(
+    quickCalendarSchedule("2026-11-01", 0, "America/New_York", 90)
+      .needsTimeChoice,
+    true,
+  );
+  assert.throws(
+    () => quickCalendarSchedule("2026-11-01", 600, "UTC", 540),
+    /日期范围无效/,
+  );
 });

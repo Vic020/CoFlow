@@ -11,11 +11,11 @@ import {
 import {
   weekSegments,
   positionWeekSegments,
+  weekTimeSelection,
   type WeekSegment,
 } from "@/lib/calendar-week";
 import type { Report, Meta } from "@/lib/types";
 import { useI18n } from "./i18n-provider";
-import { useSharedFilters } from "./shared-filters";
 
 type Timed = WeekSegment & {
   title: string;
@@ -29,28 +29,79 @@ export function CalendarWeekView({
   zone,
   mode,
   reports,
+  reportHref,
   items,
   meta,
   loading,
   onSelect,
   onOpen,
+  onCreate,
 }: {
   days: string[];
   selected: string;
   zone: string;
   mode: "reports" | "schedule";
   reports: Report[];
+  reportHref: (id: string) => string;
   items: CalendarItem[];
   meta: Meta;
   loading: boolean;
   onSelect: (day: string) => void;
   onOpen: (item: CalendarItem) => void;
+  onCreate: (day: string, minute?: number, endMinute?: number) => void;
 }) {
   const { t: tr, date, locale } = useI18n();
-  const shared = useSharedFilters();
   const scroll = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => new Date());
   const dayKey = days.join(",");
+  const [timeSelection, setTimeSelection] = useState<{
+    day: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const gesture = useRef<{
+    day: string;
+    anchor: number;
+    y: number;
+    pointer: number;
+    moved: boolean;
+    target: HTMLDivElement;
+  } | null>(null);
+  const keyboardSelection = useRef<{
+    day: string;
+    anchor: number;
+    caret: number;
+  } | null>(null);
+  const suppressClickUntil = useRef(0);
+  function cancelSelection() {
+    const current = gesture.current;
+    gesture.current = null;
+    keyboardSelection.current = null;
+    setTimeSelection(null);
+    if (current?.target.hasPointerCapture(current.pointer))
+      current.target.releasePointerCapture(current.pointer);
+  }
+  useEffect(() => {
+    cancelSelection();
+  }, [dayKey, zone, mode]);
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") cancelSelection();
+    };
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("keydown", escape);
+      gesture.current = null;
+    };
+  }, []);
+  const minuteAt = (target: HTMLDivElement, y: number) =>
+    Math.max(
+      0,
+      Math.min(
+        1440,
+        ((y - target.getBoundingClientRect().top) / hourHeight) * 60,
+      ),
+    );
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -196,6 +247,7 @@ export function CalendarWeekView({
                 aria-pressed={column.day === selected}
                 aria-label={`${date(`${column.day}T12:00:00Z`, { dateStyle: "full", timeZone: "UTC" })} · ${column.count}`}
                 onClick={() => onSelect(column.day)}
+                onDoubleClick={() => onCreate(column.day)}
                 onKeyDown={(e) => {
                   const delta = (
                     {
@@ -241,7 +293,13 @@ export function CalendarWeekView({
             <div className="week-all-day">
               <div className="week-all-day-label">{tr("全天")}</div>
               {columns.map((column) => (
-                <div className="week-all-day-cell" key={column.day}>
+                <div
+                  className="week-all-day-cell"
+                  key={column.day}
+                  onDoubleClick={(e) => {
+                    if (e.target === e.currentTarget) onCreate(column.day);
+                  }}
+                >
                   {column.allDay.slice(0, 4).map((item) => (
                     <button
                       className={`week-all-day-event calendar-kind-${item.kind}`}
@@ -294,8 +352,173 @@ export function CalendarWeekView({
               <div
                 className={`week-day-track${column.day === today ? " is-today" : ""}${column.day === selected ? " is-selected" : ""}`}
                 key={column.day}
-                onClick={() => onSelect(column.day)}
+                data-week-track={column.day}
+                role="group"
+                title={tr("拖选时间创建节点")}
+                tabIndex={0}
+                aria-label={
+                  date(column.day + "T12:00:00Z", {
+                    dateStyle: "full",
+                    timeZone: "UTC",
+                  }) +
+                  " · " +
+                  tr("拖选时间创建节点")
+                }
+                onPointerDown={(e) => {
+                  if (
+                    e.target !== e.currentTarget ||
+                    e.button !== 0 ||
+                    !e.isPrimary ||
+                    e.pointerType === "touch"
+                  )
+                    return;
+                  e.preventDefault();
+                  keyboardSelection.current = null;
+                  setTimeSelection(null);
+                  gesture.current = {
+                    day: column.day,
+                    anchor: minuteAt(e.currentTarget, e.clientY),
+                    y: e.clientY,
+                    pointer: e.pointerId,
+                    moved: false,
+                    target: e.currentTarget,
+                  };
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  const current = gesture.current;
+                  if (!current || current.pointer !== e.pointerId) return;
+                  if (Math.abs(e.clientY - current.y) >= 6)
+                    current.moved = true;
+                  if (!current.moved) return;
+                  const viewport = scroll.current;
+                  if (viewport) {
+                    const rect = viewport.getBoundingClientRect();
+                    const top =
+                      rect.top +
+                      (viewport.querySelector<HTMLElement>(".week-header")
+                        ?.offsetHeight || 0) +
+                      (viewport.querySelector<HTMLElement>(".week-all-day")
+                        ?.offsetHeight || 0);
+                    if (e.clientY > rect.bottom - 20) viewport.scrollTop += 12;
+                    else if (e.clientY < top + 20) viewport.scrollTop -= 12;
+                  }
+                  setTimeSelection({
+                    day: current.day,
+                    ...weekTimeSelection(
+                      current.anchor,
+                      minuteAt(current.target, e.clientY),
+                    ),
+                  });
+                }}
+                onPointerUp={(e) => {
+                  const current = gesture.current;
+                  if (!current || current.pointer !== e.pointerId) return;
+                  gesture.current = null;
+                  if (current.target.hasPointerCapture(e.pointerId))
+                    current.target.releasePointerCapture(e.pointerId);
+                  if (!current.moved) return;
+                  e.preventDefault();
+                  const range = weekTimeSelection(
+                    current.anchor,
+                    minuteAt(current.target, e.clientY),
+                  );
+                  setTimeSelection(null);
+                  suppressClickUntil.current = performance.now() + 400;
+                  onSelect(current.day);
+                  onCreate(current.day, range.start, range.end);
+                }}
+                onPointerCancel={cancelSelection}
+                onLostPointerCapture={() => {
+                  gesture.current = null;
+                }}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" && timeSelection?.day === column.day) {
+                    e.preventDefault();
+                    onSelect(column.day);
+                    onCreate(
+                      column.day,
+                      timeSelection.start,
+                      timeSelection.end,
+                    );
+                    cancelSelection();
+                    return;
+                  }
+                  const step =
+                    e.key === "ArrowUp" ? -30 : e.key === "ArrowDown" ? 30 : 0;
+                  if (!step) return;
+                  e.preventDefault();
+                  const old =
+                    keyboardSelection.current?.day === column.day
+                      ? keyboardSelection.current
+                      : null;
+                  const caret = Math.max(
+                    0,
+                    Math.min(1410, old ? old.caret + step : 8 * 60),
+                  );
+                  const anchor = e.shiftKey && old ? old.anchor : caret;
+                  keyboardSelection.current = {
+                    day: column.day,
+                    caret,
+                    anchor,
+                  };
+                  const range = weekTimeSelection(
+                    Math.min(anchor, caret),
+                    Math.max(anchor, caret) + 30,
+                  );
+                  setTimeSelection({ day: column.day, ...range });
+                  const viewport = scroll.current;
+                  if (viewport) {
+                    const rect = viewport.getBoundingClientRect(),
+                      track = e.currentTarget.getBoundingClientRect();
+                    const top =
+                      rect.top +
+                      (viewport.querySelector<HTMLElement>(".week-header")
+                        ?.offsetHeight || 0) +
+                      (viewport.querySelector<HTMLElement>(".week-all-day")
+                        ?.offsetHeight || 0) +
+                      6;
+                    const start = track.top + (range.start / 60) * hourHeight,
+                      end = track.top + (range.end / 60) * hourHeight;
+                    if (start < top) viewport.scrollTop -= top - start;
+                    else if (end > rect.bottom - 6)
+                      viewport.scrollTop += end - rect.bottom + 6;
+                  }
+                }}
+                onDoubleClick={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  const minute =
+                    ((e.clientY - e.currentTarget.getBoundingClientRect().top) /
+                      hourHeight) *
+                    60;
+                  onCreate(column.day, minute);
+                }}
+                onClick={() => {
+                  if (performance.now() >= suppressClickUntil.current)
+                    onSelect(column.day);
+                }}
               >
+                {timeSelection?.day === column.day && (
+                  <div
+                    className="week-time-selection"
+                    role="status"
+                    style={{
+                      top: (timeSelection.start / 60) * hourHeight,
+                      height:
+                        ((timeSelection.end - timeSelection.start) / 60) *
+                        hourHeight,
+                    }}
+                  >
+                    {timeSelection.end - timeSelection.start >= 60 && (
+                      <strong>{tr("新建节点")}</strong>
+                    )}
+                    <time>
+                      {minuteLabel(timeSelection.start)}–
+                      {minuteLabel(timeSelection.end)}
+                    </time>
+                  </div>
+                )}
                 {column.timed.map((event) => {
                   const style = {
                     top: (event.start / 60) * hourHeight,
@@ -328,7 +551,8 @@ export function CalendarWeekView({
                       key={event.key}
                       className={cls}
                       style={style}
-                      href={shared.href(`/?report=${event.report.id}`)}
+                      scroll={false}
+                      href={reportHref(event.report.id)}
                       title={eventTitle(event)}
                       onClick={(e) => e.stopPropagation()}
                     >

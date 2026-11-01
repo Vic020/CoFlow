@@ -8,6 +8,8 @@ import {
   ChevronRight,
   Plus,
   RefreshCw,
+  LoaderCircle,
+  X,
   Pencil,
   CalendarDays,
 } from "lucide-react";
@@ -22,12 +24,16 @@ import {
   DialogDescription,
   DialogTitle,
 } from "./ui/dialog";
+import { GanttCreateRow } from "./gantt-create-row";
+import { ReportDetailDialog } from "./report-detail-dialog";
 import { CalendarWeekView } from "./calendar-week-view";
 import { CalendarMiniMonth } from "./calendar-mini-month";
 import { TimezonePicker } from "./timezone-picker";
 import { ScheduleEditor, ScheduleText } from "./schedule-editor";
 import {
   calendarPresentation,
+  calendarReportHref,
+  quickCalendarSchedule,
   addDays,
   calendarDays,
   civilDay,
@@ -44,6 +50,8 @@ import {
 } from "@/lib/calendar";
 import {
   invalidateReadCache,
+  peekCalendarView,
+  readCalendarView,
   request,
   statuses,
   type Meta,
@@ -101,13 +109,48 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
     : days.includes(anchor)
       ? anchor
       : days[0];
-  const [reports, setReports] = useState<ReportPage>(emptyPage);
-  const [schedule, setSchedule] = useState<SchedulePage>(emptySchedule);
+  const [storedReports, setReports] = useState<ReportPage>(emptyPage);
+  const [storedSchedule, setSchedule] = useState<SchedulePage>(emptySchedule);
+  const [reportContext, setReportContext] = useState({ key: "", range: "" });
+  const [scheduleContext, setScheduleContext] = useState("");
   const [unscheduled, setUnscheduled] = useState<CalendarItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
   const [editor, setEditor] = useState<CalendarEvent | "new" | null>(null);
+  const [createDraft, setCreateDraft] = useState<{
+    day: string;
+    schedule: Schedule;
+    warning: string;
+    key: string;
+  } | null>(null);
+  const [ganttCreating, setGanttCreating] = useState(false);
+  const [quickTip, setQuickTip] = useState(false);
+  const [createNotice, setCreateNotice] = useState("");
+  useEffect(() => {
+    if (!createNotice) return;
+    const timer = setTimeout(() => setCreateNotice(""), 3500);
+    return () => clearTimeout(timer);
+  }, [createNotice]);
+  const quickTipShown = useRef(false);
+  useEffect(() => {
+    if (
+      !validZone ||
+      view === "gantt" ||
+      search.get("report") ||
+      search.get("event") ||
+      quickTipShown.current
+    )
+      return;
+    quickTipShown.current = true;
+    try {
+      if (localStorage.getItem("coflow-calendar-quick-create-tip-v1")) return;
+      localStorage.setItem("coflow-calendar-quick-create-tip-v1", "seen");
+    } catch {
+      /* Optional UI preference; creation never depends on storage. */
+    }
+    setQuickTip(true);
+  }, [view, paramsKey, validZone]);
   const [taskEditing, setTaskEditing] = useState(false);
   const [latestTask, setLatestTask] = useState<Todo | null>(null);
   const [task, setTask] = useState<Todo | null>(null);
@@ -127,6 +170,9 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
       value ? next.set(key, value) : next.delete(key);
     router.push(shared.href(`/calendar?${next}`), { scroll: false });
   }
+  const reportHref = (id: string) =>
+    shared.href(calendarReportHref(paramsKey, id));
+  const closeReport = () => router.replace(reportHref(""), { scroll: false });
   const reportDay = mode === "reports" && view !== "week" ? selected : "";
   const baseQuery = useMemo(() => {
     const q = new URLSearchParams({
@@ -154,12 +200,37 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
     shared.filters.domain,
     shared.filters.member,
   ]); // URL is the source of truth, including Back.
+  const identity = JSON.stringify([meta.team.id, meta.current_user, meta.role]);
+  const reportRange = identity + ":" + baseQuery;
+  const reportQuery = new URLSearchParams(baseQuery);
+  if (view !== "week") reportQuery.set("day", selected);
+  const reportKey = "/calendar/reports?" + reportQuery + "&layout=" + view;
+  const scheduleKey = "/calendar/schedule?" + baseQuery;
+  const reportIdentity = identity + ":" + reportKey;
+  const scheduleIdentity = identity + ":" + scheduleKey;
+  const cachedReports = peekCalendarView<ReportPage>(reportKey);
+  const cachedSchedule = peekCalendarView<SchedulePage>(scheduleKey);
+  // Keep the visible range's counts/previews while a different day's detail loads.
+  // Never present the previous day's items under the newly selected date.
+  const reports =
+    reportContext.key === reportIdentity
+      ? storedReports
+      : (cachedReports ??
+        (reportContext.range === reportRange
+          ? { ...storedReports, items: [], next_cursor: "" }
+          : emptyPage));
+  const schedule =
+    scheduleContext === scheduleIdentity
+      ? storedSchedule
+      : (cachedSchedule ?? emptySchedule);
   useEffect(() => {
     const n = ++generation.current;
-    setLoading(true);
+    const cached =
+      mode === "reports"
+        ? peekCalendarView<ReportPage>(reportKey)
+        : peekCalendarView<SchedulePage>(scheduleKey);
+    setLoading(!cached);
     setError("");
-    setReports(emptyPage);
-    setSchedule(emptySchedule);
     setUnscheduled(null);
     if (!validZone) {
       setError(tr("时区无效"));
@@ -168,45 +239,62 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
     }
     async function load() {
       try {
-        const q = new URLSearchParams(baseQuery);
         if (mode === "reports") {
-          if (view !== "week") q.set("day", selected);
-          const first = await request<ReportPage>(`/calendar/reports?${q}`);
-          let page = first;
-          const items = [...first.items];
-          const seen = new Set<string>();
-          if (view === "week")
-            while (page.next_cursor) {
-              if (generation.current !== n) return;
-              if (seen.has(page.next_cursor))
-                throw new Error(tr("日历数据已变化，请刷新后重试"));
-              seen.add(page.next_cursor);
-              q.set("cursor", page.next_cursor);
-              q.set("revision", first.revision);
-              page = await request<ReportPage>(`/calendar/reports?${q}`);
-              items.push(...page.items);
-            }
-          if (generation.current === n)
-            setReports(
-              view === "week" ? { ...first, items, next_cursor: "" } : first,
-            );
-        } else {
-          const first = await request<SchedulePage>(`/calendar/schedule?${q}`);
-          let page = first;
-          const items = [...first.items];
-          const seen = new Set<string>();
-          while (page.next_cursor) {
-            if (generation.current !== n) return;
-            if (seen.has(page.next_cursor))
-              throw new Error(tr("日历数据已变化，请刷新后重试"));
-            seen.add(page.next_cursor);
-            q.set("cursor", page.next_cursor);
-            q.set("revision", first.revision);
-            page = await request<SchedulePage>(`/calendar/schedule?${q}`);
-            items.push(...page.items);
+          const result = await readCalendarView<ReportPage>(
+            reportKey,
+            async () => {
+              const q = new URLSearchParams(baseQuery);
+              if (view !== "week") q.set("day", selected);
+              const first = await request<ReportPage>(`/calendar/reports?${q}`);
+              let page = first;
+              const items = [...first.items];
+              const seen = new Set<string>();
+              if (view === "week")
+                while (page.next_cursor) {
+                  if (seen.has(page.next_cursor))
+                    throw new Error(tr("日历数据已变化，请刷新后重试"));
+                  seen.add(page.next_cursor);
+                  q.set("cursor", page.next_cursor);
+                  q.set("revision", first.revision);
+                  page = await request<ReportPage>(`/calendar/reports?${q}`);
+                  items.push(...page.items);
+                }
+              return view === "week"
+                ? { ...first, items, next_cursor: "" }
+                : first;
+            },
+          );
+          if (generation.current === n) {
+            setReports(result);
+            setReportContext({ key: reportIdentity, range: reportRange });
           }
-          if (generation.current === n)
-            setSchedule({ ...first, items, next_cursor: "" });
+        } else {
+          const result = await readCalendarView<SchedulePage>(
+            scheduleKey,
+            async () => {
+              const q = new URLSearchParams(baseQuery);
+              const first = await request<SchedulePage>(
+                `/calendar/schedule?${q}`,
+              );
+              let page = first;
+              const items = [...first.items];
+              const seen = new Set<string>();
+              while (page.next_cursor) {
+                if (seen.has(page.next_cursor))
+                  throw new Error(tr("日历数据已变化，请刷新后重试"));
+                seen.add(page.next_cursor);
+                q.set("cursor", page.next_cursor);
+                q.set("revision", first.revision);
+                page = await request<SchedulePage>(`/calendar/schedule?${q}`);
+                items.push(...page.items);
+              }
+              return { ...first, items, next_cursor: "" };
+            },
+          );
+          if (generation.current === n) {
+            setSchedule(result);
+            setScheduleContext(scheduleIdentity);
+          }
         }
       } catch (e) {
         if (generation.current === n) setError((e as Error).message);
@@ -218,7 +306,7 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
     return () => {
       generation.current++;
     };
-  }, [baseQuery, reportDay, mode, view, validZone, tick, tr]);
+  }, [baseQuery, reportDay, mode, view, validZone, tick, tr, identity]);
   useEffect(() => {
     const focus = () => {
       if (document.visibilityState === "visible") refresh();
@@ -258,7 +346,24 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
       current = false;
     };
   }, [eventId]);
+  function beginCreate(day: string, minute?: number, endMinute?: number) {
+    if (!validZone || busy) return;
+    const seed = quickCalendarSchedule(day, minute, zone, endMinute);
+    openCreate(
+      day,
+      seed.schedule,
+      seed.needsTimeChoice
+        ? "该时段受夏令时影响，请明确选择开始与结束时间。"
+        : "",
+    );
+  }
+  function openCreate(day: string, schedule: Schedule, warning = "") {
+    setQuickTip(false);
+    setCreateDraft({ day, schedule, warning, key: crypto.randomUUID() });
+    setEditor("new");
+  }
   function closeEvent() {
+    setCreateDraft(null);
     setEditor(null);
     if (eventId) navigate({ event: "" });
   }
@@ -565,6 +670,18 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
           </Button>
         </div>
         <div className="calendar-actions">
+          {quickTip && view !== "gantt" && (
+            <div role="note" className="calendar-quick-tip">
+              <span>{tr("双击空白日期，快速创建节点")}</span>
+              <button
+                type="button"
+                aria-label={tr("关闭提示")}
+                onClick={() => setQuickTip(false)}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
           {primaryTab !== "gantt" && (
             <div className="view-tabs">
               {["month", "week"].map((v) => (
@@ -583,16 +700,24 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
             size="icon"
             variant="ghost"
             aria-label={tr("刷新")}
+            title={loading ? tr("加载中…") : tr("刷新")}
+            className="calendar-refresh"
             onClick={refresh}
           >
-            <RefreshCw size={16} />
+            {loading ? (
+              <span role="status" aria-label={tr("加载中…")}>
+                <LoaderCircle size={16} className="calendar-loading-icon" />
+              </span>
+            ) : (
+              <RefreshCw size={16} />
+            )}
           </Button>
           {mode === "schedule" && (
             <Button
               className="calendar-new-event"
               aria-label={tr("新建节点")}
               title={tr("新建节点")}
-              onClick={() => setEditor("new")}
+              onClick={() => beginCreate(selected)}
             >
               <Plus size={15} />
               <span className="calendar-new-node-label">{tr("新建节点")}</span>
@@ -732,7 +857,6 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
           </Button>
         </div>
       )}
-      {loading && <p role="status">{tr("加载中…")}</p>}
       {!error && (
         <div
           aria-busy={loading}
@@ -824,6 +948,29 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                     </div>
                   );
                 })}
+                <div className="gantt-row gantt-add-row">
+                  <button
+                    type="button"
+                    className="gantt-add-button"
+                    aria-label={tr("添加节点行")}
+                    onClick={() => setGanttCreating(true)}
+                  >
+                    <Plus size={16} />
+                    {tr("新建节点")}
+                  </button>
+                  <div />
+                </div>
+                {ganttCreating && (
+                  <GanttCreateRow
+                    key={baseQuery}
+                    days={days}
+                    disabled={busy || !validZone}
+                    onDismiss={() => setGanttCreating(false)}
+                    onCreate={(schedule) =>
+                      openCreate(schedule.start_date!, schedule)
+                    }
+                  />
+                )}
                 {!loading && !schedule.items.length && (
                   <p className="calendar-empty">{tr("当前范围没有排期")}</p>
                 )}
@@ -836,6 +983,7 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
               zone={zone}
               mode={mode}
               reports={reports.items}
+              reportHref={reportHref}
               items={schedule.items}
               meta={meta}
               loading={loading}
@@ -843,6 +991,7 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                 navigate({ day, ...(!days.includes(day) ? { date: day } : {}) })
               }
               onOpen={(item) => void open(item)}
+              onCreate={beginCreate}
             />
           ) : (
             <div
@@ -873,6 +1022,7 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                   >
                     <button
                       className="calendar-day"
+                      onDoubleClick={() => beginCreate(d)}
                       aria-pressed={d === selected}
                       aria-label={`${dayLabel(d)} · ${loading ? "…" : mode === "reports" ? reports.days[d] || 0 : items.length}`}
                       onKeyDown={(e) => {
@@ -922,7 +1072,8 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                         <Link
                           key={r.id}
                           className="calendar-report-preview"
-                          href={`/?report=${r.id}`}
+                          scroll={false}
+                          href={reportHref(r.id)}
                           title={r.title}
                         >
                           {r.title}
@@ -965,7 +1116,8 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                   {dayReports.map((r: Report) => (
                     <Link
                       key={r.id}
-                      href={`/?report=${encodeURIComponent(r.id)}`}
+                      scroll={false}
+                      href={reportHref(r.id)}
                       className="calendar-agenda-report"
                     >
                       <span
@@ -1135,18 +1287,42 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
         <CalendarEventDialog
           key={
             editor === "new"
-              ? `new:${selected}`
+              ? `new:${createDraft?.key || selected}`
               : `${editor.id}:${editor.revision}`
           }
           value={editor}
-          day={selected}
+          day={createDraft?.day || selected}
+          initialSchedule={createDraft?.schedule}
+          initialWarning={createDraft?.warning}
           meta={meta}
           visibleReports={dayReports}
+          reportHref={reportHref}
           onClose={closeEvent}
           onSaved={() => {
+            if (editor === "new")
+              setCreateNotice(
+                mode === "reports"
+                  ? "节点已创建，可在排期中查看"
+                  : "节点已创建",
+              );
             closeEvent();
+            setGanttCreating(false);
             refresh();
           }}
+        />
+      )}
+      {createNotice && (
+        <div className="toast" role="status">
+          {tr(createNotice)}
+        </div>
+      )}
+      {search.get("report") && (
+        <ReportDetailDialog
+          key={identity + search.get("report")}
+          reportId={search.get("report")!}
+          meta={meta}
+          onClose={closeReport}
+          onChange={refresh}
         />
       )}
     </section>
@@ -1158,6 +1334,9 @@ function CalendarEventDialog({
   day,
   meta,
   visibleReports,
+  initialSchedule,
+  initialWarning,
+  reportHref,
   onClose,
   onSaved,
 }: {
@@ -1165,6 +1344,9 @@ function CalendarEventDialog({
   day: string;
   meta: Meta;
   visibleReports: Report[];
+  initialSchedule?: Schedule;
+  initialWarning?: string;
+  reportHref: (id: string) => string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1181,7 +1363,11 @@ function CalendarEventDialog({
           kind: "phase",
           title: "",
           body: "",
-          schedule: { kind: "date-range", start_date: day, end_date: day },
+          schedule: initialSchedule || {
+            kind: "date-range",
+            start_date: day,
+            end_date: day,
+          },
           todo_ids: [],
           report_ids: [],
           links: [],
@@ -1432,6 +1618,12 @@ function CalendarEventDialog({
                   </select>
                 </label>
               </div>
+              {initialWarning &&
+                !validSchedule(draft.schedule, draft.kind !== "phase") && (
+                  <p role="note" className="calendar-create-warning">
+                    {tr(initialWarning)}
+                  </p>
+                )}
               <ScheduleEditor
                 value={draft.schedule}
                 point={draft.kind !== "phase"}
@@ -1559,7 +1751,9 @@ function CalendarEventDialog({
                           )
                         }
                       />
-                      <Link href={`/?report=${id}`}>{tr("查看关联上报")}</Link>
+                      <Link scroll={false} href={reportHref(id)}>
+                        {tr("查看关联上报")}
+                      </Link>
                     </label>
                   ))}
               </details>
@@ -1599,7 +1793,7 @@ function CalendarEventDialog({
                 </Link>
               ))}
               {(initial.report_ids || []).map((id) => (
-                <Link key={id} href={`/?report=${id}`}>
+                <Link key={id} scroll={false} href={reportHref(id)}>
                   {tr("查看关联上报")}
                 </Link>
               ))}

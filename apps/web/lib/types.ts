@@ -158,6 +158,15 @@ export function invalidateReadCache() {
   reads.invalidate();
 }
 
+// Complete, paginated Calendar projections share the same private scope, TTL and
+// invalidation lifecycle as transport reads. Never persist them to browser storage.
+export function peekCalendarView<T>(key: string): T | undefined {
+  return reads.peek<T>(`calendar-view:${key}`);
+}
+export function readCalendarView<T>(key: string, load: () => Promise<T>) {
+  return reads.read<T>(`calendar-view:${key}`, load);
+}
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const mutation =
     !!init?.method && !["GET", "HEAD"].includes(init.method.toUpperCase());

@@ -240,3 +240,72 @@ export function pastDeadline(s: Schedule | null | undefined, due: string) {
     return false;
   }
 }
+
+// A report is an overlay on the current Calendar context, not a module switch.
+export function calendarReportHref(params: string, id: string) {
+  const next = new URLSearchParams(params);
+  if (id) next.set("report", id);
+  else next.delete("report");
+  return "/calendar" + (next.size ? "?" + next : "");
+}
+
+export function calendarDateSelection(
+  days: string[],
+  start: number,
+  end: number,
+): Schedule {
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    !days[start] ||
+    !days[end]
+  )
+    throw new RangeError("日期范围无效");
+  const [low, high] = [Math.min(start, end), Math.max(start, end)];
+  return { kind: "date-range", start_date: days[low], end_date: days[high] };
+}
+
+// A quick-create seed is a user-editable plan, never a report or an immediate write.
+export function quickCalendarSchedule(
+  day: string,
+  minute: number | undefined,
+  zone: string,
+  endMinute?: number,
+) {
+  if (!validCivilDay(day)) throw new RangeError("日期范围无效");
+  if (minute === undefined)
+    return {
+      schedule: {
+        kind: "date-range",
+        start_date: day,
+        end_date: day,
+      } as Schedule,
+      needsTimeChoice: false,
+    };
+  if (!Number.isFinite(minute)) throw new RangeError("日期范围无效");
+  const start = Math.max(0, Math.min(1410, Math.floor(minute / 30) * 30));
+  if (
+    endMinute !== undefined &&
+    (!Number.isFinite(endMinute) || endMinute <= start || endMinute > 1440)
+  )
+    throw new RangeError("日期范围无效");
+  const end =
+    endMinute === undefined ? start + 30 : Math.ceil(endMinute / 30) * 30;
+  const wall = (value: number) =>
+    `${addDays(day, Math.floor(value / 1440))}T${String(Math.floor((value % 1440) / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+  const starts = wallTimeCandidates(wall(start), zone),
+    ends = wallTimeCandidates(wall(end), zone);
+  const certain =
+    starts.length === 1 &&
+    ends.length === 1 &&
+    Date.parse(ends[0]) > Date.parse(starts[0]);
+  return {
+    schedule: {
+      kind: "time-range",
+      start_at: certain ? starts[0] : "",
+      end_at: certain ? ends[0] : "",
+      timezone: zone,
+    } as Schedule,
+    needsTimeChoice: !certain,
+  };
+}

@@ -5998,3 +5998,42 @@ input[type="checkbox"] {
   .calendar-week .calendar-weekday { display: none; }
   .calendar-week .calendar-cell { min-height: 60px; border-right: none; }
 }
+
+/* Keep navigation feedback in the existing action slot, without moving the grid. */
+.calendar-refresh > span { display: inline-flex; }
+.calendar-loading-icon { animation: calendar-loading-spin .9s linear infinite; color: var(--primary); }
+@keyframes calendar-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .calendar-loading-icon { animation: none; }
+}
+/* The date button covers blank space; report/task controls stay above it. */
+.calendar-grid .calendar-cell { position: relative; padding-top: 34px; }
+.calendar-grid .calendar-day { position: absolute; inset: 0; align-items: flex-start; padding: 8px; height: 100%; }
+.calendar-grid .calendar-day:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; border-radius: 2px; }
+.calendar-grid .calendar-entry, .calendar-grid .calendar-report-preview, .calendar-grid .calendar-overflow { position: relative; z-index: 1; }
+.calendar-grid .calendar-cell:has(.calendar-day:hover):not(.selected) { background: color-mix(in srgb,var(--primary) 4%,var(--background)); }
+
+.calendar-actions { position: relative; }
+.calendar-quick-tip { position: absolute; top: calc(100% + 7px); right: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 12px; width: max-content; max-width: min(320px,calc(100vw - 48px)); background: var(--background); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 5px 18px #12372c16; color: var(--primary); font-size: 12px; }
+.calendar-quick-tip button { display: inline-flex; padding: 3px; color: var(--color-muted-foreground); }
+.gantt-add-button { display: flex; align-items: center; gap: 5px; padding: 3px 12px; text-align: left; font-size: 11px; line-height: 18px; color: var(--color-muted-foreground); }
+.gantt-add-button:hover { background: var(--color-muted); color: var(--primary); }
+.gantt-add-row { min-height: 28px; height: 28px; }
+.gantt-add-row > div { border-left: 1px solid var(--color-border); }
+.gantt-create-row { min-height: 64px; background: color-mix(in srgb,var(--primary) 2%,var(--background)); }
+.gantt-create-label { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-content: center; padding: 8px 12px; font-size: 12px; }
+.gantt-create-label > button { display: inline-flex; padding: 2px; color: var(--color-muted-foreground); }
+.gantt-create-label small { grid-column: 1/-1; font-size: 11px; color: var(--color-muted-foreground); }
+.gantt-create-track { position: relative; display: grid; min-width: 0; touch-action: none; user-select: none; }
+.gantt-create-track > button { min-width: 0; border-left: 1px solid var(--color-border); cursor: crosshair; }
+.gantt-create-track > button:hover { background: color-mix(in srgb,var(--primary) 10%,transparent); }
+.gantt-create-track > button[aria-pressed="true"] { background: color-mix(in srgb,var(--primary) 20%,transparent); box-shadow: inset 0 1px var(--primary),inset 0 -1px var(--primary); }
+.gantt-create-track > button:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+.gantt-create-instruction { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 5px; pointer-events: none; color: var(--color-muted-foreground); font-size: 11px; }
+.calendar-create-warning { font-size: 12px; color: #b45309; }
+
+.week-day-track:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.week-time-selection { position: absolute; left: 3px; right: 3px; z-index: 4; pointer-events: none; padding: 4px 5px; border: 1px solid #3b82f6; border-radius: 4px; background: #dbeafe; color: #18375f; font-size: 11px; line-height: 14px; overflow: hidden; }
+.week-time-selection > strong, .week-time-selection > time { display: block; font-weight: 500; }
+.week-time-selection > time { font-size: 10px; white-space: nowrap; }
+.week-day-track { cursor: crosshair; }

@@ -411,6 +411,15 @@ export async function publicDemoRequest(
     return clone(report);
   }
   const report = match && reports.find((r) => r.id === match[1]);
+  if (method === "GET" && match && !match[2]) {
+    if (!report) throw new Error("简报不存在、已删除或不属于当前团队");
+    return clone({
+      ...report,
+      todo_ids: todoBoard.tasks
+        .filter((task) => task.report_ids.includes(report.id))
+        .map((task) => task.id),
+    });
+  }
   if (report && method === "POST" && match[2]) {
     if (!payload.body?.trim()) throw new Error("请填写评论");
     const comment = {

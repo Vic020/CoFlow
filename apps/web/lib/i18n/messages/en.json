@@ -11,7 +11,10 @@
   "周时间网格，可上下和左右滚动": "Weekly time grid; scroll vertically and horizontally",
   "全天": "All day",
   "按当地时刻展示，夏令时日期长度可能不同": "Local wall time; daylight saving may change the length of the day",
-  "{count} 小时": {"one":"{count} hour","other":"{count} hours"},
+  "{count} 小时": {
+    "one": "{count} hour",
+    "other": "{count} hours"
+  },
   "跨日或时区切换的延续": "Continues across a date or time-zone transition",
   "简报按真实上报时刻定位，不表示工作时长。": "Reports mark their actual reporting time, not work duration.",
   "全天安排与截止日期在顶部，具体时间按显示时区定位。": "All-day plans and deadlines are at the top; timed plans follow the display time zone.",
@@ -966,5 +969,19 @@
   "下载文件": "Download file",
   "演示站仅供阅读；请在自己的 CoFlow 实例创建凭证并安装。": "The demo is for reading only. Create credentials and install from your own CoFlow instance.",
   "请求身份已变化，请重试": "The request identity changed. Please try again.",
-  "安装 Skill 不会自动获得权限或启动其他 Agent。主动协作与任务补齐需使用支持这些规则的版本，线上以实际安装副本为准。": "Installing a Skill does not grant permissions or start other Agents. Proactive coordination and task reconciliation require a version supporting those rules; use the files installed on your service as the authority."
+  "安装 Skill 不会自动获得权限或启动其他 Agent。主动协作与任务补齐需使用支持这些规则的版本，线上以实际安装副本为准。": "Installing a Skill does not grant permissions or start other Agents. Proactive coordination and task reconciliation require a version supporting those rules; use the files installed on your service as the authority.",
+  "简报详情": "Report details",
+  "查看简报内容与讨论。": "Read the report and discussion.",
+  "新节点": "New event",
+  "取消新建行": "Cancel new row",
+  "拖选日期，松开创建": "Drag dates, then release to create",
+  "选择节点日期范围": "Select event date range",
+  "拖选日期创建节点": "Drag dates to create an event",
+  "添加节点行": "Add event row",
+  "双击空白日期，快速创建节点": "Double-click an empty date to create an event",
+  "关闭提示": "Dismiss tip",
+  "该时段受夏令时影响，请明确选择开始与结束时间。": "Daylight saving affects this time. Choose explicit start and end times.",
+  "节点已创建": "Event created",
+  "节点已创建，可在排期中查看": "Event created. View it in Schedule.",
+  "拖选时间创建节点": "Drag a time range to create an event"
 }

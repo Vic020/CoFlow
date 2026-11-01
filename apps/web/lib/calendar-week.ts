@@ -159,3 +159,16 @@ export function isoWeek(day: string) {
   );
   return Math.ceil(((d.getTime() - first.getTime()) / 86400000 + 1) / 7);
 }
+
+// Wall-clock minutes, end-exclusive. A drag covers whole half-hour cells.
+export function weekTimeSelection(anchor: number, current: number) {
+  if (!Number.isFinite(anchor) || !Number.isFinite(current))
+    throw new RangeError("日期范围无效");
+  const low = Math.max(0, Math.min(1440, Math.min(anchor, current)));
+  const high = Math.max(0, Math.min(1440, Math.max(anchor, current)));
+  const start = Math.min(1410, Math.floor(low / 30) * 30);
+  return {
+    start,
+    end: Math.max(start + 30, Math.min(1440, Math.ceil(high / 30) * 30)),
+  };
+}
