@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssistant } from "./assistant-provider";
+import { Settings2 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import { ChevronUp, Loader2, LogOut, UserRound } from "lucide-react";
@@ -18,6 +20,7 @@ export function AccountMenu({
 }) {
   const { t: tr } = useI18n();
   const auth = useAuth();
+  const assistant = useAssistant();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,7 +76,28 @@ export function AccountMenu({
         >
           <strong>{name}</strong>
           <small>{auth.me?.user.email || role}</small>
-          {auth.mode !== "local-demo" && <button type="button" onClick={() => { setOpen(false); setProfile(true); }}><UserRound size={15} />{tr("个人信息")}</button>}
+          {auth.mode !== "local-demo" && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setProfile(true);
+              }}
+            >
+              <UserRound size={15} />
+              {tr("个人信息")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              assistant.openSettings("personal");
+            }}
+          >
+            <Settings2 size={15} />
+            {tr("AI 设置")}
+          </button>
           <AccountLanguage />
           {auth.mode !== "local-demo" && (
             <button

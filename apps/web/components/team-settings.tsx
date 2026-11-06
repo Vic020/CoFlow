@@ -1,5 +1,8 @@
 "use client";
 
+import { useSearchParams, useRouter } from "next/navigation";
+import { AISettings } from "./assistant-settings";
+import { MessageSquare } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -30,9 +33,26 @@ export function TeamSettings({
   onChange: () => void;
 }) {
   const { t: tr, date: formatDate } = useI18n();
-  const [tab, setTab] = useState<"members" | "invites" | "project" | "domain">(
-    "members",
-  );
+  const params = useSearchParams(),
+    router = useRouter();
+  const tabValue = params.get("tab") || "members";
+  const tab = ["members", "invites", "project", "domain", "ai"].includes(
+    tabValue,
+  )
+    ? tabValue
+    : "members";
+  const aiScope = params.get("scope") === "team" ? "team" : "personal";
+  function setTab(next: string) {
+    const query = new URLSearchParams(params.toString());
+    query.set("tab", next);
+    router.replace(`/settings/?${query}`, { scroll: false });
+  }
+  function setAIScope(scope: "personal" | "team") {
+    const query = new URLSearchParams(params.toString());
+    query.set("tab", "ai");
+    query.set("scope", scope);
+    router.replace(`/settings/?${query}`, { scroll: false });
+  }
   const [invites, setInvites] = useState<Invite[]>([]),
     [email, setEmail] = useState(""),
     [link, setLink] = useState("");
@@ -150,8 +170,37 @@ export function TeamSettings({
             {tr(label)}
           </button>
         ))}
+        <button
+          type="button"
+          aria-current={tab === "ai" ? "page" : undefined}
+          onClick={() => setTab("ai")}
+        >
+          <MessageSquare size={15} />
+          {tr("AI 服务")}
+        </button>
       </nav>
       <div className="settings-panel">
+        {tab === "ai" && (
+          <>
+            <div className="ai-settings-heading">
+              <h3>{tr("AI 服务")}</h3>
+              <div className="view-tabs" aria-label={tr("AI 配置范围")}>
+                {(["personal", "team"] as const).map((scope) => (
+                  <button
+                    key={scope}
+                    type="button"
+                    className={aiScope === scope ? "active" : ""}
+                    aria-pressed={aiScope === scope}
+                    onClick={() => setAIScope(scope)}
+                  >
+                    {tr(scope === "personal" ? "个人 AI 配置" : "团队 AI 服务")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <AISettings key={aiScope} scope={aiScope} />
+          </>
+        )}
         {(tab === "project" || tab === "domain") && (
           <CatalogManager
             key={tab}
@@ -234,7 +283,11 @@ export function TeamSettings({
               {meta.members.map((m) => (
                 <div className="management-row" key={m.id}>
                   <span className={`avatar small ${m.color}`}>
-                    {m.avatar_data ? <img src={m.avatar_data} alt="" /> : m.name.slice(0, 1)}
+                    {m.avatar_data ? (
+                      <img src={m.avatar_data} alt="" />
+                    ) : (
+                      m.name.slice(0, 1)
+                    )}
                   </span>
                   <div>
                     <strong>

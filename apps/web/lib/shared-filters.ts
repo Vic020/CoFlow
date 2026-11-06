@@ -14,7 +14,7 @@ export function restoreSharedFilters(
   return !previous || previous === identity ? incoming || stored : stored;
 }
 export function sharedFilterPage(path: string) {
-  return ["/", "/todo", "/calendar"].includes(path.replace(/\/$/, "") || "/");
+  return ["/", "/todo", "/calendar", "/assistant"].includes(path.replace(/\/$/, "") || "/");
 }
 export function readSharedFilters(
   params: URLSearchParams,

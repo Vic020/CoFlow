@@ -1,4 +1,5 @@
 "use client";
+import { AssistantCalendarPlans } from "./assistant-manager";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -321,9 +322,11 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
       /* Focus is the fallback. */
     }
     window.addEventListener("focus", focus);
+    window.addEventListener("coflow:assistant-change", focus);
     document.addEventListener("visibilitychange", focus);
     return () => {
       window.removeEventListener("focus", focus);
+      window.removeEventListener("coflow:assistant-change", focus);
       document.removeEventListener("visibilitychange", focus);
       channel?.close();
     };
@@ -586,6 +589,7 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
   }
   return (
     <section className="calendar-workspace">
+      <AssistantCalendarPlans />
       <div className="calendar-toolbar">
         <div className="view-tabs" aria-label={tr("日历内容")}>
           {(["progress", "schedule", "gantt"] as const).map((v) => (

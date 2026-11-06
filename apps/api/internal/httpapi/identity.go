@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"coflow/api/internal/identity"
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"github.com/gin-gonic/gin"
@@ -14,10 +15,13 @@ import (
 const sessionCookie = "coflow_session"
 
 type Config struct {
-	Identity       *identity.Service
-	SecureCookies  bool
-	Demo           bool
-	BootstrapToken string
+	Identity        *identity.Service
+	SecureCookies   bool
+	Demo            bool
+	AIWorkerContext context.Context
+	AIEncryptionKey string
+	AIClient        *http.Client
+	BootstrapToken  string
 }
 
 func principal(c *gin.Context) identity.Principal {

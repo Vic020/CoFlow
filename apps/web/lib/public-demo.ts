@@ -1,3 +1,4 @@
+import { assistantDemo } from "./assistant-demo.ts";
 import { calendarDemo } from "./calendar-demo.ts";
 import { validSchedule, civilDay } from "./calendar.ts";
 import type { Todo, TodoBoardData } from "./todo";
@@ -308,6 +309,7 @@ export async function publicDemoRequest(
 ): Promise<unknown> {
   const method = init?.method?.toUpperCase() || "GET";
   const clone = <T>(value: T): T => structuredClone(value);
+  if (path.startsWith("/assistant/")) return assistantDemo(path, method, typeof init?.body === "string" ? JSON.parse(init.body) : {}, demoMeta, todoBoard.tasks, reports, publicDemoRequest);
   if (path.startsWith("/calendar/"))
     return calendarDemo(
       path,

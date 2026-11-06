@@ -40,6 +40,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { DeleteAction, TrashList } from "@/components/content-actions";
 import { defaultColumnName, type Todo, type TodoBoardData } from "@/lib/todo";
+import {
+  AssistantWorkspace,
+  AssistantPanel,
+  AssistantTrigger,
+} from "./assistant-workspace";
 import { GlobalFilters, useSharedFilters } from "./shared-filters";
 import { Avatar, Agent, Status, Markdown, ReportDetail } from "./report-detail";
 import { CalendarWorkspace } from "@/components/calendar-workspace";
@@ -126,6 +131,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const { t: tr, locale, timeZone, date: formatDate } = useI18n();
   const router = useRouter();
   const pathname = usePathname().replace(/\/$/, "") || "/";
+  const assistantPage = pathname === "/assistant";
   const todoPage = pathname === "/todo";
   const calendarPage = pathname === "/calendar";
   const credentialsPage = pathname === "/credentials";
@@ -133,6 +139,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const newTeamPage = pathname === "/teams/new";
   const timelinePage = useRef(false);
   timelinePage.current =
+    !assistantPage &&
     !todoPage &&
     !calendarPage &&
     !credentialsPage &&
@@ -279,6 +286,11 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     },
     [auth.me?.current_team, auth.me?.user.id, auth.mode],
   );
+  useEffect(() => {
+    const changed = () => void load();
+    window.addEventListener("coflow:assistant-change", changed);
+    return () => window.removeEventListener("coflow:assistant-change", changed);
+  }, [load]);
   useEffect(() => {
     setLocalFilters(initialFilters);
     setScope("all");
@@ -627,12 +639,20 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         <Link
           href={shared.href("/")}
           className={
-            !todoPage && !calendarPage && !credentialsPage && !settingsPage
+            !assistantPage &&
+            !todoPage &&
+            !calendarPage &&
+            !credentialsPage &&
+            !settingsPage
               ? "nav-active"
               : ""
           }
           aria-current={
-            !todoPage && !calendarPage && !credentialsPage && !settingsPage
+            !assistantPage &&
+            !todoPage &&
+            !calendarPage &&
+            !credentialsPage &&
+            !settingsPage
               ? "page"
               : undefined
           }
@@ -664,6 +684,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         >
           <CalendarDays size={18} />
           <span className="nav-label">Calendar</span>
+        </Link>
+        <Link
+          href={shared.href("/assistant")}
+          className={assistantPage ? "nav-active" : ""}
+          aria-current={assistantPage ? "page" : undefined}
+          title={tr("AI 助手")}
+          aria-label={tr("AI 助手")}
+          onClick={() => setNav(false)}
+        >
+          <MessageCircle size={18} />
+          <span className="nav-label">{tr("AI 助手")}</span>
         </Link>
       </nav>
       <div className="nav-bottom">
@@ -742,6 +773,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   return (
     <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       {children}
+      <AssistantPanel />
+      {!assistantPage && <AssistantTrigger />}
       <aside className="sidebar">{navigation}</aside>
       <main className={`main-shell${todoPage ? " todo-main" : ""}`}>
         {publicDemo && (
@@ -774,16 +807,19 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               </Button>
               <div className="heading-copy">
                 <h1>
-                  {todoPage
-                    ? "Todo"
-                    : calendarPage
-                      ? "Calendar"
-                      : credentialsPage
-                        ? tr("Agent 凭证")
-                        : settingsPage
-                          ? tr("团队设置")
-                          : tr("团队动态")}
-                  {!todoPage &&
+                  {assistantPage
+                    ? tr("AI 助手")
+                    : todoPage
+                      ? "Todo"
+                      : calendarPage
+                        ? "Calendar"
+                        : credentialsPage
+                          ? tr("Agent 凭证")
+                          : settingsPage
+                            ? tr("团队设置")
+                            : tr("团队动态")}
+                  {!assistantPage &&
+                    !todoPage &&
                     !calendarPage &&
                     !credentialsPage &&
                     !settingsPage && <span className="heading-dot" />}
@@ -793,7 +829,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     {tr("多人、多 Agent 协同交付")}
                   </span>
                 )}
-                {!todoPage &&
+                {!assistantPage &&
+                  !todoPage &&
                   !calendarPage &&
                   !credentialsPage &&
                   !settingsPage && (
@@ -803,7 +840,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   )}
               </div>
             </div>
-            {!todoPage &&
+            {!assistantPage &&
+              !todoPage &&
               !calendarPage &&
               !credentialsPage &&
               !settingsPage && (
@@ -861,7 +899,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 </div>
               )}
           </header>
-          {calendarPage ? (
+          {assistantPage ? (
+            <AssistantWorkspace />
+          ) : calendarPage ? (
             meta ? (
               <Suspense fallback={<Loader2 className="animate-spin" />}>
                 <CalendarWorkspace key={meta.team.id} meta={meta} />

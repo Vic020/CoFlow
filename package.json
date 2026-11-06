@@ -16,12 +16,13 @@
     "test:images": "node --test scripts/image-release.test.mjs",
     "test:filters": "node --test scripts/shared-filters.test.mjs",
     "test:calendar": "node --test scripts/calendar.test.mjs scripts/calendar-week.test.mjs",
-    "test:cache": "node --test scripts/read-cache.test.mjs"
+    "test:cache": "node --test scripts/read-cache.test.mjs",
+    "test:assistant": "node --test scripts/assistant.test.mjs"
   },
   "workspaces": [
     "apps/web",
     "apps/cli"
   ],
-  "version": "0.3.1",
+  "version": "0.4.0",
   "license": "MIT"
 }

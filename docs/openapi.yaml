@@ -1,13 +1,366 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.3.1
+  version: 0.4.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /assistant/configs:
+    get:
+      operationId: assistantConfigs
+      security: [{sessionCookie: []}]
+      description: Browser session only. Lists this team's shared settings and this member's personal settings, never keys. Shared settings are usable by team members, editable only by admins. Personal settings and selection are member/team scoped. configured reports whether a server encryption key is present; selection may refer to a removed configuration and must not silently fall back.
+      responses:
+        '200':
+          description: Configuration metadata and current personal selection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/AIConfig'}}
+                  configured: {type: boolean}
+                  selected_config_id: {type: string}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createAssistantConfig
+      security: [{sessionCookie: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AIConfigWrite'}
+      responses:
+        '200':
+          description: Saved, unverified metadata. API key encrypted using AES-GCM with server key, configuration ID, team and owner binding.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AIConfig'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /assistant/configs/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    put:
+      operationId: editAssistantConfig
+      security: [{sessionCookie: []}]
+      description: Requires expected_revision. Cannot change ownership or scope. Empty api_key preserves the existing key. Editing invalidates connection verification. No key is returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AIConfigWrite'}
+      responses:
+        '200':
+          description: Updated metadata, requiring verification before use.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AIConfig'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deleteAssistantConfig
+      security: [{sessionCookie: []}]
+      description: Deletes only this editable configuration. Existing work and conversations remain. Deletion never selects another key automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision]
+              properties:
+                expected_revision: {type: integer}
+      responses:
+        '200': {description: Deleted}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/configs/{id}/verify:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    post:
+      operationId: verifyAssistantConfig
+      security: [{sessionCookie: []}]
+      description: Minimal provider request without work context. Configuration must be editable by this session. This may incur provider cost. No upstream error body is exposed. Public HTTPS endpoints only, no private IPs, redirects or environment proxies.
+      responses:
+        '200':
+          description: Verified metadata if the revision is still current.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AIConfig'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+  /assistant/preference:
+    patch:
+      operationId: selectAssistantConfig
+      security: [{sessionCookie: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config_id]
+              properties:
+                config_id: {type: string}
+      responses:
+        '200': {description: Saved this member's choice within the current team, after validating access.}
+        '404': {$ref: '#/components/responses/Error'}
+  /assistant/conversations:
+    get:
+      operationId: assistantConversations
+      security: [{sessionCookie: []}]
+      description: Private member/team history with keyset pagination, content/title search and active/archive/trash states. Never exposes teammates' conversations.
+      parameters:
+      - {name: q, in: query, schema: {type: string, maxLength: 300}}
+      - {name: state, in: query, schema: {type: string, enum: [active, archived, deleted], default: active}}
+      - {name: cursor, in: query, schema: {type: string}}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 30}}
+      responses:
+        '200': {description: 'items and next_cursor. Metadata includes revision, archive/delete timestamps and original model configuration snapshot; keys are never returned.'}
+        '403': {$ref: '#/components/responses/Error'}
+  /assistant/conversations/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: assistantConversation
+      security: [{sessionCookie: []}]
+      description: Private conversation detail. Action drafts, edits and execution states are refreshed from their authoritative records, including decided_at and current result availability (available). Deleted or inaccessible source objects keep execution evidence but lose navigation.
+      responses:
+        '200': {description: 'Conversation metadata and turns, each containing request_id, user, reply, actions and server-generated object links.'}
+        '404': {$ref: '#/components/responses/Error'}
+    patch:
+      operationId: changeAssistantConversation
+      security: [{sessionCookie: []}]
+      description: Revision-checked rename/archive/unarchive/soft-delete/restore. Archived or deleted history cannot send turns, edit drafts or confirm writes. Restoring never executes old drafts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, expected_revision]
+              properties:
+                action: {type: string, enum: [rename, archive, unarchive, delete, restore]}
+                title: {type: string, maxLength: 180}
+                expected_revision: {type: integer}
+      responses:
+        '200': {description: Updated.}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/templates:
+    get:
+      operationId: assistantTemplates
+      security: [{sessionCookie: []}]
+      responses:
+        '200': {description: Three built-in templates and accessible latest personal/team template versions.}
+    post:
+      operationId: saveAssistantTemplate
+      security: [{sessionCookie: []}]
+      description: Create or append an immutable template version. Existing ID requires revision. Personal owner or team administrator only. Templates only restrict Go tools; they cannot grant permissions or execute scripts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AssistantTemplate'}
+      responses:
+        '200': {description: Saved template including new version/revision.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/jobs:
+    get:
+      operationId: assistantJobs
+      security: [{sessionCookie: []}]
+      responses:
+        '200': {description: Private scheduled tasks with next_run_at; these are plans, not published progress.}
+    post:
+      operationId: saveAssistantJob
+      security: [{sessionCookie: []}]
+      description: Explicitly save/authorize or pause/resume a private job. Source configuration revision and template content/version are pinned. Every run rechecks membership and source. Default read-only/drafts; publish separately authorizes reports only. No Todo or schedule writes by background jobs. Missed intervals coalesce, DST skipped times skip the day and repeated times run once. Three attempts with bounded leases/backoff. No automatic provider fallback. Unchanged source data is silent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AssistantJob'}
+      responses:
+        '200': {description: Saved job with revision and next execution instant.}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/jobs/preview:
+    get:
+      operationId: previewAssistantJob
+      security: [{sessionCookie: []}]
+      description: Compute next_run_at with the worker's IANA/DST policy without saving or authorizing a job.
+      parameters:
+      - {name: timezone, in: query, required: true, schema: {type: string}}
+      - {name: local_time, in: query, required: true, schema: {type: string}}
+      - {name: weekdays, in: query, required: true, schema: {type: string}, description: 'Comma-separated weekday numbers, Sunday 0.'}
+      responses:
+        '200': {description: Next execution instant.}
+        '400': {$ref: '#/components/responses/Error'}
+  /assistant/jobs/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    patch:
+      operationId: pauseAssistantJob
+      security: [{sessionCookie: []}]
+      description: Revoke this owned job grant immediately, even if its provider configuration has been deleted or encryption is unavailable. Resume requires full reauthorization through POST /assistant/jobs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision]
+              properties:
+                expected_revision: {type: integer}
+      responses:
+        '200': {description: Paused job with new revision.}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/jobs/{id}/runs:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: assistantJobRuns
+      security: [{sessionCookie: []}]
+      responses:
+        '200': {description: Latest 50 owned runs with scheduled_at, state, attempts, conversation_id, report_id, safe message and finished_at. States queued/running/retry/done/draft/unchanged/blocked/failed.}
+  /assistant/mcp:
+    get:
+      operationId: assistantMCPConnections
+      security: [{sessionCookie: []}]
+      responses:
+        '200': {description: Accessible personal/team connections and reviewed tool manifests. Never returns credentials.}
+    post:
+      operationId: saveAssistantMCPConnection
+      security: [{sessionCookie: []}]
+      description: Owner or team admin saves a public HTTPS Streamable HTTP endpoint. Optional service-issued Bearer token is encrypted separately from model credentials. ID/revision updates preserve an omitted/empty token, invalidate verification and clear tool approvals. No stdio process, OAuth flow, arbitrary redirects or external write tools.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scope, url]
+              properties:
+                id: {type: string}
+                revision: {type: integer}
+                name: {type: string, maxLength: 120}
+                scope: {type: string, enum: [personal, team]}
+                url: {type: string, format: uri}
+                token: {type: string, writeOnly: true, maxLength: 6000}
+      responses:
+        '200': {description: Saved connection without token.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/mcp/{id}/verify:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    post:
+      operationId: verifyAssistantMCPConnection
+      security: [{sessionCookie: []}]
+      description: Initialize/initialized handshake, negotiate 2025-11-25, 2025-06-18 or 2025-03-26, list up to 100 tools, JSON/SSE replies, bounded session cleanup. Only explicitly read-only non-destructive tools are eligible. A changed manifest clears approval. External descriptions/results are untrusted data.
+      responses:
+        '200': {description: Verified tools, new revision and existing compatible approvals.}
+        '400': {$ref: '#/components/responses/Error'}
+  /assistant/mcp/{id}/approve:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    post:
+      operationId: approveAssistantMCPTools
+      security: [{sessionCookie: []}]
+      description: Explicitly approve a subset of the verified read-only tool manifest. Empty selection revokes access. Before each call Go rechecks connection revision, actual server manifest and supported JSON Schema constraints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision, tools]
+              properties:
+                expected_revision: {type: integer}
+                tools: {type: array, items: {type: string}}
+      responses:
+        '200': {description: Approved connection with new revision.}
+        '409': {$ref: '#/components/responses/Error'}
+  /assistant/chat:
+    post:
+      operationId: assistantChat
+      security: [{sessionCookie: []}]
+      description: Returns JSON by default, or SSE with Accept text/event-stream. Events start/delta/done/error; deltas are temporary, only done confirms the saved result. Provider supports Chat Completions and Responses text SSE; hidden reasoning is never emitted, split credentials are redacted, incomplete upstream streams are rejected. No automatic billable retry. Verified accessible configuration required. History is server-owned and team/member isolated. New conversations derive a stable ID from request_id for uncertain-response recovery. Repeating request_id/message returns the saved turn; switching providers requires a new conversation. Read tools reuse current-team business services; write tools prepare drafts only. No business changes execute here. Maximum 20 turns, 12 tool calls, 8 proposals, 5 provider round trips and 24-second total timeout. Chat/verification limited to 10 requests per member/team/minute. Shared Go concurrency limited to 3. No platform credit or automatic provider fallback.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config_id, request_id, message]
+              properties:
+                config_id: {type: string}
+                conversation_id: {type: string}
+                template_id: {type: string}
+                template_version: {type: integer}
+                parameters: {type: object, additionalProperties: {type: string}, description: Validated template parameters, pinned with the first turn.}
+                mcp_ids: {type: array, maxItems: 3, items: {type: string}, description: Explicitly selected verified connections with approved read-only tools.}
+                request_id: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 6000, description: Server also enforces a 6000-byte limit.}
+                locale: {type: string, enum: [en, zh-CN]}
+                context:
+                  type: object
+                  description: Untrusted page/filter hints, never authorization or confirmed object existence; at most 1800 bytes encoded.
+                  properties:
+                    page: {type: string}
+                    project: {type: string}
+                    domain: {type: string}
+                    member: {type: string}
+                    todo: {type: string}
+                    report: {type: string}
+                    date: {type: string}
+                    timezone: {type: string}
+      responses:
+        '200': {description: 'conversation_id and turn with reply, links, pending action cards, tool activity and provider-reported usage (unknown if unavailable, never invented costs). No model-generated URL is trusted as a navigable object link.'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '504': {$ref: '#/components/responses/Error'}
+  /assistant/actions/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    patch:
+      operationId: editAssistantDraft
+      security: [{sessionCookie: []}]
+      description: Edit only an owned pending report draft's title/body, as a durable step before confirmation. Does not execute or alter original task links/project. Completed/cancelled/failed drafts cannot be edited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title: {type: string}
+                body: {type: string}
+      responses:
+        '200': {description: Updated pending action metadata and payload.}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: confirmAssistantAction
+      security: [{sessionCookie: []}]
+      description: Explicitly confirm or cancel an owned action. Go reuses original Todo/Timeline services for object permissions, validation, revisions, history and stable action-derived idempotency. Schedule updates preserve deadline and completion; report status is progress. Repeat confirmations return durable results; cancelled actions never execute. Batch cards are independent actions, not one transaction. An execution validation/conflict failure is returned as state=failed with a safe result.error, not as success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [confirm, cancel]}
+      responses:
+        '200': {description: 'Action id, kind, title, payload, state (pending/done/failed/cancelled) and result. Only state=done proves execution.'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
   /calendar/reports:
     get:
       operationId: calendarReports
@@ -1701,6 +2054,77 @@ components:
               error:
                 type: string
   schemas:
+    AssistantTemplate:
+      type: object
+      required: [scope, title, instructions, tools]
+      properties:
+        id: {type: string}
+        scope: {type: string, enum: [builtin, personal, team]}
+        title: {type: string, maxLength: 180}
+        description: {type: string, maxLength: 500}
+        instructions: {type: string, maxLength: 12000}
+        parameters:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            properties:
+              name: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}
+              label: {type: string}
+              required: {type: boolean}
+        tools: {type: array, items: {type: string}}
+        version: {type: integer}
+        revision: {type: integer}
+        editable: {type: boolean, readOnly: true}
+    AssistantJob:
+      type: object
+      required: [title, config_id, template, prompt, locale, timezone, local_time, weekdays]
+      properties:
+        id: {type: string}
+        title: {type: string, maxLength: 180}
+        config_id: {type: string}
+        config_revision: {type: integer, readOnly: true}
+        template: {$ref: '#/components/schemas/AssistantTemplate'}
+        context: {type: object, description: Frozen page/project/domain/member scope hints; validated by module services.}
+        parameters: {type: object, additionalProperties: {type: string}}
+        prompt: {type: string, maxLength: 6000}
+        locale: {type: string, enum: [en, zh-CN]}
+        timezone: {type: string, description: IANA timezone.}
+        local_time: {type: string, pattern: '^\d{2}:\d{2}$'}
+        weekdays: {type: array, minItems: 1, maxItems: 7, items: {type: integer, minimum: 0, maximum: 6}, description: Sunday is 0.}
+        publish: {type: boolean, default: false}
+        enabled: {type: boolean, default: false}
+        revision: {type: integer}
+        next_run_at: {type: string, format: date-time, readOnly: true}
+        last_run_state: {type: string, readOnly: true}
+
+    AIConfig:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        scope: {type: string, enum: [team, personal]}
+        provider: {type: string, enum: [deepseek, glm, openai, compatible]}
+        protocol: {type: string, enum: [chat-completions, responses]}
+        base_url: {type: string, format: uri}
+        model: {type: string}
+        revision: {type: integer}
+        is_default: {type: boolean}
+        verified_at: {type: [string, 'null'], format: date-time}
+        editable: {type: boolean}
+    AIConfigWrite:
+      type: object
+      required: [name, scope, provider, protocol, base_url, model]
+      properties:
+        name: {type: string, maxLength: 100}
+        scope: {type: string, enum: [team, personal]}
+        provider: {type: string, enum: [deepseek, glm, openai, compatible]}
+        protocol: {type: string, enum: [chat-completions, responses]}
+        base_url: {type: string, format: uri}
+        model: {type: string, maxLength: 150}
+        api_key: {type: string, writeOnly: true, maxLength: 4096, description: Required on creation. Empty on edit preserves the encrypted key.}
+        is_default: {type: boolean}
+        expected_revision: {type: integer, description: Required on update.}
     Schedule:
       description: Null clears an optional Todo plan. Date ranges include both civil dates and never carry a timezone; time ranges normalize RFC3339 offsets to UTC and retain an IANA planning timezone. Time ranges require end greater than start; independent Big Day/version points require equal ends. Missing endpoints are invalid. due_date is independent and is never shifted by planning.
       oneOf:

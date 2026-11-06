@@ -2,7 +2,7 @@
 
 本文部署自用／自托管真实团队服务。维护者购买的服务器用于自用，不作为开源仓库的公开演示后端。公开 GitHub Pages 仅运行虚拟数据网页，无 Go API、数据库或真实账号，详见 [Pages 说明](GITHUB_PAGES.md)。
 
-当前版本 0.2.2。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
+当前版本 0.4.0。暂不需要购买服务器即可继续本地开发。以下为通用自托管配置；每个部署环境仍需独立验收，2C2G 的资源配置需按实际负载测试。
 
 ## 生产拓扑
 
@@ -20,7 +20,7 @@ Compose 的内存上限合计约 1.4GB，给系统留余量；数据库限制 20
 cp deploy/production.env.example .env.production
 # 本地编辑域名、随机十六进制数据库密码与独立的初始化 token（各用 openssl rand -hex 32 生成）；不要把真实值提交到 Git。
 docker compose --env-file .env.production -f compose.production.yaml build
-docker save coflow-api:0.2.2 coflow-web:0.2.2 | gzip > /tmp/coflow-images.tar.gz
+docker save coflow-api:0.4.0 coflow-web:0.4.0 | gzip > /tmp/coflow-images.tar.gz
 ```
 
 将镜像包、compose.production.yaml、deploy/Caddyfile 和私密的 .env.production 通过 SSH 传至自己的服务器，导入后启动：
@@ -115,3 +115,9 @@ curl --fail --silent --show-error https://coflow.example.com/api/v1/health
 ## 私有运维记录
 
 实例地址、服务器登录方式、部署目录、镜像摘要、备份与回滚位置、验收时间和结果放在私有运维清单；不写入公开文档、GitHub Wiki、Issues、Projects 或 Release。备份成功、可解码、恢复成功和恢复后业务验收是不同状态，记录时分别说明。
+
+## AI 助手首版准备（未发布）
+
+源码启动会应用迁移 012（AI 加密配置、会话、草稿及选择偏好），不自动创建模型配置。启用需给 Go 设置独立的 `COFLOW_AI_ENCRYPTION_KEY`，由 `openssl rand -base64 32` 生成；生产 Compose 的可选变量默认留空，不影响原模块。数据库备份中的模型 Key 为密文，加密主密钥需单独私密备份，勿直接轮换后丢失旧配置解密能力。
+
+本节不是部署授权，不意味着现有 0.3.1 已更新。协议、服务商实测边界和数据处理见 [AI 助手手册](ASSISTANT_V0.4.md)。

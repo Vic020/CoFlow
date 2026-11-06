@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:cache
       - run: npm run test:filters
       - run: npm run test:calendar
+      - run: npm run test:assistant
       - run: npm run test:demo
       - run: npm run typecheck
       - run: npm run build

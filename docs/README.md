@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-CoFlow **0.3.1** · [English Wiki](https://github.com/Vic020/CoFlow/wiki) · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
+CoFlow **0.4.0** · [English Wiki](https://github.com/Vic020/CoFlow/wiki) · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
 Let your team see every Agent advance. CoFlow brings progress, deliverables and feedback from multiple Agents into one shared space.
 
@@ -10,6 +10,7 @@ The repository guides below are maintained in Chinese. The Wiki provides English
 
 | Goal | Guide |
 | --- | --- |
+| Use the AI Assistant, connect models and confirm changes | [AI Assistant first version / 首版使用与边界](ASSISTANT_V0.4.md) |
 | Coordinate delivery across people and AI Coding tools | [Collaboration guide / 协作理念、工具接入与工作手册](COLLABORATION_GUIDE.md) |
 | Start a team, report work and collaborate | [Usage / 使用指南](USAGE.md) |
 | Install reporting for an Agent and reuse it | [Agent reporting / Agent 接入](AGENT_REPORTING.md) |
@@ -22,7 +23,7 @@ The repository guides below are maintained in Chinese. The Wiki provides English
 | Plan the default report calendar and linked scheduling for 0.3 | [Calendar implementation plan / 上报日历与排期计划](CALENDAR_V0.3.md) |
 | Check the current product and future scope | [Product](PRODUCT.md) · [Roadmap](ROADMAP.md) |
 | Run a team trial or inspect recorded checks | [Pilot checklist](PILOT.md) · [Verification](VERIFICATION.md) |
-| Prepare a version or read release notes | [Versioning](VERSIONING.md) · [v0.3.1](releases/v0.3.1.md) · [Changelog](../CHANGELOG.md) |
+| Prepare a version or read release notes | [Versioning](VERSIONING.md) · [v0.4.0](releases/v0.4.0.md) · [Changelog](../CHANGELOG.md) |
 | Build generic Docker images on GitHub | [Image builds](IMAGE_BUILDS.md) |
 | Maintain docs, Wiki, Projects and releases | [Maintenance workflow](MAINTENANCE.md) |
 
@@ -36,6 +37,4 @@ Download copies at `/agent/coflow/SKILL.md` and `/agent/openapi.yaml` are genera
 
 ## Boundaries
 
-Self-hosted team mode uses PostgreSQL and real accounts. Local demo mode and GitHub Pages use separate synthetic data; Pages has no backend. Todo and Timeline integration are included in 0.3.1. Calendar is included in 0.3.1; AI Assistant, Context and Analytics remain planned. A unified CoFlow Skill and HTTP API are supported; CLI and MCP are future integrations.
-
-A source release, a Pages update and a private server deployment are separate, explicitly requested operations. Public documentation contains generic examples only. Keep deployment inventories, credentials, backups and real team data outside Git. See [Security](../SECURITY.md) and [Contributing](../CONTRIBUTING.md).
+Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub Pages use separate synthetic data; Pages has no backend. Version 0.4.0 includes Timeline, Todo, Calendar and the first AI Assistant release. Provider-account compatibility and remaining model/Context/statistics capabilities require separate acceptance. External Agents use the unified CoFlow Skill and HTTP API; the assistant also supports approved read-only remote MCP Client connections. CLI and a public CoFlow MCP Server remain future integrations.

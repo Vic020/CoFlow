@@ -1,3 +1,4 @@
+import { AssistantProvider } from "@/components/assistant-provider";
 import { Workspace } from "@/components/workspace";
 import { AuthGate } from "@/components/auth-gate";
 import { Suspense } from "react";
@@ -11,7 +12,9 @@ export default function WorkspaceLayout({
     <AuthGate>
       <Suspense fallback={null}>
         <SharedFilterProvider>
-          <Workspace>{children}</Workspace>
+          <AssistantProvider>
+            <Workspace>{children}</Workspace>
+          </AssistantProvider>
         </SharedFilterProvider>
       </Suspense>
     </AuthGate>

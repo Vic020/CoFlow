@@ -133,6 +133,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
         setError((e as Error).message);
     }
   }, [query, project, domain, assignee, scope, archived]);
+  useEffect(() => { const changed = () => void load(); window.addEventListener("coflow:assistant-change", changed); return () => window.removeEventListener("coflow:assistant-change", changed); }, [load]);
   useEffect(() => {
     mounted.current = true;
     void load();

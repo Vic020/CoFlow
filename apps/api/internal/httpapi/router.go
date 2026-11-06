@@ -54,6 +54,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		ws = &workspace.Service{Pool: cfg.Identity.Pool}
 		registerWorkspace(protected, ws)
 		registerTodos(protected, ws)
+		registerAssistant(protected, cfg, ws, repo)
 	}
 	if cfg.Demo {
 		ws = &workspace.Service{TodoDemo: &workspace.TodoMemory{}}

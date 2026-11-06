@@ -18,6 +18,10 @@ func main() {
 	demo := os.Getenv("COFLOW_DEMO") == "true"
 	var repo store.Repository
 	cfg := httpapi.Config{Demo: demo, SecureCookies: os.Getenv("COFLOW_SECURE_COOKIES") == "true"}
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	defer stopWorker()
+	cfg.AIWorkerContext = workerCtx
+	cfg.AIEncryptionKey = os.Getenv("COFLOW_AI_ENCRYPTION_KEY")
 	cfg.BootstrapToken = os.Getenv("COFLOW_BOOTSTRAP_TOKEN")
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -83,6 +87,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopWorker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)

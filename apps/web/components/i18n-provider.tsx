@@ -74,7 +74,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
   const path = pathname.replace(/\/$/, "") || "/";
-  const page = path.endsWith("/docs")
+  const page = path.endsWith("/assistant") ? "AI 助手" : path.endsWith("/docs")
     ? "协作指南"
     : path.endsWith("/todo")
       ? "Todo"

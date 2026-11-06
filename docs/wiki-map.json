@@ -1,11 +1,73 @@
 {
   "pages": [
-    { "en": "Home", "zh-CN": "Home-zh-CN", "sources": ["README.md", "README.zh-CN.md", "docs/README.md", "docs/README.zh-CN.md"] },
-    { "en": "Quick-Start", "zh-CN": "Quick-Start-zh-CN", "sources": ["docs/USAGE.md", "docs/DEPLOYMENT.md"] },
-    { "en": "Agent-Reporting", "zh-CN": "Agent-Reporting-zh-CN", "sources": ["docs/AGENT_REPORTING.md", "skills/coflow/SKILL.md", "skills/coflow/references/installation.md", "skills/coflow/references/reporting.md", "skills/coflow/references/todos.md", "skills/coflow/references/calendar.md", "docs/openapi.yaml", "docs/COLLABORATION_GUIDE.md"] },
-    { "en": "Team-Collaboration", "zh-CN": "Team-Collaboration-zh-CN", "sources": ["docs/USAGE.md", "docs/PRODUCT.md", "docs/COLLABORATION_GUIDE.md"] },
-    { "en": "Personal-Settings", "zh-CN": "Personal-Settings-zh-CN", "sources": ["docs/USAGE.md", "docs/I18N.md"] },
-    { "en": "FAQ", "zh-CN": "FAQ-zh-CN", "sources": ["docs/TROUBLESHOOTING.md"] },
-    { "en": "Roadmap", "zh-CN": "Roadmap-zh-CN", "sources": ["docs/ROADMAP.md", "docs/TODO_V0.2.md", "docs/CALENDAR_V0.3.md"] }
+    {
+      "en": "Home",
+      "zh-CN": "Home-zh-CN",
+      "sources": [
+        "README.md",
+        "README.zh-CN.md",
+        "docs/README.md",
+        "docs/README.zh-CN.md"
+      ]
+    },
+    {
+      "en": "Quick-Start",
+      "zh-CN": "Quick-Start-zh-CN",
+      "sources": [
+        "docs/USAGE.md",
+        "docs/DEPLOYMENT.md"
+      ]
+    },
+    {
+      "en": "Agent-Reporting",
+      "zh-CN": "Agent-Reporting-zh-CN",
+      "sources": [
+        "docs/AGENT_REPORTING.md",
+        "skills/coflow/SKILL.md",
+        "skills/coflow/references/installation.md",
+        "skills/coflow/references/reporting.md",
+        "skills/coflow/references/todos.md",
+        "skills/coflow/references/calendar.md",
+        "docs/openapi.yaml",
+        "docs/COLLABORATION_GUIDE.md"
+      ]
+    },
+    {
+      "en": "Team-Collaboration",
+      "zh-CN": "Team-Collaboration-zh-CN",
+      "sources": [
+        "docs/USAGE.md",
+        "docs/PRODUCT.md",
+        "docs/COLLABORATION_GUIDE.md",
+        "docs/ASSISTANT_V0.4.md"
+      ]
+    },
+    {
+      "en": "Personal-Settings",
+      "zh-CN": "Personal-Settings-zh-CN",
+      "sources": [
+        "docs/USAGE.md",
+        "docs/I18N.md",
+        "docs/ASSISTANT_V0.4.md"
+      ]
+    },
+    {
+      "en": "FAQ",
+      "zh-CN": "FAQ-zh-CN",
+      "sources": [
+        "docs/TROUBLESHOOTING.md"
+      ]
+    },
+    {
+      "en": "Roadmap",
+      "zh-CN": "Roadmap-zh-CN",
+      "sources": [
+        "docs/ROADMAP.md",
+        "docs/TODO_V0.2.md",
+        "docs/CALENDAR_V0.3.md",
+        "docs/ASSISTANT_V0.4.md",
+        "docs/ASSISTANT_NEXT_STEPS.md"
+      ]
+    }
   ]
 }
