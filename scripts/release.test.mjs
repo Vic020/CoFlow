@@ -11,6 +11,7 @@ import {
   rmSync,
 } from "node:fs";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import {
   selectStages,
@@ -36,7 +37,7 @@ const complete = {
   conclusion: "success",
 };
 function fixture(t) {
-  const root = mkdtempSync("/private/tmp/coflow-release-test-");
+  const root = mkdtempSync(path.join(tmpdir(), "coflow-release-test-"));
   mkdirSync(path.join(root, ".local/release"), {
     recursive: true,
     mode: 0o700,
