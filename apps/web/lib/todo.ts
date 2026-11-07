@@ -17,7 +17,20 @@ export type TodoEvent = {
   before: Partial<Todo>;
   after: Partial<Todo>;
 };
+export type TodoReview = {
+  criteria: string;
+  reviewer_id: string;
+  state: "draft" | "pending" | "changes_requested" | "approved";
+  evidence?: string;
+  submitted_revision?: number;
+  submitted_by?: string;
+  submitted_at?: string;
+  decision_by?: string;
+  decided_at?: string;
+  decision_note?: string;
+};
 export type Todo = {
+  review?: TodoReview | null;
   unavailable_reports?: number;
   id: string;
   source_id: string;

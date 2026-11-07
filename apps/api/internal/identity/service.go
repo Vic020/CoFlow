@@ -32,11 +32,13 @@ func conflict(message string) error { return &Error{409, message} }
 func notFound(message string) error { return &Error{404, message} }
 
 type Principal struct {
-	UserID string   `json:"user_id"`
-	TeamID string   `json:"team_id"`
-	Role   string   `json:"role"`
-	Kind   string   `json:"kind"`
-	Scopes []string `json:"scopes"`
+	// SourceAgent is set only by trusted in-process execution, never from a request body.
+	SourceAgent string   `json:"-"`
+	UserID      string   `json:"user_id"`
+	TeamID      string   `json:"team_id"`
+	Role        string   `json:"role"`
+	Kind        string   `json:"kind"`
+	Scopes      []string `json:"scopes"`
 }
 
 func (p Principal) Can(scope string) bool {
@@ -199,7 +201,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string, agent bool) (Pri
 		if err = s.Q.TouchAgentToken(ctx, v.ID); err != nil {
 			return Principal{}, err
 		}
-		return Principal{v.UserID, v.TeamID, v.Role, "token", v.Scopes}, nil
+		return Principal{UserID: v.UserID, TeamID: v.TeamID, Role: v.Role, Kind: "token", Scopes: v.Scopes}, nil
 	}
 	v, err := s.Q.SessionIdentity(ctx, Hash(raw))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -208,7 +210,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string, agent bool) (Pri
 	if err != nil {
 		return Principal{}, err
 	}
-	return Principal{v.UserID, v.TeamID, v.Role, "session", []string{}}, nil
+	return Principal{UserID: v.UserID, TeamID: v.TeamID, Role: v.Role, Kind: "session", Scopes: []string{}}, nil
 }
 func (s *Service) Logout(ctx context.Context, raw string) error {
 	return s.Q.DeleteSession(ctx, Hash(raw))

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, Plus, Trash2, Loader2, Pencil, X } from "lucide-react";
 import { useAssistant } from "./assistant-provider";
 import { useI18n } from "./i18n-provider";
@@ -84,7 +84,11 @@ export function AISettings({ scope }: { scope: "team" | "personal" }) {
                     <div>
                       <strong>{c.name}</strong>
                       <small>
-                        {c.model} · {tr(c.verified_at ? "已验证" : "待验证")}
+                        {tr(
+                          aiProviders.find((p) => p.id === c.provider)?.name ||
+                            c.provider,
+                        )}{" "}
+                        · {c.model} · {tr(c.verified_at ? "已验证" : "待验证")}
                         {c.is_default ? ` · ${tr("默认")}` : ""}
                       </small>
                     </div>
@@ -203,6 +207,60 @@ function ConfigForm({
     [defaultValue, setDefault] = useState(config?.is_default ?? true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const modelListID = useId();
+  const [models, setModels] = useState<string[] | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [modelNotice, setModelNotice] = useState("");
+  const generation = useRef(0);
+  const choices =
+    models ?? aiProviders.find((p) => p.id === provider)?.models ?? [];
+  function invalidateModels() {
+    generation.current++;
+    setFetching(false);
+    setModels(null);
+    setModelNotice("");
+  }
+  useEffect(
+    () => () => {
+      generation.current++;
+    },
+    [],
+  );
+  async function fetchModels() {
+    const current = ++generation.current;
+    setFetching(true);
+    setModelNotice("");
+    try {
+      const result = await request<{ items: string[]; truncated: boolean }>(
+        "/assistant/models",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            provider,
+            base_url: base,
+            api_key: key,
+            config_id: config?.id,
+            expected_revision: config?.revision,
+          }),
+        },
+      );
+      if (current !== generation.current) return;
+      setModels(result.items.length ? result.items : null);
+      setModelNotice(
+        result.truncated
+          ? "模型列表较长，仅展示部分；仍可手动填写"
+          : result.items.length
+            ? "已获取服务返回的模型；可用性请另行验证"
+            : "服务未返回模型，请使用建议或手动填写",
+      );
+    } catch (e) {
+      if (current !== generation.current) return;
+      setModels(null);
+      setModelNotice((e as Error).message);
+    } finally {
+      if (current === generation.current) setFetching(false);
+    }
+  }
   return (
     <form
       className="ai-config-form"
@@ -259,6 +317,8 @@ function ConfigForm({
               setProvider(p.id);
               setProtocol(p.protocol);
               setBase(p.base);
+              setKey("");
+              invalidateModels();
             }}
           >
             {aiProviders.map((p) => (
@@ -296,7 +356,10 @@ function ConfigForm({
           type="url"
           required
           value={base}
-          onChange={(e) => setBase(e.target.value)}
+          onChange={(e) => {
+            setBase(e.target.value);
+            invalidateModels();
+          }}
           autoComplete="off"
         />
       </label>
@@ -309,15 +372,53 @@ function ConfigForm({
           onChange={(e) => setModel(e.target.value)}
           placeholder={tr("填写账户可调用的模型 ID")}
           autoComplete="off"
+          list={modelListID}
         />
+        <datalist id={modelListID}>
+          {choices.map((id) => (
+            <option key={id} value={id} />
+          ))}
+        </datalist>
       </label>
+      <div className="ai-model-choices">
+        <span className="muted">
+          {tr(models ? "服务返回的模型" : "模型建议")}
+        </span>
+        {choices.slice(0, 4).map((id) => (
+          <Button
+            key={id}
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setModel(id)}
+          >
+            {id}
+          </Button>
+        ))}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={fetching || busy || !base || (!key.trim() && !config)}
+          onClick={() => void fetchModels()}
+        >
+          {fetching && <Loader2 size={14} className="animate-spin" />}
+          {tr(fetching ? "正在获取模型" : "自动获取模型")}
+        </Button>
+      </div>
+      <small className="muted" role="status" aria-live="polite">
+        {tr(modelNotice || "建议不代表账户权限；可直接填写自定义模型 ID")}
+      </small>
       <label>
         API Key
         <input
           type="password"
           required={!config}
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(e) => {
+            setKey(e.target.value);
+            invalidateModels();
+          }}
           placeholder={config ? tr("留空保留现有密钥") : undefined}
           autoComplete="new-password"
         />

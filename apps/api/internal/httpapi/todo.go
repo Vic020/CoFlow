@@ -61,10 +61,10 @@ func registerTodos(r *gin.RouterGroup, s *workspace.Service) {
 			if v := strings.ToLower(c.Query("q")); v != "" && !strings.Contains(strings.ToLower(t.Title+" "+t.Body), v) {
 				continue
 			}
-			if c.Query("scope") == "todo" && (t.AssigneeID != p.UserID || t.CompletedAt != nil) {
+			if c.Query("scope") == "todo" && !((t.AssigneeID == p.UserID && t.CompletedAt == nil) || (t.Review != nil && t.Review.State == "pending" && t.Review.ReviewerID == p.UserID)) {
 				continue
 			}
-			if c.Query("scope") == "related" && t.CreatorID != p.UserID && t.AssigneeID != p.UserID {
+			if c.Query("scope") == "related" && t.CreatorID != p.UserID && t.AssigneeID != p.UserID && (t.Review == nil || t.Review.ReviewerID != p.UserID) {
 				full, err := s.GetTodo(c.Request.Context(), p, t.ID)
 				if err != nil {
 					fail(c, err)

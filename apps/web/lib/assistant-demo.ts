@@ -8,9 +8,49 @@ import type {
   AIMCP,
 } from "./assistant";
 import type { Meta, Report } from "./types";
-import type { Todo } from "./todo";
+import type { Todo, TodoBoardData } from "./todo";
 import { validCivilDay, wallTimeCandidates, civilDay } from "./calendar.ts";
 const templateItems: AITemplate[] = [
+  {
+    id: "builtin-resume",
+    scope: "builtin",
+    title: "Resume collaboration",
+    description: "Work, feedback and next steps",
+    instructions:
+      "Read project {{project}} and cite original tasks, reports and schedules. Feedback is not execution authority.",
+    parameters: [{ name: "project", label: "Project", required: false }],
+    tools: [
+      "read_workspace",
+      "read_handoff",
+      "read_changes",
+      "find_todos",
+      "find_reports",
+      "read_todo",
+      "read_report",
+    ],
+    version: 1,
+    revision: 1,
+    editable: false,
+  },
+  {
+    id: "builtin-advance",
+    scope: "builtin",
+    title: "Advance task",
+    description: "Preview task changes",
+    instructions:
+      "Prepare only the user's requested task change in {{project}}. Read its revision and confirm before execution.",
+    parameters: [{ name: "project", label: "Project", required: false }],
+    tools: [
+      "read_workspace",
+      "read_handoff",
+      "find_todos",
+      "read_todo",
+      "propose_task_change",
+    ],
+    version: 1,
+    revision: 1,
+    editable: false,
+  },
   {
     id: "builtin-progress",
     scope: "builtin",
@@ -283,14 +323,117 @@ export async function assistantDemo(
           ...payload,
           project_name: meta.projects.find((p) => p.id === payload.project_id)
             ?.name,
-          column_name: kind === "propose_todo" ? "待办" : undefined,
+          column_name:
+            payload.column_name ||
+            (kind === "propose_todo" ? "待办" : undefined),
         },
         state: "pending",
       };
       turn.actions.push(a);
       actions.set(a.id, a);
     };
-    if (/简报|汇总交付|brief|delivery summary/i.test(modeText)) {
+    if (
+      /提交验收|撤回验收|完成任务|重开任务|移动任务|转派任务|评论任务|submit review|withdraw review|complete task|reopen task|move task|assign task|comment task/i.test(
+        message,
+      )
+    ) {
+      const task = tasks.find(
+        (t) => message.includes(t.id) || message.includes(t.title),
+      );
+      if (!task)
+        turn.reply = en
+          ? "Name the exact task or paste its ID."
+          : "请提供要操作的任务标题或 ID。";
+      else {
+        const board = (await call("/todo-board")) as TodoBoardData;
+        const action = /提交验收|submit review/i.test(message)
+          ? "submit-review"
+          : /撤回验收|withdraw review/i.test(message)
+            ? "withdraw-review"
+            : /重开|reopen/i.test(message)
+              ? "reopen"
+              : /完成|complete/i.test(message)
+                ? "complete"
+                : /转派|assign/i.test(message)
+                  ? "assign"
+                  : /评论|comment/i.test(message)
+                    ? "comment"
+                    : "move";
+        const member = meta.members.find((m) => message.includes(m.name));
+        const target =
+          action === "complete"
+            ? board.columns.find((c) => c.id === board.default_done_id)
+            : action === "reopen"
+              ? board.columns.find(
+                  (c) =>
+                    c.id === task.previous_column_id && !c.done && !c.archived,
+                ) || board.columns.find((c) => !c.done && !c.archived)
+              : board.columns.find(
+                  (c) => !c.archived && message.includes(c.name),
+                );
+        const comment = message.split(/[：:]/).slice(1).join(":").trim();
+        if (
+          (action === "submit-review" || action === "withdraw-review") &&
+          !task.review
+        )
+          turn.reply = en
+            ? "Configure acceptance criteria and a reviewer in the task first."
+            : "请先在任务中配置验收标准和验收人。";
+        else if (
+          action === "submit-review" &&
+          (!comment || task.review?.state === "pending")
+        )
+          turn.reply = en
+            ? "Provide delivery evidence after a colon; do not resubmit a pending review."
+            : "请在冒号后提供交付依据，待验收时不能重复提交。";
+        else if (
+          (action === "complete" || (action === "move" && target?.done)) &&
+          task.review &&
+          task.review.state !== "approved"
+        )
+          turn.reply = en
+            ? "Submit for acceptance first. The designated reviewer must accept this task."
+            : "请先提交验收，由指定验收人通过后完成。";
+        else if (action === "assign" && !member)
+          turn.reply = en
+            ? "Name an existing team member."
+            : "请指定当前团队的负责人。";
+        else if (action === "move" && !target)
+          turn.reply = en
+            ? "Choose an existing task column."
+            : "请指定任务的目标列。";
+        else if (action === "comment" && !comment)
+          turn.reply = en
+            ? "Add the comment after a colon."
+            : "请在冒号后填写评论内容。";
+        else {
+          propose("propose_task_change", task.title, {
+            todo_id: task.id,
+            project_id: task.project_id,
+            change_action: action,
+            expected_revision: task.revision,
+            board_revision: board.revision,
+            column_id: target?.id,
+            column_name: target?.name,
+            original_column_name: board.columns.find(
+              (c) => c.id === task.column_id,
+            )?.name,
+            assignee_id: member?.id,
+            assignee_name: member?.name,
+            original_assignee_name: meta.members.find(
+              (m) => m.id === task.assignee_id,
+            )?.name,
+            body:
+              action === "comment" || action === "submit-review"
+                ? comment
+                : undefined,
+          });
+          turn.reply = en
+            ? "Task change prepared. Review and confirm; this does not dispatch an external agent."
+            : "任务变更已准备，请确认后执行；转派不会启动外部 Agent。";
+        }
+      }
+    } else if (/简报|汇总交付|brief|delivery summary/i.test(modeText)) {
       const body =
         tasks
           .filter((t) => t.completed_at)
@@ -393,7 +536,27 @@ export async function assistantDemo(
       body: JSON.stringify(body),
     });
     try {
-      if (a.kind === "propose_schedule")
+      if (a.kind === "propose_task_change") {
+        const change = a.payload.change_action;
+        const body: Record<string, unknown> = {
+          action: change,
+          expected_revision: a.payload.expected_revision,
+          operation_id: a.id,
+        };
+        if (change === "assign") {
+          body.action = "edit";
+          body.assignee_id = a.payload.assignee_id;
+        } else if (change === "comment" || change === "submit-review")
+          body.body = a.payload.body;
+        else {
+          body.board_revision = a.payload.board_revision;
+          body.column_id = a.payload.column_id;
+        }
+        a.result = (await call(
+          `/todos/${a.payload.todo_id}`,
+          json(body, "PATCH"),
+        )) as { id: string };
+      } else if (a.kind === "propose_schedule")
         a.result = (await call(
           `/todos/${a.payload.todo_id}`,
           json({ ...a.payload, action: "edit", operation_id: a.id }, "PATCH"),

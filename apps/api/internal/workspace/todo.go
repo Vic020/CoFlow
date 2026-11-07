@@ -46,6 +46,7 @@ type TodoComment struct {
 	Deleted   bool      `json:"deleted"`
 }
 type Todo struct {
+	Review             *TodoReview   `json:"review,omitempty"`
 	UnavailableReports int           `json:"unavailable_reports"`
 	ID                 string        `json:"id"`
 	SourceID           string        `json:"source_id"`
@@ -208,7 +209,7 @@ func todoSnapshot(t Todo) json.RawMessage {
 func recordTodo(p identity.Principal, t *Todo, before Todo, action string, source ...string) {
 	t.Revision++
 	t.UpdatedAt = time.Now().UTC()
-	agent, model := "", ""
+	agent, model := p.SourceAgent, ""
 	if p.Kind == "token" && len(source) >= 2 {
 		agent = source[0]
 		model = source[1]
@@ -300,6 +301,9 @@ func (s *Service) GetTodo(ctx context.Context, p identity.Principal, id string) 
 	return out, err
 }
 func validateTodo(ctx context.Context, tx pgx.Tx, p identity.Principal, b *TodoBoard, t *Todo, old *Todo) error {
+	if e := validateReview(ctx, tx, p, *t, old); e != nil {
+		return e
+	}
 	if err := t.Schedule.Validate(false); err != nil {
 		return err
 	}
@@ -391,6 +395,14 @@ func todoMove(b *TodoBoard, t *Todo, column, before, after string) error {
 	}
 	if before != "" && after != "" {
 		return identity.Invalid("只允许一个排序锚点")
+	}
+	if c.Done {
+		if e := reviewAllowsCompletion(*t); e != nil {
+			return e
+		}
+	}
+	if !c.Done && t.CompletedAt != nil && t.Review != nil && t.Review.State == "approved" {
+		t.Review = draftReview(t.Review)
 	}
 	now := time.Now().UTC()
 	if t.ColumnID != column {
@@ -486,6 +498,7 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				}
 			}
 			t := in.Todo
+			t.Review = draftReview(t.Review)
 			t.UnavailableReports = 0
 			t.ID = store.ID()
 			t.CreatorID = p.UserID
@@ -536,7 +549,8 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			if t == nil {
 				return store.ErrNotFound
 			}
-			if in.Action != "comment" && in.Action != "delete-comment" && in.Action != "restore-comment" && !todoWrite(p, *t) {
+			reviewDecision := (in.Action == "approve-review" || in.Action == "request-changes") && t.Review != nil && t.Review.ReviewerID == p.UserID
+			if in.Action != "comment" && in.Action != "delete-comment" && in.Action != "restore-comment" && !reviewDecision && !todoWrite(p, *t) {
 				return identity.Denied("无权维护此任务")
 			}
 			if in.ExpectedRevision != t.Revision {
@@ -544,6 +558,10 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			}
 			before := *t
 			switch in.Action {
+			case "submit-review", "withdraw-review", "approve-review", "request-changes":
+				if err = applyReview(ctx, tx, p, b, t, in); err != nil {
+					return err
+				}
 			case "comment":
 				body := strings.TrimSpace(in.Body)
 				if body == "" || len(body) > 10000 || len(in.Mentions) > 50 {
@@ -613,6 +631,15 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				b.Revision++
 			case "", "edit":
 				candidate := *t
+				if _, ok := in.Fields["review"]; ok {
+					if t.Review != nil && (t.Review.State == "pending" || t.Review.State == "approved") {
+						return identity.Invalid("请先撤回验收或重新打开任务，再修改验收设置")
+					}
+					if t.CompletedAt != nil {
+						return identity.Invalid("请先重新打开任务，再配置验收")
+					}
+					candidate.Review = draftReview(in.Review)
+				}
 				if _, ok := in.Fields["title"]; ok {
 					candidate.Title = in.Title
 				}
@@ -646,6 +673,14 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				if _, ok := in.Fields["model"]; ok {
 					candidate.Model = in.Model
 				}
+				if t.Review != nil && reviewContentChanged(*t, candidate) {
+					if t.Review.State == "approved" {
+						return identity.Invalid("请先重新打开任务，再修改已验收内容")
+					}
+					if t.Review.State == "pending" {
+						candidate.Review = draftReview(candidate.Review)
+					}
+				}
 				if err = validateTodo(ctx, tx, p, b, &candidate, t); err != nil {
 					return err
 				}
@@ -655,8 +690,20 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			}
 			recordTodo(p, t, before, in.Action, in.Agent, in.Model)
 			out = *t
-			if before.AssigneeID != t.AssigneeID || before.CompletedAt == nil && t.CompletedAt != nil || before.CompletedAt != nil && t.CompletedAt == nil {
-				if err = todoNotify(ctx, tx, p, *t, []string{t.AssigneeID, t.CreatorID}, "todo-updated"); err != nil {
+			reviewChanged := !sameReview(before.Review, t.Review)
+			if reviewChanged || before.AssigneeID != t.AssigneeID || before.CompletedAt == nil && t.CompletedAt != nil || before.CompletedAt != nil && t.CompletedAt == nil {
+				recipients := []string{t.AssigneeID, t.CreatorID}
+				kind := "todo-updated"
+				if reviewChanged {
+					kind = "todo-review"
+					if before.Review != nil {
+						recipients = append(recipients, before.Review.ReviewerID)
+					}
+					if t.Review != nil {
+						recipients = append(recipients, t.Review.ReviewerID)
+					}
+				}
+				if err = todoNotify(ctx, tx, p, *t, recipients, kind); err != nil {
 					return err
 				}
 			}
@@ -772,10 +819,16 @@ func (s *Service) ChangeTodoColumn(ctx context.Context, p identity.Principal, id
 						if t.ColumnID == id {
 							before := *t
 							if in.Done {
+								if e := reviewAllowsCompletion(*t); e != nil {
+									return e
+								}
 								now := time.Now().UTC()
 								t.CompletedAt = &now
 							} else {
 								t.CompletedAt = nil
+								if t.Review != nil && t.Review.State == "approved" {
+									t.Review = draftReview(t.Review)
+								}
 							}
 							recordTodo(p, t, before, "column-completion")
 						}

@@ -48,6 +48,9 @@ export function AssistantTools({
 }
 const tools = [
   "read_workspace",
+  "read_handoff",
+  "read_changes",
+  "propose_task_change",
   "find_todos",
   "find_reports",
   "read_calendar",

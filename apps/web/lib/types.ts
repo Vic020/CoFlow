@@ -95,6 +95,7 @@ export type Report = {
   comments: Comment[];
 };
 export type Meta = {
+  agent_capabilities?: string[];
   members: Member[];
   projects: Project[];
   domains: string[];

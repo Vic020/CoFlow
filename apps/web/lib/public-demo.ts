@@ -1,8 +1,26 @@
 import { assistantDemo } from "./assistant-demo.ts";
 import { calendarDemo } from "./calendar-demo.ts";
 import { validSchedule, civilDay } from "./calendar.ts";
-import type { Todo, TodoBoardData } from "./todo";
+import type { Todo, TodoBoardData, TodoReview } from "./todo";
 import type { Meta, Report } from "./types";
+const reviewConfig = (
+  value: Partial<TodoReview> | null | undefined,
+): TodoReview | null => {
+  if (!value) return null;
+  const criteria = String(value.criteria || "").trim(),
+    reviewer_id = String(value.reviewer_id || "");
+  if (
+    !criteria ||
+    criteria.length > 8000 ||
+    !demoMeta.members.some((m) => m.id === reviewer_id)
+  )
+    throw Error("请填写验收标准并指定验收人");
+  return { criteria, reviewer_id, state: "draft" };
+};
+const reviewCompletion = (t: Todo) => {
+  if (t.review && t.review.state !== "approved")
+    throw Error("此任务需要指定验收人通过后才能完成");
+};
 const repositoryURL = "https://github.com/Vic020/CoFlow";
 const ago = (hours: number) =>
   new Date(Date.now() - hours * 3600000).toISOString();
@@ -52,6 +70,7 @@ export const demoMeta: Meta = {
   domains: ["产品", "研发", "设计", "内容", "运营"],
   current_user: "demo-alice",
   mode: "local-demo",
+  agent_capabilities: ["todo-review-v1"],
   timezone: "Asia/Shanghai",
   role: "member",
   team: {
@@ -309,7 +328,16 @@ export async function publicDemoRequest(
 ): Promise<unknown> {
   const method = init?.method?.toUpperCase() || "GET";
   const clone = <T>(value: T): T => structuredClone(value);
-  if (path.startsWith("/assistant/")) return assistantDemo(path, method, typeof init?.body === "string" ? JSON.parse(init.body) : {}, demoMeta, todoBoard.tasks, reports, publicDemoRequest);
+  if (path.startsWith("/assistant/"))
+    return assistantDemo(
+      path,
+      method,
+      typeof init?.body === "string" ? JSON.parse(init.body) : {},
+      demoMeta,
+      todoBoard.tasks,
+      reports,
+      publicDemoRequest,
+    );
   if (path.startsWith("/calendar/"))
     return calendarDemo(
       path,
@@ -557,10 +585,13 @@ function demoTodoChange(
               .toLowerCase()
               .includes(params.get("q")!.toLowerCase())) &&
           (params.get("scope") !== "todo" ||
-            (t.assignee_id === demoMeta.current_user && !t.completed_at)) &&
+            (t.assignee_id === demoMeta.current_user && !t.completed_at) ||
+            (t.review?.reviewer_id === demoMeta.current_user &&
+              t.review.state === "pending")) &&
           (params.get("scope") !== "related" ||
             t.creator_id === demoMeta.current_user ||
             t.assignee_id === demoMeta.current_user ||
+            t.review?.reviewer_id === demoMeta.current_user ||
             t.comments.some(
               (c) =>
                 !c.deleted &&
@@ -622,6 +653,9 @@ function demoTodoChange(
   const move = (t: Todo, col: string) => {
     const c = board.columns.find((c) => c.id === col && !c.archived);
     if (!c) throw new Error("请选择有效任务列");
+    if (c.done) reviewCompletion(t);
+    if (!c.done && t.completed_at && t.review?.state === "approved")
+      t.review = reviewConfig(t.review);
     if (
       t.column_id !== col &&
       !board.columns.find((c) => c.id === t.column_id)?.done
@@ -697,6 +731,9 @@ function demoTodoChange(
             c.done = payload.done;
             for (const t of board.tasks.filter((t) => t.column_id === id)) {
               const before = clone(t);
+              if (c.done) reviewCompletion(t);
+              else if (t.review?.state === "approved")
+                t.review = reviewConfig(t.review);
               t.completed_at = c.done ? now : null;
               event(t, before, "column-completion");
             }
@@ -728,6 +765,7 @@ function demoTodoChange(
       task = {
         id: crypto.randomUUID(),
         source_id: payload.source_id,
+        review: reviewConfig(payload.review),
         creator_id: demoMeta.current_user,
         title: payload.title || "",
         body: payload.body || "",
@@ -763,6 +801,59 @@ function demoTodoChange(
         throw new Error("任务或看板已更新，请刷新后重试");
       const before = clone(task);
       switch (payload.action) {
+        case "submit-review":
+        case "withdraw-review":
+        case "approve-review":
+        case "request-changes": {
+          if (task.archived || task.completed_at || !task.review)
+            throw Error("请先配置验收并恢复或重新打开任务");
+          const review = { ...task.review },
+            note = String(payload.body || "").trim();
+          if (note.length > 12000) throw Error("验收说明过长");
+          if (payload.action === "submit-review") {
+            if (review.state === "pending" || !note)
+              throw Error("请填写交付依据，且不能重复提交验收");
+            if (!demoMeta.members.some((m) => m.id === review.reviewer_id))
+              throw Error("验收人不在当前团队");
+            Object.assign(review, {
+              state: "pending",
+              submitted_revision: task.revision + 1,
+              evidence: note,
+              submitted_by: demoMeta.current_user,
+              submitted_at: now,
+              decision_by: undefined,
+              decided_at: undefined,
+              decision_note: undefined,
+            });
+          } else if (payload.action === "withdraw-review") {
+            if (review.state !== "pending") throw Error("任务未在验收中");
+            task.review = reviewConfig(review);
+            break;
+          } else {
+            if (review.reviewer_id !== demoMeta.current_user)
+              throw Error("只有指定验收人可以通过或退回");
+            if (review.state !== "pending") throw Error("任务未在验收中");
+            if (payload.action === "request-changes" && !note)
+              throw Error("请填写退回原因");
+            Object.assign(review, {
+              state:
+                payload.action === "approve-review"
+                  ? "approved"
+                  : "changes_requested",
+              decision_by: demoMeta.current_user,
+              decided_at: now,
+              decision_note: note,
+            });
+          }
+          task.review = review;
+          if (payload.action === "approve-review") {
+            if (payload.board_revision !== board.revision)
+              throw Error("任务或看板已更新，请刷新后重试");
+            move(task, board.default_done_id);
+            board.revision++;
+          }
+          break;
+        }
         case "move":
         case "complete":
         case "reopen":
@@ -804,6 +895,15 @@ function demoTodoChange(
           break;
         }
         default:
+          if (Object.hasOwn(payload, "review")) {
+            if (
+              task.review?.state === "pending" ||
+              task.review?.state === "approved"
+            )
+              throw Error("请先撤回验收或重新打开任务，再修改验收设置");
+            if (task.completed_at) throw Error("请先重新打开任务，再配置验收");
+            task.review = reviewConfig(payload.review);
+          }
           for (const key of [
             "title",
             "body",
@@ -819,6 +919,12 @@ function demoTodoChange(
               Object.assign(task, {
                 [key]: payload[key],
               });
+          if (JSON.stringify(task) !== JSON.stringify(before)) {
+            if (before.review?.state === "approved")
+              throw Error("请先重新打开任务，再修改已验收内容");
+            if (before.review?.state === "pending")
+              task.review = reviewConfig(task.review);
+          }
       }
       event(task, before, payload.action || "edit");
     }
@@ -849,6 +955,8 @@ function demoReportTodos(report: Report, payload: Record<string, any>) {
     const t = tasks.find((t) => t.id === m.id);
     if (!t || !ids.includes(m.id) || t.revision !== m.expected_revision)
       throw new Error("任务或看板已更新，请刷新后重试");
+    if (todoBoard.columns.find((c) => c.id === m.column_id)?.done)
+      reviewCompletion(t);
     if (!todoBoard.columns.some((c) => c.id === m.column_id && !c.archived))
       throw new Error("请选择有效任务列");
   }
@@ -880,6 +988,11 @@ function demoReportTodos(report: Report, payload: Record<string, any>) {
             .filter((x) => x.column_id === m.column_id)
             .map((x) => x.position),
         );
+      if (
+        !todoBoard.columns.find((c) => c.id === m.column_id)?.done &&
+        t.review?.state === "approved"
+      )
+        t.review = reviewConfig(t.review);
       t.completed_at = todoBoard.columns.find((c) => c.id === m.column_id)?.done
         ? new Date().toISOString()
         : null;

@@ -1,13 +1,48 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.4.0
+  version: 0.4.1
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /assistant/models:
+    post:
+      operationId: discoverAssistantModels
+      security: [{sessionCookie: []}]
+      description: Browser-session model discovery for an unsaved form. GETs the supplied public HTTPS Base URL plus /models using the provider's OpenAI-compatible list format (data[].id). GLM and custom endpoints are capability probes, not promises of listing support. Requires an explicit key, or an editable saved config with matching provider and canonical Base URL and expected_revision. Team members cannot reuse an administrator's key here. Does not save, verify, select, or generate text. Rate-limited and limited to 12 seconds, 1 MiB, and 500 IDs; upstream pagination is not followed. Uses the same DNS/private-network and redirect protection as model calls. Errors never echo upstream response bodies or credentials. An empty list or error leaves the UI's suggestions/custom input usable; returned IDs do not imply Responses or tool compatibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, base_url]
+              properties:
+                provider: {type: string, enum: [deepseek, glm, openai, compatible]}
+                base_url: {type: string, format: uri}
+                api_key: {type: string, writeOnly: true, maxLength: 4096}
+                config_id: {type: string}
+                expected_revision: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Sorted, deduplicated model IDs from the service; no configuration or secret is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, truncated]
+                properties:
+                  items: {type: array, maxItems: 500, items: {type: string, maxLength: 150}}
+                  truncated: {type: boolean}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
   /assistant/configs:
     get:
       operationId: assistantConfigs
@@ -286,7 +321,7 @@ paths:
     post:
       operationId: assistantChat
       security: [{sessionCookie: []}]
-      description: Returns JSON by default, or SSE with Accept text/event-stream. Events start/delta/done/error; deltas are temporary, only done confirms the saved result. Provider supports Chat Completions and Responses text SSE; hidden reasoning is never emitted, split credentials are redacted, incomplete upstream streams are rejected. No automatic billable retry. Verified accessible configuration required. History is server-owned and team/member isolated. New conversations derive a stable ID from request_id for uncertain-response recovery. Repeating request_id/message returns the saved turn; switching providers requires a new conversation. Read tools reuse current-team business services; write tools prepare drafts only. No business changes execute here. Maximum 20 turns, 12 tool calls, 8 proposals, 5 provider round trips and 24-second total timeout. Chat/verification limited to 10 requests per member/team/minute. Shared Go concurrency limited to 3. No platform credit or automatic provider fallback.
+      description: Returns JSON by default, or SSE with Accept text/event-stream. Events start/delta/done/error; deltas are temporary, only done confirms the saved result. Provider supports Chat Completions and Responses text SSE; hidden reasoning is never emitted, split credentials are redacted, incomplete upstream streams are rejected. No automatic billable retry. Verified accessible configuration required. History is server-owned and team/member isolated. New conversations derive a stable ID from request_id for uncertain-response recovery. Repeating request_id/message returns the saved turn; switching providers requires a new conversation. Read tools reuse current-team business services; write tools prepare drafts only, including task move/complete/reopen/reassign/comment via propose_task_change. read_handoff and read_changes resume scoped facts and original source links; read_workspace returns board_revision. No task write tool is available to background jobs. No business changes execute here. Maximum 20 turns, 12 tool calls, 8 proposals, 5 provider round trips and 24-second total timeout. Chat/verification limited to 10 requests per member/team/minute. Shared Go concurrency limited to 3. No platform credit or automatic provider fallback.
       requestBody:
         required: true
         content:
@@ -346,7 +381,7 @@ paths:
     post:
       operationId: confirmAssistantAction
       security: [{sessionCookie: []}]
-      description: Explicitly confirm or cancel an owned action. Go reuses original Todo/Timeline services for object permissions, validation, revisions, history and stable action-derived idempotency. Schedule updates preserve deadline and completion; report status is progress. Repeat confirmations return durable results; cancelled actions never execute. Batch cards are independent actions, not one transaction. An execution validation/conflict failure is returned as state=failed with a safe result.error, not as success.
+      description: Explicitly confirm or cancel an owned action. Go reuses original Todo/Timeline services for object permissions, validation, revisions, history and stable action-derived idempotency. Task changes use the original task/board revisions; reassign resolves verified members, comments do not add implicit mentions. Schedule updates preserve deadline and completion; report status is progress. Repeat confirmations return durable results; cancelled actions never execute. Batch cards are independent actions, not one transaction. An execution validation/conflict failure is returned as state=failed with a safe result.error, not as success.
       requestBody:
         required: true
         content:
@@ -500,6 +535,66 @@ paths:
                   mode:
                     type: string
       security: []
+  /agent/changes:
+    get:
+      operationId: agentChanges
+      description: >-
+        Team mode only. Requires at least one module read scope. /meta advertises changes-v1.
+        No cursor returns an empty baseline and next_cursor; no historical backfill before migration 014.
+        Subsequent calls return ascending compact invalidations for readable modules only, not copied bodies.
+        Duplicate object invalidations are valid. Re-read original objects using current permissions.
+        Deleted/unavailable objects may only return an ID here; never restore content from a private snapshot.
+        Cursor binds member, team, project and module read permissions; a changed binding requires a new baseline.
+        Project moves match both old and new projects. Feed reads and writes share the team transaction lock,
+        so the cursor never advances beyond an uncommitted event. Does not mark human notifications read.
+      parameters:
+      - {name: project, in: query, schema: {type: string}}
+      - {name: cursor, in: query, schema: {type: string, maxLength: 1024}}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}
+      responses:
+        '200':
+          description: Save next_cursor only after processing this page; drain has_more before waiting. No automatic polling or execution authorization is created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  baseline: {type: boolean}
+                  coverage: {type: string}
+                  next_cursor: {type: string}
+                  has_more: {type: boolean}
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: {type: string, enum: [todo, report, calendar]}
+                        object_id: {type: string}
+                        created_at: {type: string, format: date-time}
+                        url: {type: string}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /agent/context:
+    get:
+      operationId: agentHandoff
+      description: >-
+        Team mode only. /meta advertises context-v1. Requires project or todo, and at least one source read scope.
+        A specific todo requires todos:read. Returns current team/member, observed_at, columns and bounded facts:
+        up to 10 active project tasks (or the focused task including archived), 5 recent relevant reports,
+        10 open untransferred collaborations and 10 independent calendar nodes. Task/report discussions include
+        at most 3 recent comments; bodies are excerpts of at most 600 bytes plus ellipsis, links/history omitted.
+        Sections carry total/truncated/source and discussion_truncated as appropriate. content_excerpted is true; sources contain original readable object links.
+        omitted_scopes distinguishes unavailable modules from empty results; unreadable cross-module references
+        are removed. Re-read originals and paginate module APIs when needed. This is a multi-read factual snapshot,
+        not an atomic export, persistent knowledge base, inferred acceptance or ongoing execution grant.
+      parameters:
+      - {name: project, in: query, schema: {type: string}}
+      - {name: todo, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Permission-filtered facts with original IDs, source API paths and explicit truncation.}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
   /meta:
     get:
       operationId: getMetadata
@@ -511,6 +606,10 @@ paths:
               schema:
                 type: object
                 properties:
+                  agent_capabilities:
+                    type: array
+                    items: {type: string, enum: [changes-v1, context-v1, todo-review-v1]}
+                    description: Optional capability discovery. Older deployments omit it; local demo only advertises todo-review-v1. Never infer write scopes or a real backend from this list.
                   members:
                     type: array
                     items:
@@ -1920,7 +2019,7 @@ paths:
       - {name: cursor, in: query, schema: {type: string}}
       responses:
         '200':
-          description: Filtered page, total and next_cursor. Missing cursor after concurrent movement returns 409; reload the board.
+          description: Filtered page, total and next_cursor. Related includes a configured reviewer; scope=todo includes pending reviews assigned to the current member as well as their unfinished tasks. Missing cursor after concurrent movement returns 409; reload the board.
           content:
             application/json:
               schema:
@@ -2184,6 +2283,7 @@ components:
       - {$ref: '#/components/schemas/CalendarEventInput'}
       - type: object
         properties:
+          review: {$ref: '#/components/schemas/TodoReview'}
           id: {type: string}
           creator_id: {type: string}
           revision: {type: integer}
@@ -2446,11 +2546,40 @@ components:
         action: {type: string, enum: [edit, archive, restore, order, default]}
         target_id: {type: string, description: "Destination for every task when archiving a nonempty column."}
         ids: {type: array, items: {type: string}, description: "Every column ID exactly once for order."}
+    TodoReviewConfig:
+      type: object
+      required: [criteria, reviewer_id]
+      properties:
+        criteria: {type: string, minLength: 1, maxLength: 8000, description: 'Nonempty acceptance criteria; server enforces at most 8000 UTF-8 bytes.'}
+        reviewer_id: {type: string, minLength: 1, maxLength: 160, description: Existing team member. No automatic reviewer selection.}
+      description: Only these two configuration fields are accepted on create/edit. Supplied state, evidence or decision metadata is discarded. Null removes the requirement only while not pending/approved and not completed.
+    TodoReview:
+      allOf:
+      - {$ref: '#/components/schemas/TodoReviewConfig'}
+      - type: object
+        properties:
+          state: {type: string, readOnly: true, enum: [draft, pending, changes_requested, approved]}
+          evidence: {type: string, readOnly: true}
+          submitted_revision: {type: integer, readOnly: true, description: Task revision created by the submission action.}
+          submitted_by: {type: string, readOnly: true}
+          submitted_at: {type: string, format: date-time, readOnly: true}
+          decision_by: {type: string, readOnly: true}
+          decided_at: {type: string, format: date-time, readOnly: true}
+          decision_note: {type: string, readOnly: true}
     TodoInput:
       type: object
+      description: >-
+        Every change requires operation_id and current expected_revision. Move/complete/reopen and approve-review
+        additionally require board_revision. Review is optional: tasks without it keep existing completion behavior.
+        Submit/withdraw require normal task maintenance permission. Approval/return require todos:write and the
+        exact designated reviewer; administrator role does not replace that identity. Approval completes in the
+        configured default done column; return keeps the task unfinished. Material edits invalidate pending review,
+        approved content needs reopening before editing, and reopening resets approval but preserves history.
+        Direct completion, joint report moves, drag moves and column completion cannot bypass a required review.
       properties:
+        review: {oneOf: [{$ref: '#/components/schemas/TodoReviewConfig'}, {type: 'null'}], description: 'Optional acceptance requirement; absence preserves it on edit. Discover todo-review-v1 before using.'}
         title: {type: string, description: "Required on create; 1–500 UTF-8 bytes."}
-        body: {type: string, description: "Markdown; at most 50000 UTF-8 bytes."}
+        body: {type: string, description: "Task Markdown at most 50000 UTF-8 bytes; for submit-review it is required delivery evidence, for request-changes a required reason, and for approve-review an optional note (at most 12000 bytes)."}
         column_id: {type: string}
         assignee_id: {type: string, description: "Existing team member ID or empty for unassigned."}
         project_id: {type: string}
@@ -2466,7 +2595,7 @@ components:
         operation_id: {type: string, maxLength: 160}
         expected_revision: {type: integer}
         board_revision: {type: integer}
-        action: {type: string, enum: [edit, move, complete, reopen, archive, restore, comment, delete-comment, restore-comment]}
+        action: {type: string, enum: [edit, move, complete, reopen, archive, restore, comment, delete-comment, restore-comment, submit-review, withdraw-review, approve-review, request-changes]}
         before_id: {type: string}
         after_id: {type: string}
         comment_id: {type: string}

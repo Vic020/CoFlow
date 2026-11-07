@@ -54,6 +54,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		ws = &workspace.Service{Pool: cfg.Identity.Pool}
 		registerWorkspace(protected, ws)
 		registerTodos(protected, ws)
+		registerAgent(protected, ws, repo)
 		registerAssistant(protected, cfg, ws, repo)
 	}
 	if cfg.Demo {
@@ -70,7 +71,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		c.Next()
 	}, func(c *gin.Context) {
 		if cfg.Demo {
-			c.JSON(200, gin.H{"members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
+			c.JSON(200, gin.H{"agent_capabilities": []string{"todo-review-v1"}, "members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
 			return
 		}
 		v, err := cfg.Identity.Metadata(c.Request.Context(), principal(c))
@@ -98,6 +99,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		v["projects"] = projects
 		v["domains"] = domains
 		v["catalog"] = catalog
+		v["agent_capabilities"] = []string{"changes-v1", "context-v1", "todo-review-v1"}
 		c.JSON(200, v)
 	})
 	protected.GET("/api/v1/reports", requireScope("reports:read"), func(c *gin.Context) {

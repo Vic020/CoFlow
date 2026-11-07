@@ -540,6 +540,7 @@ function ActionCard({
     propose_todo: "新建任务",
     propose_schedule: "调整排期",
     propose_report: "发布简报",
+    propose_task_change: "推进任务",
   };
   const target = action.result?.id
     ? action.kind === "propose_report"
@@ -609,20 +610,44 @@ function ActionCard({
           <strong>{action.title}</strong>
           <small className="ai-action-context">
             {action.payload.project_name || tr("未归属")}
-            {action.payload.column_name
+            {action.kind !== "propose_task_change" && action.payload.column_name
               ? ` · ${action.payload.column_name}`
               : ""}
           </small>
-          {action.payload.original_schedule && (
-            <p className="muted ai-original-schedule">
-              {tr("原排期")} ·{" "}
-              {action.payload.original_schedule.start_date ||
-                action.payload.original_schedule.start_at}{" "}
-              →{" "}
-              {action.payload.original_schedule.end_date ||
-                action.payload.original_schedule.end_at}
+          {action.kind === "propose_task_change" && (
+            <p className="ai-draft-body">
+              {tr(
+                (
+                  {
+                    move: "移动任务",
+                    complete: "完成任务",
+                    reopen: "重新打开",
+                    assign: "转派任务",
+                    comment: "发表评论",
+                    "submit-review": "提交验收",
+                    "withdraw-review": "撤回验收",
+                  } as Record<string, string>
+                )[action.payload.change_action || ""] || "推进任务",
+              )}
+              {["move", "complete", "reopen"].includes(
+                action.payload.change_action || "",
+              ) &&
+                ` · ${action.payload.original_column_name || ""} → ${action.payload.column_name || ""}`}
+              {action.payload.change_action === "assign" &&
+                ` · ${action.payload.original_assignee_name || tr("未分配")} → ${action.payload.assignee_name || tr("未分配")}`}
             </p>
           )}
+          {action.kind === "propose_schedule" &&
+            action.payload.original_schedule && (
+              <p className="muted ai-original-schedule">
+                {tr("原排期")} ·{" "}
+                {action.payload.original_schedule.start_date ||
+                  action.payload.original_schedule.start_at}{" "}
+                →{" "}
+                {action.payload.original_schedule.end_date ||
+                  action.payload.original_schedule.end_at}
+              </p>
+            )}
           {action.payload.body && (
             <p className="ai-draft-body">{action.payload.body}</p>
           )}

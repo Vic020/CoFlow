@@ -82,7 +82,7 @@ export function NotificationCenter({
         <DialogContent className="info-dialog">
           <DialogTitle className="modal-title">{tr("消息通知")}</DialogTitle>
           <DialogDescription className="modal-description">
-            {tr("关注你的简报、评论与协作进展。")}
+            {tr("关注简报、任务和协作进展。")}
           </DialogDescription>
           <Button size="sm" variant="outline" onClick={() => void read("")}>
             {tr("全部标为已读")}
@@ -108,6 +108,7 @@ export function NotificationCenter({
                   {v.kind.startsWith("todo-") ? v.title : tr(v.title)}
                 </strong>
                 <small>
+                  {v.kind === "todo-review" ? `${tr("验收更新")} · ` : ""}
                   {formatDate(v.created_at, {
                     dateStyle: "medium",
                     timeStyle: "short",

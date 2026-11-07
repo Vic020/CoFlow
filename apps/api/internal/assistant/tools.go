@@ -28,27 +28,34 @@ type Action struct {
 	Result    any             `json:"result,omitempty"`
 }
 type ToolArgs struct {
-	Domain           string              `json:"domain"`
-	MemberID         string              `json:"member_id"`
-	ReportID         string              `json:"report_id"`
-	Revision         string              `json:"revision"`
-	ProjectName      string              `json:"project_name,omitempty"`
-	ColumnName       string              `json:"column_name,omitempty"`
-	OriginalSchedule *workspace.Schedule `json:"original_schedule,omitempty"`
-	ProjectID        string              `json:"project_id"`
-	Q                string              `json:"q"`
-	Offset           int                 `json:"offset"`
-	From             string              `json:"from"`
-	To               string              `json:"to"`
-	Timezone         string              `json:"timezone"`
-	Cursor           string              `json:"cursor"`
-	Title            string              `json:"title"`
-	Body             string              `json:"body"`
-	ColumnID         string              `json:"column_id"`
-	TodoID           string              `json:"todo_id"`
-	ExpectedRevision int                 `json:"expected_revision"`
-	Schedule         *workspace.Schedule `json:"schedule"`
-	TodoIDs          []string            `json:"todo_ids"`
+	ChangeAction         string              `json:"change_action"`
+	BoardRevision        int                 `json:"board_revision"`
+	AssigneeID           string              `json:"assignee_id"`
+	AssigneeName         string              `json:"assignee_name,omitempty"`
+	OriginalAssigneeName string              `json:"original_assignee_name,omitempty"`
+	OriginalAssigneeID   string              `json:"original_assignee_id,omitempty"`
+	OriginalColumnName   string              `json:"original_column_name,omitempty"`
+	Domain               string              `json:"domain"`
+	MemberID             string              `json:"member_id"`
+	ReportID             string              `json:"report_id"`
+	Revision             string              `json:"revision"`
+	ProjectName          string              `json:"project_name,omitempty"`
+	ColumnName           string              `json:"column_name,omitempty"`
+	OriginalSchedule     *workspace.Schedule `json:"original_schedule,omitempty"`
+	ProjectID            string              `json:"project_id"`
+	Q                    string              `json:"q"`
+	Offset               int                 `json:"offset"`
+	From                 string              `json:"from"`
+	To                   string              `json:"to"`
+	Timezone             string              `json:"timezone"`
+	Cursor               string              `json:"cursor"`
+	Title                string              `json:"title"`
+	Body                 string              `json:"body"`
+	ColumnID             string              `json:"column_id"`
+	TodoID               string              `json:"todo_id"`
+	ExpectedRevision     int                 `json:"expected_revision"`
+	Schedule             *workspace.Schedule `json:"schedule"`
+	TodoIDs              []string            `json:"todo_ids"`
 }
 
 func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a ToolArgs) (any, *Action, []Link, error) {
@@ -64,7 +71,7 @@ func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a
 			return nil, nil, nil, e
 		}
 		board, e := s.Workspace.TodoBoard(ctx, p)
-		return map[string]any{"metadata": m, "catalog": catalog, "columns": board.Columns}, nil, nil, e
+		return map[string]any{"metadata": m, "catalog": catalog, "columns": board.Columns, "board_revision": board.Revision, "default_done_id": board.DefaultDoneID}, nil, nil, e
 	case "find_todos":
 		xs, e := s.Workspace.Todos(ctx, p)
 		if e != nil {
@@ -101,6 +108,18 @@ func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a
 			links = append(links, Link{x.Title, "/?report=" + url.QueryEscape(x.ID)})
 		}
 		return map[string]any{"items": out[start:end], "total": len(out), "next_offset": end, "has_more": end < len(out)}, nil, links, nil
+	case "read_handoff":
+		v, e := s.Workspace.Handoff(ctx, p, s.Repo, a.ProjectID, a.TodoID)
+		if e != nil {
+			return nil, nil, nil, e
+		}
+		for _, l := range v["sources"].([]store.Link) {
+			links = append(links, Link{Title: l.Title, URL: l.URL})
+		}
+		return v, nil, links, nil
+	case "read_changes":
+		v, e := s.Workspace.AgentChanges(ctx, p, a.ProjectID, a.Cursor, 30)
+		return v, nil, nil, e
 	case "read_calendar":
 		q, e := workspace.ParseCalendarQuery(url.Values{"from": {a.From}, "to": {a.To}, "timezone": {a.Timezone}, "project": {a.ProjectID}, "cursor": {a.Cursor}, "revision": {a.Revision}, "domain": {a.Domain}, "member": {a.MemberID}, "limit": {"30"}})
 		if e != nil {
@@ -136,12 +155,24 @@ func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a
 			r.Comments = r.Comments[len(r.Comments)-10:]
 		}
 		return map[string]any{"report": r, "discussion_truncated": truncated}, nil, []Link{{r.Title, "/?report=" + url.QueryEscape(r.ID)}}, nil
-	case "propose_todo", "propose_schedule", "propose_report":
+	case "propose_todo", "propose_schedule", "propose_report", "propose_task_change":
+		if name == "propose_task_change" {
+			clean := ToolArgs{TodoID: a.TodoID, ExpectedRevision: a.ExpectedRevision, BoardRevision: a.BoardRevision, ChangeAction: a.ChangeAction}
+			switch a.ChangeAction {
+			case "move":
+				clean.ColumnID = a.ColumnID
+			case "assign":
+				clean.AssigneeID = a.AssigneeID
+			case "comment", "submit-review":
+				clean.Body = a.Body
+			}
+			a = clean
+		}
 		if e := s.validateAction(ctx, p, name, a); e != nil {
 			return nil, nil, nil, e
 		}
 		title := a.Title
-		if name == "propose_schedule" {
+		if name == "propose_schedule" || name == "propose_task_change" {
 			t, e := s.Workspace.GetTodo(ctx, p, a.TodoID)
 			if e != nil {
 				return nil, nil, nil, e
@@ -152,13 +183,71 @@ func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a
 		a.ProjectName = ""
 		a.ColumnName = ""
 		a.OriginalSchedule = nil
-		if name == "propose_schedule" {
+		a.AssigneeName = ""
+		a.OriginalAssigneeID = ""
+		a.OriginalAssigneeName = ""
+		a.OriginalColumnName = ""
+		if name == "propose_task_change" && a.ChangeAction != "move" {
+			a.ColumnID = ""
+		}
+		if name == "propose_schedule" || name == "propose_task_change" {
 			t, e := s.Workspace.GetTodo(ctx, p, a.TodoID)
 			if e != nil {
 				return nil, nil, nil, e
 			}
 			a.ProjectID = t.ProjectID
 			a.OriginalSchedule = t.Schedule
+			if name == "propose_task_change" {
+				a.OriginalAssigneeID = t.AssigneeID
+				board, e := s.Workspace.TodoBoard(ctx, p)
+				if e != nil {
+					return nil, nil, nil, e
+				}
+				for _, col := range board.Columns {
+					if col.ID == t.ColumnID {
+						a.OriginalColumnName = col.Name
+					}
+					if col.ID == a.ColumnID {
+						a.ColumnName = col.Name
+					}
+				}
+				if a.ChangeAction == "complete" {
+					for _, col := range board.Columns {
+						if col.ID == board.DefaultDoneID {
+							a.ColumnName = col.Name
+						}
+					}
+				}
+				if a.ChangeAction == "reopen" {
+					for _, col := range board.Columns {
+						if col.ID == t.PreviousColumnID && !col.Done && !col.Archived {
+							a.ColumnName = col.Name
+						}
+					}
+					if a.ColumnName == "" {
+						for _, col := range board.Columns {
+							if !col.Done && !col.Archived {
+								a.ColumnName = col.Name
+								break
+							}
+						}
+					}
+				}
+				if a.ChangeAction == "assign" {
+					m, e := s.Identity.Metadata(ctx, p)
+					if e != nil {
+						return nil, nil, nil, e
+					}
+					for _, member := range m["members"].([]store.Member) {
+						if member.ID == a.OriginalAssigneeID {
+							a.OriginalAssigneeName = member.Name
+						}
+						if member.ID == a.AssigneeID {
+							a.AssigneeName = member.Name
+						}
+					}
+				}
+			}
 		}
 		if a.ProjectID != "" {
 			catalog, e := s.Workspace.Catalog(ctx, p)
@@ -203,6 +292,73 @@ func window(offset, n int) (int, int) {
 	return offset, end
 }
 func (s *Service) validateAction(ctx context.Context, p identity.Principal, name string, a ToolArgs) error {
+	if name == "propose_task_change" {
+		t, e := s.Workspace.GetTodo(ctx, p, a.TodoID)
+		if e != nil {
+			return e
+		}
+		if t.Archived || t.Revision != a.ExpectedRevision {
+			return conflict()
+		}
+		if a.ChangeAction != "comment" && !admin(p) && t.CreatorID != p.UserID && t.AssigneeID != p.UserID {
+			return identity.Denied("无权修改此任务")
+		}
+		switch a.ChangeAction {
+		case "move", "complete", "reopen":
+			b, e := s.Workspace.TodoBoard(ctx, p)
+			if e != nil {
+				return e
+			}
+			if b.Revision != a.BoardRevision {
+				return conflict()
+			}
+			if t.Review != nil && t.Review.State != "approved" {
+				for _, col := range b.Columns {
+					if a.ChangeAction == "complete" || (a.ChangeAction == "move" && col.ID == a.ColumnID && col.Done) {
+						return invalid("此任务需要先提交验收，由指定验收人通过")
+					}
+				}
+			}
+
+			if a.ChangeAction == "move" {
+				valid := false
+				for _, c := range b.Columns {
+					if c.ID == a.ColumnID && !c.Archived {
+						valid = true
+					}
+				}
+				if !valid {
+					return invalid("请选择有效任务列")
+				}
+			}
+		case "submit-review":
+			if t.Review == nil || t.CompletedAt != nil || t.Review.State == "pending" || strings.TrimSpace(a.Body) == "" || len(a.Body) > 12000 {
+				return invalid("请配置验收并提供交付依据，不能重复提交")
+			}
+		case "withdraw-review":
+			if t.Review == nil || t.Review.State != "pending" {
+				return invalid("任务未在验收中")
+			}
+		case "comment":
+			if strings.TrimSpace(a.Body) == "" || len(a.Body) > 10000 {
+				return invalid("评论内容无效")
+			}
+		case "assign":
+			if a.AssigneeID != "" {
+				var valid bool
+				e = s.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM memberships WHERE team_id=$1 AND user_id=$2)`, p.TeamID, a.AssigneeID).Scan(&valid)
+				if e != nil {
+					return e
+				}
+				if !valid {
+					return invalid("负责人不是当前团队成员")
+				}
+			}
+		default:
+			return invalid("不支持此任务操作")
+		}
+		return nil
+	}
 	if name == "propose_schedule" {
 		if a.Schedule == nil {
 			return invalid("请选择排期")
@@ -263,12 +419,36 @@ func (s *Service) validateAction(ctx context.Context, p identity.Principal, name
 	return nil
 }
 func (s *Service) execute(ctx context.Context, p identity.Principal, id, kind string, a ToolArgs) (any, error) {
-	if kind != "propose_schedule" {
+	p.SourceAgent = "CoFlow Assistant"
+	if kind != "propose_schedule" && kind != "propose_task_change" {
 		if e := s.validateAction(ctx, p, kind, a); e != nil {
 			return nil, e
 		}
 	}
 	switch kind {
+	case "propose_task_change":
+		// Existing Todo service owns revision, board revision, permissions and replay.
+		// Do not pre-check revisions here: a committed write must still replay after a lost response.
+		var in workspace.TodoInput
+		v := map[string]any{"action": a.ChangeAction, "expected_revision": a.ExpectedRevision, "operation_id": "assistant:" + id, "agent": "CoFlow Assistant"}
+		switch a.ChangeAction {
+		case "assign":
+			v["action"] = "edit"
+			v["assignee_id"] = a.AssigneeID
+		case "comment", "submit-review":
+			v["body"] = a.Body
+		case "withdraw-review":
+		case "move", "complete", "reopen":
+			v["board_revision"] = a.BoardRevision
+			v["column_id"] = a.ColumnID
+		default:
+			return nil, invalid("不支持此任务操作")
+		}
+		raw, _ := json.Marshal(v)
+		if e := json.Unmarshal(raw, &in); e != nil {
+			return nil, e
+		}
+		return s.Workspace.ChangeTodo(ctx, p, a.TodoID, in)
 	case "propose_todo":
 		return s.Workspace.ChangeTodo(ctx, p, "", workspace.TodoInput{Todo: workspace.Todo{Title: a.Title, Body: a.Body, ColumnID: a.ColumnID, ProjectID: a.ProjectID, SourceID: "assistant:" + id, Agent: "CoFlow Assistant"}, OperationID: "assistant:" + id})
 	case "propose_schedule":

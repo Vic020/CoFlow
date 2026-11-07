@@ -18,6 +18,14 @@ export type AIAction = {
   kind: string;
   title: string;
   payload: {
+    board_revision?: number;
+    expected_revision?: number;
+    column_id?: string;
+    change_action?: string;
+    assignee_id?: string;
+    assignee_name?: string;
+    original_column_name?: string;
+    original_assignee_name?: string;
     project_name?: string;
     column_name?: string;
     original_schedule?: {
@@ -71,24 +79,28 @@ export const aiProviders = [
     name: "DeepSeek",
     base: "https://api.deepseek.com",
     protocol: "chat-completions",
+    models: ["deepseek-flash", "deepseek-v4-pro"],
   },
   {
     id: "glm",
-    name: "GLM",
+    name: "智谱 / GLM",
     base: "https://open.bigmodel.cn/api/paas/v4",
     protocol: "chat-completions",
+    models: ["glm-5.3"],
   },
   {
     id: "openai",
     name: "OpenAI / Codex",
     base: "https://api.openai.com/v1",
     protocol: "responses",
+    models: ["gpt-5.4", "gpt-5.4-mini"],
   },
   {
     id: "compatible",
     name: "兼容 API",
     base: "",
     protocol: "chat-completions",
+    models: [],
   },
 ];
 export const aiQuickTasks = [
@@ -107,7 +119,7 @@ export function defaultAIConfig(configs: AIConfig[]) {
 }
 // Only Go-generated object links are navigable; model text stays plain text.
 export function safeAssistantLink(url: string) {
-  return /^\/(?:\?(?:report)=[a-zA-Z0-9_-]+|todo\?todo=[a-zA-Z0-9_-]+|calendar\?mode=schedule&date=\d{4}-\d{2}-\d{2})$/.test(
+  return /^\/(?:\?(?:report)=[a-zA-Z0-9_-]+|todo\?todo=[a-zA-Z0-9_-]+|calendar\?(?:mode=schedule&date=\d{4}-\d{2}-\d{2}|event=[a-zA-Z0-9_-]+))$/.test(
     url,
   );
 }

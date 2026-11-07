@@ -26,6 +26,7 @@ import { ActionMenu } from "./ui/action-menu";
 import { AgentAccess } from "./agent-access";
 import { todoManagementPrompt } from "@/lib/report-prompt";
 import { TodoAgentAccess, TodoAPIAccess } from "./todo-agent-access";
+import { TodoReviewPanel, reviewLabels } from "./todo-review";
 import { TodoDetailFields } from "./todo-detail-fields";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
@@ -84,7 +85,9 @@ export function TodoBoard({ meta }: { meta: Meta }) {
     } | null>(null),
     [notice, setNotice] = useState("");
   const [creationTab, setCreationTab] = useState("manual");
-  const [detailEditing, setDetailEditing] = useState(false);
+  const [fieldEditing, setFieldEditing] = useState(false),
+    [reviewEditing, setReviewEditing] = useState(false);
+  const detailEditing = fieldEditing || reviewEditing;
   const [copiedTarget, setCopiedTarget] = useState<{
     target: string;
     time: number;
@@ -133,7 +136,11 @@ export function TodoBoard({ meta }: { meta: Meta }) {
         setError((e as Error).message);
     }
   }, [query, project, domain, assignee, scope, archived]);
-  useEffect(() => { const changed = () => void load(); window.addEventListener("coflow:assistant-change", changed); return () => window.removeEventListener("coflow:assistant-change", changed); }, [load]);
+  useEffect(() => {
+    const changed = () => void load();
+    window.addEventListener("coflow:assistant-change", changed);
+    return () => window.removeEventListener("coflow:assistant-change", changed);
+  }, [load]);
   useEffect(() => {
     mounted.current = true;
     void load();
@@ -376,6 +383,10 @@ export function TodoBoard({ meta }: { meta: Meta }) {
     archive: "归档",
     restore: "恢复",
     comment: "发表评论",
+    "submit-review": "提交验收",
+    "withdraw-review": "撤回验收",
+    "approve-review": "已通过验收",
+    "request-changes": "退回修改",
     "report-link": "关联简报",
     "report-move": "上报并移动",
     "collaboration-transfer": "协作转交",
@@ -676,6 +687,11 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                               <span>{tr(priorities[t.priority])}</span>
                             )}
                           </span>
+                          {t.review && (
+                            <small className="todo-review-badge">
+                              {tr(reviewLabels[t.review.state] || "待提交验收")}
+                            </small>
+                          )}
                           <span className="todo-card-tags">
                             {t.project_id && (
                               <span>
@@ -776,6 +792,8 @@ export function TodoBoard({ meta }: { meta: Meta }) {
             setDraft(null);
             setSelected(null);
             setError("");
+            setFieldEditing(false);
+            setReviewEditing(false);
           }
         }}
       >
@@ -829,11 +847,28 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                     <TodoDetailFields
                       task={selected}
                       meta={meta}
-                      writable={canWrite(selected)}
-                      busy={busy}
+                      writable={
+                        canWrite(selected) &&
+                        selected.review?.state !== "approved"
+                      }
+                      busy={busy || reviewEditing}
                       onSave={(patch) => change(selected, "edit", patch)}
-                      onEditingChange={setDetailEditing}
+                      onEditingChange={setFieldEditing}
                     />
+                    {(meta.agent_capabilities?.includes("todo-review-v1") ||
+                      selected.review) && (
+                      <TodoReviewPanel
+                        task={selected}
+                        meta={meta}
+                        writable={canWrite(selected)}
+                        busy={busy || fieldEditing}
+                        onAction={(action, extra) =>
+                          change(selected, action, extra)
+                        }
+                        onSave={(patch) => change(selected, "edit", patch)}
+                        onEditingChange={setReviewEditing}
+                      />
+                    )}
                   </>
                 )}
                 {!draft.id && (
@@ -1045,20 +1080,22 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                     <div className="todo-detail-actions">
                       {canWrite(selected) && (
                         <>
-                          <Button
-                            variant="outline"
-                            disabled={busy || detailEditing}
-                            onClick={() =>
-                              void change(
-                                selected,
-                                selected.completed_at ? "reopen" : "complete",
-                              )
-                            }
-                          >
-                            {tr(
-                              selected.completed_at ? "重新打开" : "完成任务",
-                            )}
-                          </Button>
+                          {(!selected.review || selected.completed_at) && (
+                            <Button
+                              variant="outline"
+                              disabled={busy || detailEditing}
+                              onClick={() =>
+                                void change(
+                                  selected,
+                                  selected.completed_at ? "reopen" : "complete",
+                                )
+                              }
+                            >
+                              {tr(
+                                selected.completed_at ? "重新打开" : "完成任务",
+                              )}
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             disabled={busy || detailEditing}
@@ -1253,6 +1290,33 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                                   <small>{tr(label)}</small>
                                   <strong>{v.title || "—"}</strong>
                                   <p>{v.body}</p>
+                                  {v.review && (
+                                    <div className="todo-review-history">
+                                      <small>
+                                        {tr("任务验收")} ·{" "}
+                                        {tr(
+                                          reviewLabels[v.review.state] ||
+                                            "待提交验收",
+                                        )}{" "}
+                                        · {name(v.review.reviewer_id)}
+                                      </small>
+                                      <p className="todo-review-criteria">
+                                        {v.review.criteria}
+                                      </p>
+                                      {v.review.evidence && (
+                                        <p className="todo-review-criteria">
+                                          {tr("交付依据")} · {v.review.evidence}
+                                        </p>
+                                      )}
+                                      {v.review.decision_note && (
+                                        <p className="todo-review-criteria">
+                                          {tr("验收意见")} ·{" "}
+                                          {v.review.decision_note}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
                                   <p>
                                     {board?.columns.find(
                                       (c) => c.id === v.column_id,

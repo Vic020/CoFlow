@@ -9,8 +9,8 @@ test('assistant configuration preference never chooses an unverified key',()=>{
  assert.equal(defaultAIConfig([config('shared','team',true,null)]),undefined);
 });
 test('assistant only navigates generated object links',()=>{
- for(const url of ['/?report=abc','/todo?todo=abc','/calendar?mode=schedule&date=2026-11-06'])assert.equal(safeAssistantLink(url),true);
- for(const url of ['https://external.example/','//external.example','javascript:alert(1)','/settings','/todo?todo=x&token=secret','/?report=<script>'])assert.equal(safeAssistantLink(url),false);
+ for(const url of ['/?report=abc','/todo?todo=abc','/calendar?event=synthetic-event','/calendar?mode=schedule&date=2026-11-06'])assert.equal(safeAssistantLink(url),true);
+ for(const url of ['https://external.example/','//external.example','javascript:alert(1)','/settings','/todo?todo=x&token=secret','/?report=<script>','/calendar?event=x&token=secret'])assert.equal(safeAssistantLink(url),false);
 });
 test('offline assistant prepares, edits and confirms synthetic work without calling providers',async()=>{
  const configs=await publicDemoRequest('/assistant/configs');assert.equal(configs.items[0].model,'Synthetic');
@@ -42,4 +42,18 @@ test('assistant stream handles UTF-8 byte boundaries, errors and interrupted com
  const {consumeAssistantStream}=await import('../apps/web/lib/assistant-stream.ts');
  const bytes=new TextEncoder().encode('event: delta\r\ndata: {"text":"进度"}\r\n\r\nevent: done\r\ndata: {"conversation_id":"synthetic","turn":{}}\r\n\r\n');let shown='';const stream=new ReadableStream({start(c){for(const byte of bytes)c.enqueue(Uint8Array.of(byte));c.close()}});const v=await consumeAssistantStream(stream,s=>shown+=s);assert.equal(shown,'进度');assert.equal(v.conversation_id,'synthetic');
  for(const raw of ['event: error\ndata: {"error":"synthetic failure"}\n\n','event: delta\ndata: {"text":"partial"}\n\n'])await assert.rejects(()=>consumeAssistantStream(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(raw));c.close()}}),()=>{}));
+});
+test('offline task progress waits for confirmation and preserves concurrent human edits',async()=>{
+ const send=message=>publicDemoRequest('/assistant/chat',{method:'POST',body:JSON.stringify({message,config_id:'demo-ai',request_id:crypto.randomUUID(),locale:'en'})});
+ const init={method:'POST',body:JSON.stringify({decision:'confirm'})};
+ const created=await send('Create task: Synthetic progress closure');const task=await publicDemoRequest('/assistant/actions/'+created.turn.actions[0].id,init);
+ const id=task.result.id;
+ const proposed=await send('complete task '+id);const card=proposed.turn.actions[0];assert.equal(card.kind,'propose_task_change');
+ assert.equal((await publicDemoRequest('/todos/'+id)).completed_at,null);
+ const applied=await publicDemoRequest('/assistant/actions/'+card.id,init);assert.equal(applied.state,'done');
+ const again=await publicDemoRequest('/assistant/actions/'+card.id,init);assert.equal(again.result.id,id);
+ const taskAfter=await publicDemoRequest('/todos/'+id);assert.ok(taskAfter.completed_at);
+ const reopen=await send('reopen task '+id);const stale=reopen.turn.actions[0];
+ await publicDemoRequest('/todos/'+id,{method:'PATCH',body:JSON.stringify({action:'edit',title:'Human change',expected_revision:taskAfter.revision,operation_id:crypto.randomUUID()})});
+ const failed=await publicDemoRequest('/assistant/actions/'+stale.id,init);assert.equal(failed.state,'failed');assert.ok((await publicDemoRequest('/todos/'+id)).completed_at);
 });

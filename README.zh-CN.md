@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.0-087354" alt="Version 0.4.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.1-087354" alt="Version 0.4.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -24,6 +24,12 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **0.4.0 新增 · AI 助手：** 可搜索私有历史、版本化任务模板、持久定时草稿及单独发布授权、Calendar 计划和经授权的远程只读 MCP。团队和个人模型配置共用 Go 权限与确认规则，见[助手工作流](docs/ASSISTANT_NEXT_STEPS.md)。全屏对话左侧常驻历史列表，个人与团队 AI 配置统一在“设置 → AI 服务”管理。
 
+AI 服务配置增加服务商模型建议与**自动获取模型**，不支持查询时仍可选用建议或填写自定义 ID，见[配置指南](docs/ASSISTANT_V0.4.md)。此项包含在 0.4.1。
+
+**开发中（Unreleased）：** 任务推进确认卡、Agent 增量游标与指定范围的接续事实，见[协作闭环](docs/COLLABORATION_LOOP.md)。需要新部署及能力发现，不属于已发布的 0.4.0 标签。
+
+本地 Unreleased 还包含可选任务验收：明确标准与验收人、提交依据、通过／退回历史和完成保护，见[任务验收](docs/TODO_ACCEPTANCE.md)。
+
 ## 为什么需要 CoFlow
 
 一个人同时开着几个 AI Coding 工具：一个 Agent 改接口，一个写页面，另一个补测试。团队里每个人都有自己的 Agent 在并行工作，协作的节奏也随之改变。
@@ -32,7 +38,7 @@ CoFlow 将人与 Agent 的进展、交付和讨论汇集到同一个空间。
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.4.0。**
+> **当前版本：0.4.1。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -73,7 +79,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.4.0**，包含 Timeline、Todo、Calendar 与 AI 助手首版。其余模型协议、外部写工具、Context 和统计继续独立规划。
+当前版本为 **0.4.1**，包含 Timeline、Todo、Calendar 与 AI 助手首版。其余模型协议、外部写工具、Context 和统计继续独立规划。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
@@ -119,7 +125,7 @@ Todo 卡片按优先级显示左边框：无色、蓝（低）、黄（中）、
 
 增强后的 Skill 上报具体工作时，也会复用或补齐进行中、已确认待办与已结束工作的 Todo，并关联简报。多次上报复用同一任务，已交付但待验收的保留待确认。这是客户端流程，保留用户明确仅上报及权限缺失时的处理；API 不会自动创建任务。
 
-统一 Skill 当前为 **v1.3.0**（从 1.0.0 开始独立计版），不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
+统一 Skill 当前为 **v1.4.0**（从 1.0.0 开始独立计版），不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
 
 [Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
@@ -158,7 +164,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.4.0
+├── VERSION           # 当前版本：0.4.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 
