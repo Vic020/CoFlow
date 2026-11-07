@@ -114,8 +114,8 @@ func TestAssistantConfigIsolationAndConfirmation(t *testing.T) {
 	}
 	owner.call("POST", "/api/v1/teams", map[string]any{"name": "Another QA team", "display_name": "Owner"}, 201)
 	owner.call("GET", "/api/v1/assistant/conversations/"+conv, nil, 404)
-	if len(owner.call("GET", "/api/v1/assistant/configs", nil, 200)["items"].([]any)) != 0 {
-		t.Fatal("cross-team key leak")
+	if items := owner.call("GET", "/api/v1/assistant/configs", nil, 200)["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != config {
+		t.Fatal("account config lost across workspaces")
 	}
 }
 func TestAssistantReportDraftAndCancellation(t *testing.T) {

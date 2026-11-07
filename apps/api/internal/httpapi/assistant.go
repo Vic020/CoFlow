@@ -20,6 +20,53 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 	aiLimit := assistantLimiter()
 	g := r.Group("/api/v1/assistant", sessionOnly)
 	s := &assistant.Service{Slots: make(chan struct{}, 3), Identity: cfg.Identity, Pool: cfg.Identity.Pool, Workspace: ws, Repo: repo, Key: cfg.AIEncryptionKey, Client: cfg.AIClient}
+	g.GET("/web-configs", func(c *gin.Context) {
+		items, e := s.WebConfigs(c.Request.Context(), principal(c))
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, gin.H{"items": items, "configured": cfg.AIEncryptionKey != ""})
+	})
+	g.POST("/web-configs/verify", aiLimit, func(c *gin.Context) {
+		var in assistant.WebConfigInput
+		if !decode(c, &in) {
+			return
+		}
+		v, e := s.VerifyWebConfig(c.Request.Context(), principal(c), in)
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, v)
+	})
+	saveWeb := func(c *gin.Context) {
+		var in assistant.WebConfigInput
+		if !decode(c, &in) {
+			return
+		}
+		v, e := s.SaveWebConfig(c.Request.Context(), principal(c), c.Param("id"), in)
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, v)
+	}
+	g.POST("/web-configs", saveWeb)
+	g.PUT("/web-configs/:id", saveWeb)
+	g.DELETE("/web-configs/:id", func(c *gin.Context) {
+		var in struct {
+			Revision int `json:"expected_revision"`
+		}
+		if !decode(c, &in) {
+			return
+		}
+		if e := s.DeleteWebConfig(c.Request.Context(), principal(c), c.Param("id"), in.Revision); e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
 	g.POST("/models", aiLimit, func(c *gin.Context) {
 		var in assistant.ModelsInput
 		if !decode(c, &in) {

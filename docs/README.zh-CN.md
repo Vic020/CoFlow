@@ -24,6 +24,7 @@ CoFlow **0.4.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.4.2 发布说明](releases/v0.4.2.md) · [更新日志](../CHANGELOG.md) |
 | 在 GitHub 构建通用 Docker 镜像 | [镜像构建](IMAGE_BUILDS.md) |
 | 维护文档、Wiki、Projects 与发布流程 | [维护规范](MAINTENANCE.md) |
+| 跨 session／模型接手 GitHub 管理 | [分步操作与 Agent 交接手册](GITHUB_OPERATIONS.md) |
 
 
 [可续跑发布工具](RELEASE_AUTOMATION.md)
@@ -46,3 +47,5 @@ CoFlow **0.4.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 - [协作闭环](COLLABORATION_LOOP.md)：Unreleased 增量反馈、接续事实与任务推进确认。
 
 - [任务验收](TODO_ACCEPTANCE.md)：Unreleased 验收标准、指定验收人与交接记录。
+
+- [独立联网服务](WEB_SERVICES.md)：搜索／抓取供应商、个人与团队配置及使用边界。

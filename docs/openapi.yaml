@@ -8,6 +8,110 @@ info:
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /assistant/web-configs:
+    get:
+      operationId: listWebConfigs
+      security: [{sessionCookie: []}]
+      description: Independent search/fetch credentials. Lists the account's personal configurations across workspaces and the current team's shared configurations. Keys and encryption contexts are never returned. Team members may use shared configs; only admins edit them. Personal configs are usable/editable only by their owner. Default is scoped to account or team, separate from model settings.
+      responses:
+        '200':
+          description: Web service metadata and encryption readiness.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured: {type: boolean}
+                  items: {type: array, items: {$ref: '#/components/schemas/WebConfig'}}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createWebConfig
+      security: [{sessionCookie: []}]
+      description: A valid matching draft verification proof is required. Saves an independent encrypted key; never copies a model key. Official provider endpoints only. No custom Base URL, background browsing or automatic provider fallback.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WebConfigWrite'}
+      responses:
+        '200':
+          description: Saved web configuration metadata.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WebConfig'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /assistant/web-configs/verify:
+    post:
+      operationId: verifyWebConfigDraft
+      security: [{sessionCookie: []}]
+      description: Sends one public search and one example.com fetch using the selected provider; charges may apply. Does not save a key or draft. Reuses an owned/editable saved key only for the same provider and expected revision. Returns verification_token and expires_at, valid for ten minutes and bound to config ID, revision, scope, provider, key and account (personal) or account/team (shared). Domain-separated from model verification. Saving a matching proof does not repeat requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WebConfigWrite'}
+      responses:
+        '200':
+          description: Short-lived verification proof.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_token: {type: string}
+                  expires_at: {type: string, format: date-time}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /assistant/web-configs/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    put:
+      operationId: editWebConfig
+      security: [{sessionCookie: []}]
+      description: Expected revision and ownership/admin permission required. Existing verification survives only a name/default edit with the same provider and key. New provider requires a new explicit key; connection changes require fresh proof. Revision changes invalidate in-flight browsing before saving the turn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WebConfigWrite'}
+      responses:
+        '200':
+          description: Updated web configuration metadata.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WebConfig'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deleteWebConfig
+      security: [{sessionCookie: []}]
+      description: Expected revision and ownership/admin permission required. History and external source records remain. Does not revoke the vendor key; future and in-flight turns revalidate access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision]
+              properties:
+                expected_revision: {type: integer, minimum: 1}
+      responses:
+        '200': {description: Configuration removed.}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
   /assistant/models:
     post:
       operationId: discoverAssistantModels
@@ -47,7 +151,7 @@ paths:
     get:
       operationId: assistantConfigs
       security: [{sessionCookie: []}]
-      description: Browser session only. Lists this team's shared settings and this member's personal settings, never keys. Shared settings are usable by team members, editable only by admins. Personal settings and selection are member/team scoped. configured reports whether a server encryption key is present; selection may refer to a removed configuration and must not silently fall back.
+      description: Browser session only. Lists this team's shared settings and this account's global personal settings, never keys. Shared settings are usable by team members, editable only by admins. Personal configuration and its default are account scoped and available across workspaces; other members/admins cannot access them. Explicit model selection, histories and jobs remain member/team scoped. configured reports whether a server encryption key is present; selection may refer to a removed configuration and must not silently fall back.
       responses:
         '200':
           description: Configuration metadata and current personal selection.
@@ -71,7 +175,7 @@ paths:
             schema: {$ref: '#/components/schemas/AIConfigWrite'}
       responses:
         '200':
-          description: Saved metadata; verified when a valid matching pre-save proof is supplied. API key encrypted using AES-GCM with server key, configuration ID, team and owner binding.
+          description: Saved metadata; verified when a valid matching pre-save proof is supplied. API key encrypted using AES-GCM with server key, configuration ID and account binding for personal keys, or configuration ID and team binding for shared keys. Legacy personal ciphertext retains its original associated-data context until edited.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AIConfig'}
@@ -82,7 +186,7 @@ paths:
     post:
       operationId: verifyAssistantConfigDraft
       security: [{sessionCookie: []}]
-      description: Verify an unsaved browser configuration before saving. Reuses AIConfigWrite plus optional id and expected_revision for an editable existing config. Checks current permissions and revision, reuses a saved key only for the same provider and canonical Base URL. Sends one minimal provider request without business context or tools; may incur cost. Does not persist a draft/key or mutate saved verified_at. Returns a signed 10-minute proof bound to team/member, config ID, revision, scope, provider, protocol, URL, model and actual key. Saving a valid proof sets verified_at without another provider request; changed, expired or forged proofs are rejected. Only metadata/name/default edits retain an existing verification. Existing save clients without proofs remain compatible but cannot claim a new/changed connection is verified.
+      description: Verify an unsaved browser configuration before saving. Reuses AIConfigWrite plus optional id and expected_revision for an editable existing config. Checks current permissions and revision, reuses a saved key only for the same provider and canonical Base URL. Sends one minimal provider request without business context or tools; may incur cost. Does not persist a draft/key or mutate saved verified_at. Returns a signed 10-minute proof bound to the account for personal scope or team/member for team scope, config ID, revision, scope, provider, protocol, URL, model and actual key. Saving a valid proof sets verified_at without another provider request; changed, expired or forged proofs are rejected. Only metadata/name/default edits retain an existing verification. Existing save clients without proofs remain compatible but cannot claim a new/changed connection is verified.
       requestBody:
         required: true
         content:
@@ -354,7 +458,7 @@ paths:
     post:
       operationId: assistantChat
       security: [{sessionCookie: []}]
-      description: Returns JSON by default, or SSE with Accept text/event-stream. Events start/delta/done/error; deltas are temporary, only done confirms the saved result. Provider supports Chat Completions and Responses text SSE; hidden reasoning is never emitted, split credentials are redacted, incomplete upstream streams are rejected. No automatic billable retry. Verified accessible configuration required. History is server-owned and team/member isolated. New conversations derive a stable ID from request_id for uncertain-response recovery. Repeating request_id/message/web_enabled returns the saved turn; switching providers requires a new conversation. Read tools reuse current-team business services; write tools prepare drafts only, including task move/complete/reopen/reassign/comment via propose_task_change. read_handoff and read_changes resume scoped facts and original source links; read_workspace returns board_revision. No task write tool is available to background jobs. No business changes execute here. Maximum 20 turns, 12 tool calls, 8 proposals, 5 provider round trips and 24-second total timeout. Chat/verification limited to 10 requests per member/team/minute. Shared Go concurrency limited to 3. No platform credit or automatic provider fallback.
+      description: Returns JSON by default, or SSE with Accept text/event-stream. Events start/delta/done/error; deltas are temporary, only done confirms the saved result. Provider supports Chat Completions and Responses text SSE; hidden reasoning is never emitted, split credentials are redacted, incomplete upstream streams are rejected. No automatic billable retry. Verified accessible configuration required. History is server-owned and team/member isolated. New conversations derive a stable ID from request_id for uncertain-response recovery. Repeating request_id/message/web_enabled/web_config_id returns the saved turn; switching providers requires a new conversation. Read tools reuse current-team business services; write tools prepare drafts only, including task move/complete/reopen/reassign/comment via propose_task_change. read_handoff and read_changes resume scoped facts and original source links; read_workspace returns board_revision. No task write tool is available to background jobs. No business changes execute here. Maximum 20 turns, 12 tool calls, 8 proposals, 5 provider round trips and 24-second total timeout. Chat/verification limited to 10 requests per member/team/minute. Shared Go concurrency limited to 3. No platform credit or automatic provider fallback.
       requestBody:
         required: true
         content:
@@ -369,7 +473,8 @@ paths:
                 template_version: {type: integer}
                 parameters: {type: object, additionalProperties: {type: string}, description: Validated template parameters, pinned with the first turn.}
                 mcp_ids: {type: array, maxItems: 3, items: {type: string}, description: Explicitly selected verified connections with approved read-only tools.}
-                web_enabled: {type: boolean, default: false, description: Explicit per-turn opt-in to DeepSeek search/fetch. Only verified DeepSeek Chat Completions configurations at the official api.deepseek.com origin with empty or /v1 base path; rejected for background jobs and other providers/proxies. Three requests maximum, no automatic retry, duplicate successful calls cached within the turn. Fetch only public HTTPS links returned by search or explicitly supplied by this user.}
+                web_enabled: {type: boolean, default: false, description: Explicit per-turn opt-in to the independent web_config_id; works across model providers. Rejected for background jobs. Three external requests maximum, no automatic retry or vendor fallback; identical successful calls cached within the turn. Fetch accepts only public HTTPS URLs returned by search or explicitly supplied this turn. Model keys are never used for browsing.}
+                web_config_id: {type: string, description: Required when web_enabled is true. An accessible verified personal/account or current-team web configuration; ignored when web is disabled.}
                 request_id: {type: string, maxLength: 120}
                 message: {type: string, maxLength: 6000, description: Server also enforces a 6000-byte limit.}
                 locale: {type: string, enum: [en, zh-CN]}
@@ -386,7 +491,7 @@ paths:
                     date: {type: string}
                     timezone: {type: string}
       responses:
-        '200': {description: 'conversation_id and turn with reply, links, pending action cards, tool activity and provider-reported usage (unknown if unavailable, never invented costs). No model-generated URL is trusted as a navigable object link. Optional web_enabled, web_requests and web_sources record actual DeepSeek attempts and sanitized external sources separately from internal links; external content never executes business writes.'}
+        '200': {description: 'conversation_id and turn with reply, links, pending action cards, tool activity and provider-reported usage (unknown if unavailable, never invented costs). No model-generated URL is trusted as a navigable object link. Optional web_enabled, web_config_id, web_provider, web_config_revision, web_requests and web_sources record actual selected-vendor attempts and sanitized external sources separately from internal links; external content never executes business writes.'}
         '400': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
@@ -2231,6 +2336,29 @@ components:
         next_run_at: {type: string, format: date-time, readOnly: true}
         last_run_state: {type: string, readOnly: true}
 
+    WebConfig:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        scope: {type: string, enum: [personal, team]}
+        provider: {type: string, enum: [tavily, deepseek, exa, firecrawl]}
+        revision: {type: integer}
+        is_default: {type: boolean}
+        verified_at: {type: [string, 'null'], format: date-time}
+        editable: {type: boolean}
+    WebConfigWrite:
+      type: object
+      required: [name, scope, provider]
+      properties:
+        id: {type: string, description: Existing editable config ID for draft verification.}
+        name: {type: string, maxLength: 100}
+        scope: {type: string, enum: [personal, team]}
+        provider: {type: string, enum: [tavily, deepseek, exa, firecrawl]}
+        api_key: {type: string, writeOnly: true, maxLength: 4096, description: Required for a new config or changed provider. Empty on edit reuses only an editable same-provider key.}
+        expected_revision: {type: integer, minimum: 1}
+        is_default: {type: boolean}
+        verification_token: {type: string, writeOnly: true, description: Matching transient proof; required for new or changed connections.}
     AIConfig:
       type: object
       properties:

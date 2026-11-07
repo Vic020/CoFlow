@@ -28,7 +28,7 @@ func TestDeepseekWebRoutingBudgetAndSources(t *testing.T) {
 		}
 		return response(body), nil
 	})}}
-	w := newDeepseekWeb("")
+	w := newWebSession("")
 	result, e := s.webTool(context.Background(), w, "web_search", `{"query":"public release"}`, "synthetic-key")
 	if e != nil || len(w.sources) != 1 {
 		t.Fatal(e)
@@ -57,22 +57,12 @@ func TestDeepseekWebRoutingBudgetAndSources(t *testing.T) {
 	}
 }
 func TestDeepseekWebFailureAndURLGuards(t *testing.T) {
-	c := Config{Provider: "deepseek", Protocol: "chat-completions", BaseURL: "https://api.deepseek.com/v1"}
-	if !deepseekWebSupported(c) {
-		t.Fatal("official API rejected")
-	}
-	for _, base := range []string{"http://api.deepseek.com", "https://api.deepseek.com.evil.example", "https://proxy.example.com/v1", "https://api.deepseek.com/other"} {
-		c.BaseURL = base
-		if deepseekWebSupported(c) {
-			t.Fatal("unapproved base accepted")
-		}
-	}
 	for _, raw := range []string{"javascript:alert(1)", "http://example.com", "https://localhost./secret", "https://127.1/secret", "https://10.0.0.1", "https://u:p@example.com", "https://internal.local/", "https://2130706433"} {
 		if safeWebURL(raw) != "" {
 			t.Fatal("unsafe URL accepted")
 		}
 	}
-	w := newDeepseekWeb("Read https://docs.example.com/guide")
+	w := newWebSession("Read https://docs.example.com/guide")
 	if !w.allowed["https://docs.example.com/guide"] {
 		t.Fatal("explicit URL lost")
 	}
@@ -90,7 +80,7 @@ func TestDeepseekWebFailureAndURLGuards(t *testing.T) {
 	if calls != 1 {
 		t.Fatal("failed provider retried automatically")
 	}
-	if _, e := s.webTool(context.Background(), newDeepseekWeb(""), "web_search", `{"query":"synthetic-key"}`, "synthetic-key"); e == nil || calls != 1 {
+	if _, e := s.webTool(context.Background(), newWebSession(""), "web_search", `{"query":"synthetic-key"}`, "synthetic-key"); e == nil || calls != 1 {
 		t.Fatal("credential query sent")
 	}
 }

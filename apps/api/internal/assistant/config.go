@@ -44,6 +44,7 @@ type Config struct {
 	Editable   bool       `json:"editable"`
 	secret     []byte
 	owner      *string
+	keyTeam    *string
 }
 type ConfigInput struct {
 	Config
@@ -92,6 +93,9 @@ func (s *Service) open(c Config, team string) (string, error) {
 	owner := ""
 	if c.owner != nil {
 		owner = *c.owner
+	}
+	if c.keyTeam != nil {
+		team = *c.keyTeam
 	}
 	v, e := a.Open(nil, c.secret[:a.NonceSize()], c.secret[a.NonceSize():], []byte(c.ID+":"+team+":"+owner))
 	if e != nil {
@@ -153,11 +157,11 @@ func (s *Service) client() *http.Client {
 	return secureClient()
 }
 
-const configCols = `id,name,provider,protocol,base_url,model,revision,is_default,verified_at,secret,owner_id`
+const configCols = `id,name,provider,protocol,base_url,model,revision,is_default,verified_at,secret,owner_id,secret_context`
 
 func scanConfig(row pgx.Row, p identity.Principal) (Config, error) {
 	var c Config
-	e := row.Scan(&c.ID, &c.Name, &c.Provider, &c.Protocol, &c.BaseURL, &c.Model, &c.Revision, &c.Default, &c.VerifiedAt, &c.secret, &c.owner)
+	e := row.Scan(&c.ID, &c.Name, &c.Provider, &c.Protocol, &c.BaseURL, &c.Model, &c.Revision, &c.Default, &c.VerifiedAt, &c.secret, &c.owner, &c.keyTeam)
 	c.Scope = "team"
 	if c.owner != nil {
 		c.Scope = "personal"
@@ -166,7 +170,7 @@ func scanConfig(row pgx.Row, p identity.Principal) (Config, error) {
 	return c, e
 }
 func (s *Service) Configs(ctx context.Context, p identity.Principal) ([]Config, error) {
-	rows, e := s.Pool.Query(ctx, `SELECT `+configCols+` FROM assistant_configs WHERE team_id=$1 AND (owner_id IS NULL OR owner_id=$2) ORDER BY is_default DESC,created_at`, p.TeamID, p.UserID)
+	rows, e := s.Pool.Query(ctx, `SELECT `+configCols+` FROM assistant_configs WHERE (team_id=$1 AND owner_id IS NULL) OR (team_id IS NULL AND owner_id=$2) ORDER BY is_default DESC,created_at`, p.TeamID, p.UserID)
 	if e != nil {
 		return nil, e
 	}
@@ -182,7 +186,7 @@ func (s *Service) Configs(ctx context.Context, p identity.Principal) ([]Config, 
 	return out, rows.Err()
 }
 func (s *Service) config(ctx context.Context, p identity.Principal, id string) (Config, error) {
-	c, e := scanConfig(s.Pool.QueryRow(ctx, `SELECT `+configCols+` FROM assistant_configs WHERE id=$1 AND team_id=$2 AND (owner_id IS NULL OR owner_id=$3)`, id, p.TeamID, p.UserID), p)
+	c, e := scanConfig(s.Pool.QueryRow(ctx, `SELECT `+configCols+` FROM assistant_configs WHERE id=$1 AND ((team_id=$2 AND owner_id IS NULL) OR (team_id IS NULL AND owner_id=$3))`, id, p.TeamID, p.UserID), p)
 	if errors.Is(e, pgx.ErrNoRows) {
 		return c, &identity.Error{Status: 404, Message: "AI 配置不可用"}
 	}
@@ -277,7 +281,17 @@ func (s *Service) SaveConfig(ctx context.Context, p identity.Principal, id strin
 		owner = p.UserID
 		ownerArg = owner
 	}
-	sealed, e := s.seal(id, p.TeamID, owner, key)
+	var teamArg, secretContext any
+	keyTeam := p.TeamID
+	lockScope := "team:" + p.TeamID
+	if in.Scope == "personal" {
+		keyTeam = ""
+		secretContext = ""
+		lockScope = "account:" + p.UserID
+	} else {
+		teamArg = p.TeamID
+	}
+	sealed, e := s.seal(id, keyTeam, owner, key)
 	if e != nil {
 		return old, e
 	}
@@ -286,20 +300,20 @@ func (s *Service) SaveConfig(ctx context.Context, p identity.Principal, id strin
 		return old, e
 	}
 	defer tx.Rollback(ctx)
-	// Serialize default selection within a team without reading anybody else's private key.
-	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "ai-config:"+p.TeamID); e != nil {
+	// Serialize defaults in their actual scope: account or team.
+	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "ai-config:"+lockScope); e != nil {
 		return old, e
 	}
 	if in.Default {
-		if _, e = tx.Exec(ctx, `UPDATE assistant_configs SET is_default=false WHERE team_id=$1 AND owner_id IS NOT DISTINCT FROM $2::text`, p.TeamID, ownerArg); e != nil {
+		if _, e = tx.Exec(ctx, `UPDATE assistant_configs SET is_default=false WHERE team_id IS NOT DISTINCT FROM $1::text AND owner_id IS NOT DISTINCT FROM $2::text`, teamArg, ownerArg); e != nil {
 			return old, e
 		}
 	}
 	if old.ID == "" {
-		_, e = tx.Exec(ctx, `INSERT INTO assistant_configs(id,team_id,owner_id,name,provider,protocol,base_url,model,secret,is_default,verified_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, id, p.TeamID, ownerArg, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, verifiedAt)
+		_, e = tx.Exec(ctx, `INSERT INTO assistant_configs(id,team_id,owner_id,name,provider,protocol,base_url,model,secret,is_default,verified_at,secret_context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, id, teamArg, ownerArg, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, verifiedAt, secretContext)
 	} else {
 		var tag interface{ RowsAffected() int64 }
-		tag, e = tx.Exec(ctx, `UPDATE assistant_configs SET name=$1,provider=$2,protocol=$3,base_url=$4,model=$5,secret=$6,is_default=$7,verified_at=$10,revision=revision+1,updated_at=now() WHERE id=$8 AND revision=$9`, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, id, in.ExpectedRevision, verifiedAt)
+		tag, e = tx.Exec(ctx, `UPDATE assistant_configs SET name=$1,provider=$2,protocol=$3,base_url=$4,model=$5,secret=$6,is_default=$7,verified_at=$10,secret_context=$11,revision=revision+1,updated_at=now() WHERE id=$8 AND revision=$9`, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, id, in.ExpectedRevision, verifiedAt, secretContext)
 		if e == nil && tag.RowsAffected() != 1 {
 			return old, conflict()
 		}
@@ -320,7 +334,7 @@ func (s *Service) DeleteConfig(ctx context.Context, p identity.Principal, id str
 	if !c.Editable {
 		return identity.Denied("不能修改此 AI 配置")
 	}
-	tag, e := s.Pool.Exec(ctx, `DELETE FROM assistant_configs WHERE id=$1 AND revision=$2 AND team_id=$3`, id, revision, p.TeamID)
+	tag, e := s.Pool.Exec(ctx, `DELETE FROM assistant_configs WHERE id=$1 AND revision=$2 AND ((team_id=$3 AND owner_id IS NULL) OR (team_id IS NULL AND owner_id=$4))`, id, revision, p.TeamID, p.UserID)
 	if e == nil && tag.RowsAffected() != 1 {
 		return conflict()
 	}

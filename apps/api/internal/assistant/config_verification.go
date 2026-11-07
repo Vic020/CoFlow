@@ -18,7 +18,11 @@ type ConfigVerification struct {
 }
 
 func verificationFingerprint(p identity.Principal, id string, in ConfigInput, key string) string {
-	b, _ := json.Marshal([]any{"ai-config-verify-v1", p.TeamID, p.UserID, id, in.Scope, in.ExpectedRevision, in.Provider, in.Protocol, in.BaseURL, in.Model, key})
+	team := p.TeamID
+	if in.Scope == "personal" {
+		team = ""
+	}
+	b, _ := json.Marshal([]any{"ai-config-verify-v1", team, p.UserID, id, in.Scope, in.ExpectedRevision, in.Provider, in.Protocol, in.BaseURL, in.Model, key})
 	sum := sha256.Sum256(b)
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }

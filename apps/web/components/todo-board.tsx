@@ -414,7 +414,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
           />
         </label>
         <div className="todo-actions">
-          <LoadingStatus active={loading} />
+          <LoadingStatus active={loading && !!board} />
           {meta.mode !== "local-demo" && (
             <NotificationCenter
               team={meta.team.id}
@@ -533,7 +533,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
       )}
       {notice && <p role="status">{notice}</p>}
       {!board ? (
-        <PageLoading active={loading} indicator={false} />
+        <PageLoading active={loading} variant="board" />
       ) : (
         <div className="todo-lanes">
           {board.columns

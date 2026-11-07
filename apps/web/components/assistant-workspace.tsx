@@ -37,7 +37,7 @@ import {
 import {
   safeAssistantLink,
   safeWebSourceLink,
-  supportsDeepseekWeb,
+  webProviders,
   templateTitle,
   type AIAction,
 } from "@/lib/assistant";
@@ -207,20 +207,46 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
           </Button>
         </div>
         <div className="ai-toolbar-end">
-          {!publicDemo && supportsDeepseekWeb(config) && (
+          {!publicDemo && (
             <button
               type="button"
               className="ai-web-toggle"
               aria-pressed={ai.webEnabled}
               disabled={ai.busy}
-              title={tr("搜索词发送至 DeepSeek，搜索和抓取另行计费")}
-              onClick={() => ai.setWebEnabled(!ai.webEnabled)}
+              title={tr("搜索词和网址发送至所选联网服务，费用由对应密钥承担")}
+              onClick={() => {
+                if (
+                  !ai.webConfigs.some(
+                    (c) => c.id === ai.webConfigID && c.verified_at,
+                  )
+                ) {
+                  ai.openWebSettings("personal");
+                  return;
+                }
+                ai.setWebEnabled(!ai.webEnabled);
+              }}
             >
               <Globe size={13} />
               {tr("联网")}
             </button>
           )}
 
+          {!publicDemo && ai.webEnabled && (
+            <SelectMenu
+              label={tr("联网配置")}
+              value={ai.webConfigID}
+              onChange={(v) => {
+                ai.setWebConfig(v);
+                ai.setWebEnabled(true);
+              }}
+              options={ai.webConfigs
+                .filter((c) => c.verified_at)
+                .map((c) => ({
+                  value: c.id,
+                  label: `${tr(c.scope === "team" ? "团队共用" : "个人")} · ${c.name} · ${webProviders.find((p) => p.id === c.provider)?.name || c.provider}`,
+                }))}
+            />
+          )}
           {!publicDemo && (
             <button
               className="ai-stream-toggle"
@@ -395,6 +421,8 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
               ) : null}
               {turn.web_enabled && (
                 <small className="muted">
+                  {turn.web_provider &&
+                    `${webProviders.find((p) => p.id === turn.web_provider)?.name || turn.web_provider} · `}
                   {tr("联网请求：{0}", { 0: turn.web_requests ?? 0 })}
                 </small>
               )}

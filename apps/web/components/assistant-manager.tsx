@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { LoadingStatus } from "./ui/loading-status";
+import { ContentSkeleton, LoadingStatus } from "./ui/loading-status";
 import { SelectMenu } from "./ui/select-menu";
 import { civilDay } from "@/lib/calendar";
 import { request } from "@/lib/types";
@@ -137,11 +137,22 @@ function useOperation() {
   };
   return { busy: pending > 0, settled, error, run };
 }
-function Feedback({ busy, error }: { busy: boolean; error: string }) {
+function Feedback({
+  busy,
+  error,
+  showProgress = true,
+}: {
+  busy: boolean;
+  error: string;
+  showProgress?: boolean;
+}) {
   const { t: tr } = useI18n();
   return (
     <>
-      <LoadingStatus active={busy} className="ai-manager-loading" />
+      <LoadingStatus
+        active={busy && showProgress}
+        className="ai-manager-loading"
+      />
       {error && (
         <p role="alert" className="error-text">
           {tr(error)}
@@ -228,7 +239,10 @@ export function AssistantHistory({
           ]}
         />
       </div>
-      <Feedback {...op} />
+      <Feedback {...op} showProgress={items.length > 0} />
+      {!items.length && (!op.settled || op.busy) && !op.error && (
+        <ContentSkeleton />
+      )}
       {!items.length && op.settled && !op.busy && !op.error && (
         <p className="muted">{tr("还没有对话")}</p>
       )}
@@ -386,7 +400,10 @@ function TemplateManager({ onClose }: { onClose: () => void }) {
   });
   return (
     <div className="ai-manager-body" aria-busy={op.busy}>
-      <Feedback {...op} />
+      <Feedback
+        {...op}
+        showProgress={items.length > 0 || !!edit || !!selected}
+      />
       {!edit && !selected && (
         <>
           <Button
@@ -400,6 +417,9 @@ function TemplateManager({ onClose }: { onClose: () => void }) {
             <Plus size={14} />
             {tr("新建模板")}
           </Button>
+          {!items.length && (!op.settled || op.busy) && !op.error && (
+            <ContentSkeleton />
+          )}
           {items.map((t) => (
             <div className="ai-management-item" key={t.id}>
               <button
@@ -699,7 +719,10 @@ function JobsManager({ onClose }: { onClose: () => void }) {
   }
   return (
     <div className="ai-manager-body" aria-busy={op.busy}>
-      <Feedback {...op} />
+      <Feedback
+        {...op}
+        showProgress={items.length > 0 || !!edit || runs !== null}
+      />
       {publicDemo && (
         <p className="muted">{tr("演示仅保存配置，不执行定时任务。")}</p>
       )}
@@ -714,6 +737,9 @@ function JobsManager({ onClose }: { onClose: () => void }) {
             <Plus size={14} />
             {tr("新建定时任务")}
           </Button>
+          {!items.length && (!op.settled || op.busy) && !op.error && (
+            <ContentSkeleton />
+          )}
           {items.length === 0 && op.settled && !op.busy && !op.error && (
             <p className="muted">{tr("尚无定时任务")}</p>
           )}
@@ -1005,7 +1031,10 @@ function MCPManager() {
   }, []);
   return (
     <div className="ai-manager-body" aria-busy={op.busy}>
-      <Feedback {...op} />
+      <Feedback
+        {...op}
+        showProgress={items.length > 0 || !!edit || !!approval}
+      />
       <p className="muted">
         {tr("远程 HTTPS 只读工具；先验证，再选择授权工具。外部结果仅作参考。")}
       </p>
@@ -1036,6 +1065,9 @@ function MCPManager() {
             <Plus size={14} />
             {tr("新建连接")}
           </Button>
+          {!items.length && (!op.settled || op.busy) && !op.error && (
+            <ContentSkeleton />
+          )}
           {items.map((c) => (
             <div className="ai-management-item" key={c.id}>
               <label className="ai-check">

@@ -39,7 +39,8 @@
         "docs/USAGE.md",
         "docs/PRODUCT.md",
         "docs/COLLABORATION_GUIDE.md",
-        "docs/ASSISTANT_V0.4.md"
+        "docs/ASSISTANT_V0.4.md",
+        "docs/WEB_SERVICES.md"
       ]
     },
     {
@@ -48,7 +49,8 @@
       "sources": [
         "docs/USAGE.md",
         "docs/I18N.md",
-        "docs/ASSISTANT_V0.4.md"
+        "docs/ASSISTANT_V0.4.md",
+        "docs/WEB_SERVICES.md"
       ]
     },
     {

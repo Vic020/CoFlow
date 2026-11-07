@@ -1,11 +1,9 @@
 "use client";
 
 import { useAssistant } from "./assistant-provider";
-import { Settings2 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
-import { ChevronUp, Loader2, LogOut, UserRound } from "lucide-react";
-import { PersonalProfile } from "@/components/personal-profile";
+import { ChevronUp, Loader2, LogOut, UserRound, Settings2 } from "lucide-react";
 import { AccountLanguage } from "@/components/account-language";
 import { useAuth } from "@/components/auth-gate";
 import appPackage from "@/package.json";
@@ -22,7 +20,6 @@ export function AccountMenu({
   const auth = useAuth();
   const assistant = useAssistant();
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const root = useRef<HTMLDivElement>(null);
@@ -67,7 +64,6 @@ export function AccountMenu({
         </div>
         <ChevronUp size={13} className="profile-chevron" />
       </button>
-      {profile && <PersonalProfile onClose={() => setProfile(false)} />}
       {open && (
         <div
           className="account-popover"
@@ -81,11 +77,11 @@ export function AccountMenu({
               type="button"
               onClick={() => {
                 setOpen(false);
-                setProfile(true);
+                assistant.openPersonalSettings();
               }}
             >
               <UserRound size={15} />
-              {tr("个人信息")}
+              {tr("个人设置")}
             </button>
           )}
           <button
@@ -96,7 +92,7 @@ export function AccountMenu({
             }}
           >
             <Settings2 size={15} />
-            {tr("AI 设置")}
+            {tr("个人 AI 设定")}
           </button>
           <AccountLanguage />
           {auth.mode !== "local-demo" && (

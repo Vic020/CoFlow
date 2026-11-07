@@ -854,7 +854,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               !credentialsPage &&
               !settingsPage && (
                 <div className="top-actions">
-                  <LoadingStatus active={loading} />
+                  <LoadingStatus active={loading && timelineReady.current} />
                   <label className="search">
                     <Search size={16} />
                     <input
@@ -912,17 +912,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             <AssistantWorkspace />
           ) : calendarPage ? (
             meta ? (
-              <Suspense fallback={<PageLoading />}>
+              <Suspense fallback={<PageLoading variant="calendar" />}>
                 <CalendarWorkspace key={meta.team.id} meta={meta} />
               </Suspense>
             ) : (
-              <PageLoading />
+              <PageLoading variant="calendar" />
             )
           ) : todoPage ? (
             meta ? (
               <TodoBoard key={meta.team.id} meta={meta} />
             ) : (
-              <PageLoading />
+              <PageLoading variant="board" />
             )
           ) : settingsPage ? (
             <div className="team-settings-content">
@@ -933,7 +933,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   onChange={() => void load()}
                 />
               ) : (
-                <PageLoading />
+                <PageLoading variant="settings" />
               )}
             </div>
           ) : credentialsPage ? (
@@ -1112,7 +1112,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
                 {loading && !timelineReady.current ? (
-                  <PageLoading indicator={false} />
+                  <PageLoading variant="timeline" />
                 ) : !error && groups.length === 0 ? (
                   <div className="empty">
                     <Search size={30} />

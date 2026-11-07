@@ -13,6 +13,7 @@ import {
 } from "./ui/dialog";
 import { request } from "@/lib/types";
 import { aiProviders, type AIConfig } from "@/lib/assistant";
+import { ContentSkeleton } from "./ui/loading-status";
 import { publicDemo } from "@/lib/runtime";
 
 export function AISettings({ scope }: { scope: "team" | "personal" }) {
@@ -30,20 +31,24 @@ export function AISettings({ scope }: { scope: "team" | "personal" }) {
   }, [ai.refresh]);
   return (
     <div className="ai-settings">
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => {
-          ai.openSettings(null);
-          ai.setManager("templates");
-        }}
-      >
-        {tr("任务模板")}
-      </Button>
+      {scope === "team" && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            ai.openSettings(null);
+            ai.setManager("templates");
+          }}
+        >
+          {tr("任务模板")}
+        </Button>
+      )}
       {publicDemo ? (
         <p className="muted">
           {tr("演示使用合成对话，不保存 API Key 或访问模型服务。")}
         </p>
+      ) : !ai.ready ? (
+        <ContentSkeleton />
       ) : !ai.configured ? (
         <p className="error-text">
           {tr("请先在服务器配置 COFLOW_AI_ENCRYPTION_KEY")}

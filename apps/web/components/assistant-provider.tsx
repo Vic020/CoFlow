@@ -16,19 +16,30 @@ import { consumeAssistantStream } from "@/lib/assistant-stream";
 import { publicDemo } from "@/lib/runtime";
 import {
   defaultAIConfig,
-  supportsDeepseekWeb,
+  defaultWebConfig,
+  type WebConfig,
   type AIConfig,
   type AITurn,
   type AIAction,
   type AIConversation,
   type AITemplate,
 } from "@/lib/assistant";
+import { PersonalAISettings } from "./personal-ai-settings";
+import { PersonalProfile } from "./personal-profile";
 import { AssistantManager } from "./assistant-manager";
 
 type State = {
   streamed: string;
   streaming: boolean;
   webEnabled: boolean;
+  webConfigs: WebConfig[];
+  webReady: boolean;
+  webError: string;
+  webConfigured: boolean;
+  webConfigID: string;
+  setWebConfig: (id: string) => void;
+  refreshWeb: () => Promise<void>;
+  openWebSettings: (scope: "personal" | "team") => void;
   setWebEnabled: (value: boolean) => void;
   setStreaming: (v: boolean) => void;
   input: string;
@@ -52,6 +63,7 @@ type State = {
   pending: string;
   panel: boolean;
   setPanel: (open: boolean) => void;
+  openPersonalSettings: (tab?: "profile" | "ai" | "web") => void;
   openSettings: (scope: "team" | "personal" | null) => void;
   send: (message: string) => Promise<void>;
   cancel: () => void;
@@ -81,8 +93,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 function AssistantScope({ children }: { children: ReactNode }) {
   const { locale, timeZone } = useI18n();
   const router = useRouter();
+  const [personalSettings, openPersonalSettings] = useState<
+    "profile" | "ai" | "web" | null
+  >(null);
   function openSettings(scope: "team" | "personal" | null) {
-    if (scope) router.push(`/settings/?tab=ai&scope=${scope}`);
+    if (scope === "team") router.push("/settings/?tab=ai");
+    else openPersonalSettings(scope === "personal" ? "ai" : null);
   }
   const pathname = usePathname();
   const params = useSearchParams();
@@ -100,6 +116,23 @@ function AssistantScope({ children }: { children: ReactNode }) {
   const [streamed, setStreamed] = useState(""),
     [streaming, setStreaming] = useState(true);
   const [webEnabled, setWebEnabled] = useState(false);
+  const [webConfigs, setWebConfigs] = useState<WebConfig[]>([]),
+    [webConfigID, updateWebConfig] = useState(""),
+    [webReady, setWebReady] = useState(false),
+    [webConfigured, setWebConfigured] = useState(true),
+    [webError, setWebError] = useState("");
+  const selectedWeb = useRef("");
+  function setWebConfig(value: string) {
+    selectedWeb.current = value;
+    updateWebConfig(value);
+    setWebEnabled(false);
+    retry.current = null;
+  }
+  function openWebSettings(scope: "personal" | "team") {
+    if (scope === "team") router.push("/settings/?tab=web");
+    else openPersonalSettings("web");
+  }
+
   useEffect(() => setWebEnabled(false), [configID]);
   const drafts = useRef<Record<string, string>>({});
   const [current, setCurrent] = useState<AIConversation | null>(null);
@@ -121,6 +154,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
   const acting = useRef(false);
   const retry = useRef<{
     web_enabled?: boolean;
+    web_config_id?: string;
     message: string;
     request_id: string;
     config_id: string;
@@ -159,13 +193,35 @@ function AssistantScope({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+  const refreshWeb = useCallback(async () => {
+    try {
+      const v = await request<{ items: WebConfig[]; configured: boolean }>(
+        "/assistant/web-configs",
+      );
+      if (!alive.current) return;
+      setWebConfigs(v.items);
+      setWebConfigured(v.configured);
+      setWebError("");
+      if (!selectedWeb.current) {
+        const next = defaultWebConfig(v.items)?.id || "";
+        selectedWeb.current = next;
+        updateWebConfig(next);
+      }
+    } catch (e) {
+      if (alive.current) setWebError((e as Error).message);
+    } finally {
+      if (alive.current) setWebReady(true);
+    }
+  }, []);
   useEffect(() => {
     if (pathname.replace(/\/$/, "") === "/assistant") setPanel(false);
   }, [pathname]);
   useEffect(() => {
-    if (pathname.replace(/\/$/, "") === "/assistant" || panel || manager)
+    if (pathname.replace(/\/$/, "") === "/assistant" || panel || manager) {
       void refresh();
-  }, [pathname, panel, manager, refresh]);
+      void refreshWeb();
+    }
+  }, [pathname, panel, manager, refresh, refreshWeb]);
   function newConversation() {
     if (sending.current) return;
     setWebEnabled(false);
@@ -240,8 +296,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
     const current =
       prior &&
       prior.message === message &&
-      prior.web_enabled ===
-        (webEnabled && supportsDeepseekWeb(chosen) && !publicDemo) &&
+      prior.web_enabled === (webEnabled && !publicDemo) &&
+      prior.web_config_id === (webEnabled ? selectedWeb.current : "") &&
       prior.config_id === selected.current &&
       prior.conversation_id === id.current
         ? prior
@@ -255,8 +311,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
             template_version: template?.version,
             parameters,
             mcp_ids: mcpIDs,
-            web_enabled:
-              webEnabled && supportsDeepseekWeb(chosen) && !publicDemo,
+            web_enabled: webEnabled && !publicDemo,
+            web_config_id: webEnabled ? selectedWeb.current : "",
             context: {
               page: pathname,
               project: params.get("project") || "",
@@ -383,6 +439,14 @@ function AssistantScope({ children }: { children: ReactNode }) {
     streaming,
     setStreaming,
     webEnabled,
+    webConfigs,
+    webReady,
+    webConfigured,
+    webError,
+    webConfigID,
+    setWebConfig,
+    refreshWeb,
+    openWebSettings,
     setWebEnabled,
     input,
     setInput,
@@ -406,6 +470,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
     panel,
     setPanel,
     openSettings,
+    openPersonalSettings: (tab = "profile") => openPersonalSettings(tab),
     send,
     cancel,
     refresh,
@@ -418,6 +483,17 @@ function AssistantScope({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={value}>
       {children}
+      {personalSettings === "profile" && (
+        <PersonalProfile onClose={() => openPersonalSettings(null)} />
+      )}
+      {(personalSettings === "ai" || personalSettings === "web") && (
+        <PersonalAISettings
+          key={personalSettings}
+          initialTab={personalSettings}
+          onClose={() => openPersonalSettings(null)}
+        />
+      )}
+
       {manager && (
         <AssistantManager page={manager} onClose={() => setManager(null)} />
       )}

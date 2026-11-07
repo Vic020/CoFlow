@@ -1,6 +1,9 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
+import { useAssistant } from "./assistant-provider";
+import { WebSettings } from "./web-settings";
+import { Globe } from "lucide-react";
 import { AISettings } from "./assistant-settings";
 import { MessageSquare } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -36,21 +39,23 @@ export function TeamSettings({
   const params = useSearchParams(),
     router = useRouter();
   const tabValue = params.get("tab") || "members";
-  const tab = ["members", "invites", "project", "domain", "ai"].includes(
+  const tab = ["members", "invites", "project", "domain", "ai", "web"].includes(
     tabValue,
   )
     ? tabValue
     : "members";
-  const aiScope = params.get("scope") === "team" ? "team" : "personal";
+  const assistant = useAssistant();
+  const legacyPersonal = tab === "ai" && params.get("scope") === "personal";
+  useEffect(() => {
+    if (!legacyPersonal) return;
+    assistant.openPersonalSettings("ai");
+    const query = new URLSearchParams(params.toString());
+    query.delete("scope");
+    router.replace(`/settings/?${query}`, { scroll: false });
+  }, [legacyPersonal]);
   function setTab(next: string) {
     const query = new URLSearchParams(params.toString());
     query.set("tab", next);
-    router.replace(`/settings/?${query}`, { scroll: false });
-  }
-  function setAIScope(scope: "personal" | "team") {
-    const query = new URLSearchParams(params.toString());
-    query.set("tab", "ai");
-    query.set("scope", scope);
     router.replace(`/settings/?${query}`, { scroll: false });
   }
   const [invites, setInvites] = useState<Invite[]>([]),
@@ -178,27 +183,28 @@ export function TeamSettings({
           <MessageSquare size={15} />
           {tr("AI 服务")}
         </button>
+        <button
+          type="button"
+          aria-current={tab === "web" ? "page" : undefined}
+          onClick={() => setTab("web")}
+        >
+          <Globe size={15} />
+          {tr("联网服务")}
+        </button>
       </nav>
       <div className="settings-panel">
+        {tab === "web" && (
+          <>
+            <h3>{tr("联网服务")}</h3>
+            <WebSettings scope="team" />
+          </>
+        )}
         {tab === "ai" && (
           <>
             <div className="ai-settings-heading">
-              <h3>{tr("AI 服务")}</h3>
-              <div className="view-tabs" aria-label={tr("AI 配置范围")}>
-                {(["personal", "team"] as const).map((scope) => (
-                  <button
-                    key={scope}
-                    type="button"
-                    className={aiScope === scope ? "active" : ""}
-                    aria-pressed={aiScope === scope}
-                    onClick={() => setAIScope(scope)}
-                  >
-                    {tr(scope === "personal" ? "个人 AI 配置" : "团队 AI 服务")}
-                  </button>
-                ))}
-              </div>
+              <h3>{tr("团队 AI 服务")}</h3>
             </div>
-            <AISettings key={aiScope} scope={aiScope} />
+            <AISettings scope="team" />
           </>
         )}
         {(tab === "project" || tab === "domain") && (

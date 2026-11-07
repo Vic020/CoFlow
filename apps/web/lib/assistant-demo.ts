@@ -228,6 +228,10 @@ export async function assistantDemo(
   const en = input.locale !== "zh-CN";
   if (path === "/assistant/preference" && method === "PATCH")
     return { ok: true };
+  if (path === "/assistant/web-configs" && method === "GET")
+    return { items: [], configured: false };
+  if (path.startsWith("/assistant/web-configs"))
+    throw new Error("演示不连接外部联网服务");
   if (path === "/assistant/configs" && method === "GET")
     return { items: [config], configured: true };
   if (path === "/assistant/conversations" && method === "GET")

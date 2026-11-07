@@ -54,6 +54,9 @@ export type AIAction = {
 };
 export type AITurn = {
   web_enabled?: boolean;
+  web_config_id?: string;
+  web_provider?: string;
+  web_config_revision?: number;
   web_requests?: number;
   web_sources?: { title: string; url: string }[];
   usage?: { input: number; output: number; total: number; known: boolean };
@@ -232,29 +235,34 @@ export function templateParameterLabel(
   );
 }
 
-export function supportsDeepseekWeb(config?: AIConfig) {
-  if (
-    !config ||
-    config.provider !== "deepseek" ||
-    config.protocol !== "chat-completions" ||
-    !config.verified_at
-  )
-    return false;
-  try {
-    const u = new URL(config.base_url);
-    return (
-      u.protocol === "https:" &&
-      u.hostname === "api.deepseek.com" &&
-      !u.port &&
-      !u.username &&
-      !u.password &&
-      !u.search &&
-      !u.hash &&
-      ["/", "/v1", "/v1/"].includes(u.pathname)
-    );
-  } catch {
-    return false;
-  }
+export type WebConfig = {
+  id: string;
+  name: string;
+  scope: "team" | "personal";
+  provider: string;
+  revision: number;
+  is_default: boolean;
+  verified_at: string | null;
+  editable: boolean;
+};
+export const webProviders = [
+  { id: "tavily", name: "Tavily", url: "https://api.tavily.com" },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    url: "https://api.deepseek.com/v1/tools",
+  },
+  { id: "exa", name: "Exa", url: "https://api.exa.ai" },
+  { id: "firecrawl", name: "Firecrawl", url: "https://api.firecrawl.dev/v2" },
+];
+export function defaultWebConfig(configs: WebConfig[]) {
+  const ready = configs.filter((c) => c.verified_at);
+  return (
+    ready.find((c) => c.scope === "team" && c.is_default) ||
+    ready.find((c) => c.scope === "personal" && c.is_default) ||
+    ready.find((c) => c.scope === "team") ||
+    ready[0]
+  );
 }
 export function safeWebSourceLink(raw: string) {
   try {

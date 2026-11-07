@@ -37,7 +37,17 @@ func TestVerificationProofBindsConnectionAndIdentity(t *testing.T) {
 			t.Fatal("tampering accepted")
 		}
 	}
-	if s.validVerification(p, "different", in, "synthetic-key", token, now) || s.validVerification(p, "config", in, "other-key", token, now) || s.validVerification(identity.Principal{UserID: "other", TeamID: p.TeamID}, "config", in, "synthetic-key", token, now) || s.validVerification(identity.Principal{UserID: p.UserID, TeamID: "other"}, "config", in, "synthetic-key", token, now) || s.validVerification(p, "config", in, "synthetic-key", token, now.Add(11*time.Minute)) {
+	if s.validVerification(p, "different", in, "synthetic-key", token, now) || s.validVerification(p, "config", in, "other-key", token, now) || s.validVerification(identity.Principal{UserID: "other", TeamID: p.TeamID}, "config", in, "synthetic-key", token, now) || s.validVerification(p, "config", in, "synthetic-key", token, now.Add(11*time.Minute)) {
 		t.Fatal("proof binding/expiry failed")
+	}
+	otherTeam := identity.Principal{UserID: p.UserID, TeamID: "other"}
+	if !s.validVerification(otherTeam, "config", in, "synthetic-key", token, now) {
+		t.Fatal("account proof depends on active workspace")
+	}
+	in.Scope = "team"
+	raw = strconv.FormatInt(now.Add(10*time.Minute).Unix(), 10) + "." + verificationFingerprint(p, "config", in, "synthetic-key")
+	token = raw + "." + s.signVerification(raw)
+	if s.validVerification(otherTeam, "config", in, "synthetic-key", token, now) {
+		t.Fatal("team proof crossed workspace")
 	}
 }

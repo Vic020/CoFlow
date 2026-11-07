@@ -1,5 +1,6 @@
 "use client";
 
+import { PageLoading } from "./ui/loading-status";
 import { InvitationHint } from "@/components/invitation-hint";
 import type { InvitationInfo } from "@/lib/types";
 import { LanguageSwitcher, useI18n } from "@/components/i18n-provider";
@@ -219,9 +220,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={value}>
       {!me && status?.mode !== "local-demo" && <LanguageSwitcher />}
       {loading ? (
-        <div className="auth-loading">
-          <Loader2 className="animate-spin" />
-          {tr("正在连接工作空间…")}
+        <div className="auth-skeleton">
+          <PageLoading variant="workspace" />
         </div>
       ) : error ? (
         <div className="auth-loading">

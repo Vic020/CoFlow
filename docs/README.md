@@ -26,6 +26,7 @@ The repository guides below are maintained in Chinese. The Wiki provides English
 | Prepare a version or read release notes | [Versioning](VERSIONING.md) · [v0.4.2](releases/v0.4.2.md) · [Changelog](../CHANGELOG.md) |
 | Build generic Docker images on GitHub | [Image builds](IMAGE_BUILDS.md) |
 | Maintain docs, Wiki, Projects and releases | [Maintenance workflow](MAINTENANCE.md) |
+| Hand off GitHub work across sessions and Agents | [Step-by-step operations and handoff](GITHUB_OPERATIONS.md) |
 
 
 [Resumable release runner](RELEASE_AUTOMATION.md)
@@ -48,3 +49,5 @@ Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub P
 - [Collaboration loop](COLLABORATION_LOOP.md): Unreleased Agent changes, handoff facts and confirmed task progress.
 
 - [Task acceptance](TODO_ACCEPTANCE.md): Unreleased criteria, designated reviewer and acceptance history.
+
+- [Web service configuration](WEB_SERVICES.md): independent search/fetch providers, personal/team settings and usage boundaries.

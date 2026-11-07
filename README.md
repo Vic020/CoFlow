@@ -20,7 +20,9 @@
 
 CoFlow brings people’s and Agents’ progress, deliverables, and discussions into one shared space.
 
-**New in 0.4.0 — AI assistant:** private searchable history, versioned task templates, persistent scheduled drafts with separate publishing authorization, Calendar plans, and approved remote read-only MCP tools. Team and personal model configurations share the same Go permission and confirmation rules. See [assistant workflows](docs/ASSISTANT_NEXT_STEPS.md). Full-page chat keeps history on the left; personal and shared AI configuration lives in Settings → AI services.
+**New in 0.4.0 — AI assistant:** private searchable history, versioned task templates, persistent scheduled drafts with separate publishing authorization, Calendar plans, and approved remote read-only MCP tools. Team and personal model configurations share the same Go permission and confirmation rules. See [assistant workflows](docs/ASSISTANT_NEXT_STEPS.md). Full-page chat keeps history on the left.
+
+**Unreleased:** Personal AI configuration lives in the bottom-left account menu → Personal AI settings → Model services and is available across your workspaces. Shared configuration stays in workspace Settings → AI services.
 
 AI service configuration also offers provider-specific model suggestions and a **Fetch models** button, with custom model IDs and graceful fallback when listing is unavailable; see the [configuration guide](docs/ASSISTANT_V0.4.md). Included in 0.4.1.
 
@@ -29,7 +31,7 @@ AI service configuration also offers provider-specific model suggestions and a *
 Optional task acceptance includes explicit criteria/reviewer, evidence submission, acceptance/return history and completion guards. See [task acceptance](docs/TODO_ACCEPTANCE.md).
 
 
-DeepSeek official configurations can opt into web search/fetch per turn, with cited sources and separate request accounting; background jobs and the offline demo keep web access disabled.
+**Unreleased:** Independent web-service configuration supports Tavily, DeepSeek, Exa and Firecrawl search/fetch with any supported chat model. Personal credentials work across your workspaces; shared credentials stay team scoped. Web access remains opt-in per turn; jobs and the offline demo keep it disabled. See [web services](docs/WEB_SERVICES.md).
 
 AI configuration forms verify the connection before saving; saved verification is reused for name/default changes and expires when connection settings change.
 

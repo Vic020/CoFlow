@@ -1,4 +1,9 @@
 "use client";
+import {
+  PageLoading,
+  LoadingStatus,
+  ContentSkeleton,
+} from "./ui/loading-status";
 import { AssistantCalendarPlans } from "./assistant-manager";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +14,6 @@ import {
   ChevronRight,
   Plus,
   RefreshCw,
-  LoaderCircle,
   X,
   Pencil,
   CalendarDays,
@@ -211,6 +215,10 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
   const scheduleIdentity = identity + ":" + scheduleKey;
   const cachedReports = peekCalendarView<ReportPage>(reportKey);
   const cachedSchedule = peekCalendarView<SchedulePage>(scheduleKey);
+  const contentReady =
+    mode === "reports"
+      ? Boolean(cachedReports || reportContext.range === reportRange)
+      : Boolean(cachedSchedule || scheduleContext === scheduleIdentity);
   // Keep the visible range's counts/previews while a different day's detail loads.
   // Never present the previous day's items under the newly selected date.
   const reports =
@@ -708,14 +716,9 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
             className="calendar-refresh"
             onClick={refresh}
           >
-            {loading ? (
-              <span role="status" aria-label={tr("加载中…")}>
-                <LoaderCircle size={16} className="calendar-loading-icon" />
-              </span>
-            ) : (
-              <RefreshCw size={16} />
-            )}
+            <RefreshCw size={16} />
           </Button>
+          <LoadingStatus active={loading && contentReady} />
           {mode === "schedule" && (
             <Button
               className="calendar-new-event"
@@ -870,7 +873,19 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
             Object.values(schedule.capabilities).includes(false) && (
               <p className="muted">{tr("部分来源无读取权限，未计入日历。")}</p>
             )}
-          {view === "gantt" ? (
+          {loading && !contentReady ? (
+            <div className="calendar-initial-skeleton">
+              <ContentSkeleton
+                variant={
+                  view === "gantt"
+                    ? "gantt"
+                    : view === "week"
+                      ? "week"
+                      : "calendar"
+                }
+              />
+            </div>
+          ) : view === "gantt" ? (
             <div className="calendar-gantt" aria-label={tr("甘特")}>
               <div
                 className="gantt-canvas"
@@ -992,7 +1007,10 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
               meta={meta}
               loading={loading}
               onSelect={(day) =>
-                navigate({ day, ...(!days.includes(day) ? { date: day } : {}) })
+                navigate({
+                  day,
+                  ...(!days.includes(day) ? { date: day } : {}),
+                })
               }
               onOpen={(item) => void open(item)}
               onCreate={beginCreate}
@@ -1136,6 +1154,11 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                       </small>
                     </Link>
                   ))}
+                  {loading &&
+                    !dayReports.length &&
+                    reportContext.key !== reportIdentity && (
+                      <ContentSkeleton rows={2} />
+                    )}
                   {!loading && !dayReports.length && (
                     <p className="muted">{tr("当天没有进度简报")}</p>
                   )}

@@ -363,7 +363,7 @@ func (s *Service) runOne(ctx context.Context) bool {
 							break
 						}
 						var authorized string
-						e = grantTx.QueryRow(runctx, `SELECT j.id FROM assistant_jobs j JOIN memberships m ON m.team_id=j.team_id AND m.user_id=j.owner_id JOIN assistant_configs c ON c.id=j.config_id AND c.team_id=j.team_id JOIN assistant_runs r ON r.job_id=j.id WHERE j.id=$1 AND j.enabled AND j.publish AND j.revision=$2 AND c.revision=j.config_revision AND c.verified_at IS NOT NULL AND (c.owner_id IS NULL OR c.owner_id=j.owner_id) AND r.id=$3 AND r.lease_id=$4 AND r.lease_until>now() FOR SHARE OF j,m,c,r`, j.ID, rev, r.ID, lease).Scan(&authorized)
+						e = grantTx.QueryRow(runctx, `SELECT j.id FROM assistant_jobs j JOIN memberships m ON m.team_id=j.team_id AND m.user_id=j.owner_id JOIN assistant_configs c ON c.id=j.config_id AND ((c.team_id=j.team_id AND c.owner_id IS NULL) OR (c.team_id IS NULL AND c.owner_id=j.owner_id)) JOIN assistant_runs r ON r.job_id=j.id WHERE j.id=$1 AND j.enabled AND j.publish AND j.revision=$2 AND c.revision=j.config_revision AND c.verified_at IS NOT NULL AND (c.owner_id IS NULL OR c.owner_id=j.owner_id) AND r.id=$3 AND r.lease_id=$4 AND r.lease_until>now() FOR SHARE OF j,m,c,r`, j.ID, rev, r.ID, lease).Scan(&authorized)
 						if e != nil {
 							grantTx.Rollback(runctx)
 							e = invalid("定时授权已撤销")

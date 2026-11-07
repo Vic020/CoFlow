@@ -58,11 +58,14 @@ test('offline task progress waits for confirmation and preserves concurrent huma
  const failed=await publicDemoRequest('/assistant/actions/'+stale.id,init);assert.equal(failed.state,'failed');assert.ok((await publicDemoRequest('/todos/'+id)).completed_at);
 });
 
-test('web opt-in is limited to official verified DeepSeek configs and safe external source links', async()=>{
- const {supportsDeepseekWeb,safeWebSourceLink}=await import('../apps/web/lib/assistant.ts');
- const c={provider:'deepseek',protocol:'chat-completions',base_url:'https://api.deepseek.com/v1',verified_at:'2026-11-07'};
- assert.equal(supportsDeepseekWeb(c),true);
- for(const v of [{...c,provider:'compatible'},{...c,base_url:'https://proxy.example.com'},{...c,verified_at:null},{...c,protocol:'responses'}])assert.equal(supportsDeepseekWeb(v),false);
+test('independent web configuration defaults and safe external source links', async()=>{
+ const {defaultWebConfig,webProviders,safeWebSourceLink}=await import('../apps/web/lib/assistant.ts');
+ assert.deepEqual(webProviders.map(p=>p.id),['tavily','deepseek','exa','firecrawl']);
+ const personal={id:'private-web',scope:'personal',is_default:true,verified_at:'2026-11-07'};
+ const team={...personal,id:'team-web',scope:'team'};
+ assert.equal(defaultWebConfig([personal,team]).id,'team-web');
+ assert.equal(defaultWebConfig([personal,{...team,verified_at:null}]).id,'private-web');
+ assert.equal(defaultWebConfig([{...team,verified_at:null}]),undefined);
  assert.equal(safeWebSourceLink('https://api-docs.deepseek.com/zh-cn/guides/search/'),true);
  for(const url of ['javascript:alert(1)','http://example.com','https://user:pass@example.com','https://localhost./','https://127.1/','https://10.0.0.1/','https://site.example/?token=private'])assert.equal(safeWebSourceLink(url),false);
  await assert.rejects(publicDemoRequest('/assistant/chat',{method:'POST',body:JSON.stringify({web_enabled:true,message:'Search public docs'})}),/演示不连接/);

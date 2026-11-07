@@ -22,7 +22,10 @@ func TestAssistantHistoryTemplatesAndIsolation(t *testing.T) {
 	config := configureAI(owner, "personal")
 	ctx := context.Background()
 	var team, user string
-	repo.Pool().QueryRow(ctx, `SELECT team_id,owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&team, &user)
+	team = owner.call("GET", "/api/v1/auth/me", nil, 200)["current_team"].(string)
+	if e := repo.Pool().QueryRow(ctx, `SELECT owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&user); e != nil {
+		t.Fatal(e)
+	}
 	for i := 0; i < 35; i++ {
 		_, e := repo.Pool().Exec(ctx, `INSERT INTO assistant_conversations(id,team_id,owner_id,config_id,title) VALUES($1,$2,$3,$4,$5)`, fmt.Sprintf("history_%02d", i), team, user, config, fmt.Sprintf("Searchable synthetic %02d", i))
 		if e != nil {
@@ -80,7 +83,10 @@ func TestAssistantSchedulerDraftQuietRetriesAndRevocation(t *testing.T) {
 	config := configureAI(owner, "personal")
 	ctx := context.Background()
 	var team, user string
-	repo.Pool().QueryRow(ctx, `SELECT team_id,owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&team, &user)
+	team = owner.call("GET", "/api/v1/auth/me", nil, 200)["current_team"].(string)
+	if e := repo.Pool().QueryRow(ctx, `SELECT owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&user); e != nil {
+		t.Fatal(e)
+	}
 	p := identity.Principal{TeamID: team, UserID: user, Kind: "session", Role: "admin"}
 	svc := &assistant.Service{Pool: repo.Pool(), Identity: identity.New(repo.Pool()), Workspace: &workspace.Service{Pool: repo.Pool()}, Repo: repo, Key: base64.StdEncoding.EncodeToString(make([]byte, 32)), Client: fakeModel("propose_report", map[string]any{"title": "Scheduled evidence", "body": "Synthetic only."}), Slots: make(chan struct{}, 3)}
 	tmpl, e := svc.Template(ctx, p, "builtin-brief", 1)
@@ -167,7 +173,10 @@ func TestAssistantMCPVerificationApprovalAndManifestChanges(t *testing.T) {
 	config := configureAI(owner, "personal")
 	ctx := context.Background()
 	var team, user string
-	repo.Pool().QueryRow(ctx, `SELECT team_id,owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&team, &user)
+	team = owner.call("GET", "/api/v1/auth/me", nil, 200)["current_team"].(string)
+	if e := repo.Pool().QueryRow(ctx, `SELECT owner_id FROM assistant_configs WHERE id=$1`, config).Scan(&user); e != nil {
+		t.Fatal(e)
+	}
 	p := identity.Principal{TeamID: team, UserID: user, Kind: "session", Role: "admin"}
 	changed := false
 	client := &http.Client{Transport: modelTransport(func(r *http.Request) (*http.Response, error) {
