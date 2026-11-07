@@ -9,6 +9,7 @@ import {
   chmodSync,
   symlinkSync,
   rmSync,
+  realpathSync,
 } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -37,7 +38,9 @@ const complete = {
   conclusion: "success",
 };
 function fixture(t) {
-  const root = mkdtempSync(path.join(tmpdir(), "coflow-release-test-"));
+  const root = realpathSync(
+    mkdtempSync(path.join(tmpdir(), "coflow-release-test-")),
+  );
   mkdirSync(path.join(root, ".local/release"), {
     recursive: true,
     mode: 0o700,
