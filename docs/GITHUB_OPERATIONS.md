@@ -132,6 +132,8 @@ git diff --cached --stat
 
 ## 7. 检查与 CI：避免把等待变成对话循环
 
+CI、镜像和 Pages 统一使用 `ubuntu-24.04`，避免 `ubuntu-latest` 自动迁移改变构建环境。第三方 Action 固定完整提交 SHA，并注释已核验的发布版本；升级时核对官方运行时、输入和权限要求。当前 JavaScript Action 使用原生 Node.js 24，Pages 上传的组合 Action 所引用的上传工具也必须检查。项目的 `node-version: 24` 只控制构建环境，不能替代 Action 自身运行时升级。镜像流程不安装 npm 依赖，显式关闭 setup-node 自动缓存；CI／Pages 保留 npm 缓存。
+
 按变化选择检查，记录一次结果，不让所有 Agent 重跑同一套：
 
 | 变化 | 本地应检查 |
