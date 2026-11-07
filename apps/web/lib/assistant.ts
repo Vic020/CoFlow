@@ -53,6 +53,9 @@ export type AIAction = {
   result?: { id?: string; error?: string };
 };
 export type AITurn = {
+  web_enabled?: boolean;
+  web_requests?: number;
+  web_sources?: { title: string; url: string }[];
   usage?: { input: number; output: number; total: number; known: boolean };
   trace?: { name: string; state: string; at: string }[];
   request_id: string;
@@ -227,4 +230,76 @@ export function templateParameterLabel(
       >
     )[p.name] || p.label,
   );
+}
+
+export function supportsDeepseekWeb(config?: AIConfig) {
+  if (
+    !config ||
+    config.provider !== "deepseek" ||
+    config.protocol !== "chat-completions" ||
+    !config.verified_at
+  )
+    return false;
+  try {
+    const u = new URL(config.base_url);
+    return (
+      u.protocol === "https:" &&
+      u.hostname === "api.deepseek.com" &&
+      !u.port &&
+      !u.username &&
+      !u.password &&
+      !u.search &&
+      !u.hash &&
+      ["/", "/v1", "/v1/"].includes(u.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+export function safeWebSourceLink(raw: string) {
+  try {
+    const u = new URL(raw);
+    const h = u.hostname.toLowerCase().replace(/\.$/, "");
+    if (
+      [...u.searchParams.keys()].some(
+        (k) =>
+          [
+            "token",
+            "access_token",
+            "api_key",
+            "password",
+            "secret",
+            "authorization",
+          ].includes(k.toLowerCase()) && u.searchParams.get(k),
+      )
+    )
+      return false;
+    if (
+      u.protocol !== "https:" ||
+      u.username ||
+      u.password ||
+      u.port ||
+      !h.includes(".") ||
+      h === "localhost" ||
+      /\.(localhost|local|internal)$/.test(h)
+    )
+      return false;
+    if (/^\d+(\.\d+){3}$/.test(h)) {
+      const [a, b] = h.split(".").map(Number);
+      if (
+        a === 0 ||
+        a === 10 ||
+        a === 127 ||
+        a >= 224 ||
+        (a === 169 && b === 254) ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        (a === 100 && b >= 64 && b <= 127)
+      )
+        return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }

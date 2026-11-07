@@ -164,6 +164,18 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 		}
 		c.JSON(200, v)
 	}
+	g.POST("/configs/verify", aiLimit, func(c *gin.Context) {
+		var in assistant.ConfigInput
+		if !decode(c, &in) {
+			return
+		}
+		v, e := s.VerifyConfigDraft(c.Request.Context(), principal(c), in)
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, v)
+	})
 	g.POST("/configs", save)
 	g.PUT("/configs/:id", save)
 	g.DELETE("/configs/:id", func(c *gin.Context) {

@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-CoFlow **0.4.1** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
+CoFlow **0.4.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
 
 **让团队看见每一次 Agent 推进。** 汇集多个 Agent 的进展、交付与反馈，让团队抓住需要关注的重点。
 
@@ -21,12 +21,15 @@ CoFlow **0.4.1** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 设计 0.3 默认上报日历与跨模块排期 | [Calendar 功能与实施计划](CALENDAR_V0.3.md) |
 | 了解现有能力与后续范围 | [产品定义](PRODUCT.md) · [路线图](ROADMAP.md) |
 | 团队试用与检查验收事实 | [试用清单](PILOT.md) · [验证记录](VERIFICATION.md) |
-| 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.4.1 发布说明](releases/v0.4.1.md) · [更新日志](../CHANGELOG.md) |
+| 准备发布与查看版本变化 | [版本管理](VERSIONING.md) · [0.4.2 发布说明](releases/v0.4.2.md) · [更新日志](../CHANGELOG.md) |
 | 在 GitHub 构建通用 Docker 镜像 | [镜像构建](IMAGE_BUILDS.md) |
 | 维护文档、Wiki、Projects 与发布流程 | [维护规范](MAINTENANCE.md) |
 
 
 [可续跑发布工具](RELEASE_AUTOMATION.md)
+
+
+[统一界面与加载反馈规范](UI_DESIGN.md)
 
 ## 协议源文件
 
@@ -38,7 +41,7 @@ CoFlow **0.4.1** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 
 ## 使用边界
 
-真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.4.1 包含 Timeline、Todo、Calendar 与 AI 助手首版；真实模型兼容性及其余协议、Context 和统计继续独立验收。外部 Agent 使用统一 CoFlow Skill 与 HTTP API；平台助手还支持经授权的只读远程 MCP Client。CLI 和 CoFlow 对外 MCP Server 继续规划。
+真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.4.2 包含 Timeline、Todo、Calendar 与 AI 助手首版；真实模型兼容性及其余协议、Context 和统计继续独立验收。外部 Agent 使用统一 CoFlow Skill 与 HTTP API；平台助手还支持经授权的只读远程 MCP Client。CLI 和 CoFlow 对外 MCP Server 继续规划。
 
 - [协作闭环](COLLABORATION_LOOP.md)：Unreleased 增量反馈、接续事实与任务推进确认。
 

@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
+import { LoadingStatus } from "./ui/loading-status";
 import { SelectMenu } from "./ui/select-menu";
 import { civilDay } from "@/lib/calendar";
 import { request } from "@/lib/types";
@@ -27,7 +28,7 @@ import type {
   AIRun,
   AIMCP,
 } from "@/lib/assistant";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 type Page = "history" | "templates" | "jobs" | "mcp";
 export type AssistantToolsPage = Exclude<Page, "history">;
@@ -109,28 +110,43 @@ export function AssistantManager({
   );
 }
 function useOperation() {
-  const [busy, setBusy] = useState(false),
+  const [pending, setPending] = useState(0),
+    [settled, setSettled] = useState(false),
     [error, setError] = useState("");
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const run = async (fn: () => Promise<void>) => {
-    setBusy(true);
+    if (!mounted.current) return;
+    setPending((n) => n + 1);
     setError("");
     try {
       await fn();
     } catch (e) {
-      setError((e as Error).message);
+      if (mounted.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (mounted.current) {
+        setPending((n) => Math.max(0, n - 1));
+        setSettled(true);
+      }
     }
   };
-  return { busy, error, run };
+  return { busy: pending > 0, settled, error, run };
 }
 function Feedback({ busy, error }: { busy: boolean; error: string }) {
+  const { t: tr } = useI18n();
   return (
     <>
-      {busy && (
-        <Loader2 className="animate-spin" size={16} aria-label="Loading" />
+      <LoadingStatus active={busy} className="ai-manager-loading" />
+      {error && (
+        <p role="alert" className="error-text">
+          {tr(error)}
+        </p>
       )}
-      {error && <p role="alert">{error}</p>}
     </>
   );
 }
@@ -186,7 +202,7 @@ export function AssistantHistory({
   }
 
   return (
-    <div className="ai-manager-body">
+    <div className="ai-manager-body" aria-busy={op.busy}>
       <div className="ai-manager-row">
         <label className="ai-search">
           <Search size={14} />
@@ -213,7 +229,9 @@ export function AssistantHistory({
         />
       </div>
       <Feedback {...op} />
-      {!items.length && !op.busy && <p className="muted">{tr("还没有对话")}</p>}
+      {!items.length && op.settled && !op.busy && !op.error && (
+        <p className="muted">{tr("还没有对话")}</p>
+      )}
       {items.map((c, i) => (
         <div key={c.id}>
           {(i === 0 || group(c) !== group(items[i - 1])) && (
@@ -367,7 +385,7 @@ function TemplateManager({ onClose }: { onClose: () => void }) {
     editable: true,
   });
   return (
-    <div className="ai-manager-body">
+    <div className="ai-manager-body" aria-busy={op.busy}>
       <Feedback {...op} />
       {!edit && !selected && (
         <>
@@ -680,7 +698,7 @@ function JobsManager({ onClose }: { onClose: () => void }) {
     };
   }
   return (
-    <div className="ai-manager-body">
+    <div className="ai-manager-body" aria-busy={op.busy}>
       <Feedback {...op} />
       {publicDemo && (
         <p className="muted">{tr("演示仅保存配置，不执行定时任务。")}</p>
@@ -696,7 +714,9 @@ function JobsManager({ onClose }: { onClose: () => void }) {
             <Plus size={14} />
             {tr("新建定时任务")}
           </Button>
-          {items.length === 0 && <p className="muted">{tr("尚无定时任务")}</p>}
+          {items.length === 0 && op.settled && !op.busy && !op.error && (
+            <p className="muted">{tr("尚无定时任务")}</p>
+          )}
           {items.map((j) => (
             <div className="ai-management-item" key={j.id}>
               <button type="button" onClick={() => setEdit(j)}>
@@ -984,7 +1004,7 @@ function MCPManager() {
     void op.run(load);
   }, []);
   return (
-    <div className="ai-manager-body">
+    <div className="ai-manager-body" aria-busy={op.busy}>
       <Feedback {...op} />
       <p className="muted">
         {tr("远程 HTTPS 只读工具；先验证，再选择授权工具。外部结果仅作参考。")}

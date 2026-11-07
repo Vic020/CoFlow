@@ -16,6 +16,7 @@ import { consumeAssistantStream } from "@/lib/assistant-stream";
 import { publicDemo } from "@/lib/runtime";
 import {
   defaultAIConfig,
+  supportsDeepseekWeb,
   type AIConfig,
   type AITurn,
   type AIAction,
@@ -27,6 +28,8 @@ import { AssistantManager } from "./assistant-manager";
 type State = {
   streamed: string;
   streaming: boolean;
+  webEnabled: boolean;
+  setWebEnabled: (value: boolean) => void;
   setStreaming: (v: boolean) => void;
   input: string;
   setInput: (s: string) => void;
@@ -96,6 +99,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
   const [input, setInput] = useState("");
   const [streamed, setStreamed] = useState(""),
     [streaming, setStreaming] = useState(true);
+  const [webEnabled, setWebEnabled] = useState(false);
+  useEffect(() => setWebEnabled(false), [configID]);
   const drafts = useRef<Record<string, string>>({});
   const [current, setCurrent] = useState<AIConversation | null>(null);
   const [template, updateTemplate] = useState<AITemplate | null>(null),
@@ -115,6 +120,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
   const sending = useRef(false);
   const acting = useRef(false);
   const retry = useRef<{
+    web_enabled?: boolean;
     message: string;
     request_id: string;
     config_id: string;
@@ -162,6 +168,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
   }, [pathname, panel, manager, refresh]);
   function newConversation() {
     if (sending.current) return;
+    setWebEnabled(false);
     drafts.current[id.current] = input;
     setInput(drafts.current[""] || "");
     setCurrent(null);
@@ -204,6 +211,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
       drafts.current[id.current] = input;
       setInput(drafts.current[c.id] || "");
       setCurrent(c);
+      setWebEnabled(false);
       updateTemplate(c.template || null);
       if (pathname.replace(/\/$/, "") !== "/assistant") setPanel(true);
       id.current = c.id;
@@ -232,6 +240,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
     const current =
       prior &&
       prior.message === message &&
+      prior.web_enabled ===
+        (webEnabled && supportsDeepseekWeb(chosen) && !publicDemo) &&
       prior.config_id === selected.current &&
       prior.conversation_id === id.current
         ? prior
@@ -245,6 +255,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
             template_version: template?.version,
             parameters,
             mcp_ids: mcpIDs,
+            web_enabled:
+              webEnabled && supportsDeepseekWeb(chosen) && !publicDemo,
             context: {
               page: pathname,
               project: params.get("project") || "",
@@ -370,6 +382,8 @@ function AssistantScope({ children }: { children: ReactNode }) {
     streamed,
     streaming,
     setStreaming,
+    webEnabled,
+    setWebEnabled,
     input,
     setInput,
     current,

@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadingStatus, PageLoading } from "./ui/loading-status";
 import { loadTodoPages } from "@/lib/todo-loader";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -25,7 +26,6 @@ import {
   ExternalLink,
   Filter,
   Link2,
-  Loader2,
   Menu,
   MessageCircle,
   Plus,
@@ -791,9 +791,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         <div
           className={`workspace-content${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
-          {meta && !credentialsPage && !settingsPage && !newTeamPage && (
-            <GlobalFilters meta={meta} />
-          )}
+          {!credentialsPage &&
+            !settingsPage &&
+            !newTeamPage &&
+            (meta ? (
+              <GlobalFilters meta={meta} />
+            ) : (
+              <div
+                className="workspace-global-filters global-filters-placeholder"
+                aria-hidden="true"
+              />
+            ))}
           <header className="page-heading">
             <div className="heading-start">
               <Button
@@ -846,6 +854,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               !credentialsPage &&
               !settingsPage && (
                 <div className="top-actions">
+                  <LoadingStatus active={loading} />
                   <label className="search">
                     <Search size={16} />
                     <input
@@ -903,17 +912,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             <AssistantWorkspace />
           ) : calendarPage ? (
             meta ? (
-              <Suspense fallback={<Loader2 className="animate-spin" />}>
+              <Suspense fallback={<PageLoading />}>
                 <CalendarWorkspace key={meta.team.id} meta={meta} />
               </Suspense>
             ) : (
-              <Loader2 className="animate-spin" />
+              <PageLoading />
             )
           ) : todoPage ? (
             meta ? (
               <TodoBoard key={meta.team.id} meta={meta} />
             ) : (
-              <Loader2 className="animate-spin" />
+              <PageLoading />
             )
           ) : settingsPage ? (
             <div className="team-settings-content">
@@ -924,7 +933,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   onChange={() => void load()}
                 />
               ) : (
-                <Loader2 className="animate-spin" />
+                <PageLoading />
               )}
             </div>
           ) : credentialsPage ? (
@@ -1102,11 +1111,8 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     </Button>
                   </div>
                 )}
-                {loading ? (
-                  <div className="loading">
-                    <Loader2 className="animate-spin" />
-                    {tr("正在汇集团队进展…")}
-                  </div>
+                {loading && !timelineReady.current ? (
+                  <PageLoading indicator={false} />
                 ) : !error && groups.length === 0 ? (
                   <div className="empty">
                     <Search size={30} />

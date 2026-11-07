@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.1-087354" alt="Version 0.4.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.2-087354" alt="Version 0.4.2" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -26,8 +26,12 @@ AI service configuration also offers provider-specific model suggestions and a *
 
 **In development (Unreleased):** task-progress confirmation cards, Agent change cursors and scoped handoff facts. See [collaboration loop](docs/COLLABORATION_LOOP.md); these require the new deployment/capabilities and are not part of the published 0.4.0 tag.
 
-The local Unreleased scope also includes optional task acceptance: explicit criteria/reviewer, evidence submission, acceptance/return history and completion guards. See [task acceptance](docs/TODO_ACCEPTANCE.md).
+Optional task acceptance includes explicit criteria/reviewer, evidence submission, acceptance/return history and completion guards. See [task acceptance](docs/TODO_ACCEPTANCE.md).
 
+
+DeepSeek official configurations can opt into web search/fetch per turn, with cited sources and separate request accounting; background jobs and the offline demo keep web access disabled.
+
+AI configuration forms verify the connection before saving; saved verification is reused for name/default changes and expires when connection settings change.
 
 Release automation is available through `npm run release -- --help`; it plans by default, keeps instance configuration/checkpoints private, and requires explicit switches for publication, each deployment and reporting. See the [release runner guide](docs/RELEASE_AUTOMATION.md).
 
@@ -39,7 +43,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.4.1.**
+> **Current version: 0.4.2.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -97,7 +101,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.4.1**, including Timeline, Todo, Calendar and the first AI Assistant release. Further model adapters, external write tools, Context and statistics remain separate roadmap work.
+The current version is **0.4.2**, including Timeline, Todo, Calendar and the first AI Assistant release. Further model adapters, external write tools, Context and statistics remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |

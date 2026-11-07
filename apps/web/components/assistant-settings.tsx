@@ -28,18 +28,6 @@ export function AISettings({ scope }: { scope: "team" | "personal" }) {
   useEffect(() => {
     void ai.refresh();
   }, [ai.refresh]);
-  async function verify(c: AIConfig) {
-    setBusy(c.id);
-    setError("");
-    try {
-      await request(`/assistant/configs/${c.id}/verify`, { method: "POST" });
-      await ai.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy("");
-    }
-  }
   return (
     <div className="ai-settings">
       <Button
@@ -94,19 +82,6 @@ export function AISettings({ scope }: { scope: "team" | "personal" }) {
                     </div>
                     {c.editable && (
                       <div className="ai-row-actions">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={!!busy}
-                          onClick={() => void verify(c)}
-                        >
-                          {busy === c.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <Check size={14} />
-                          )}{" "}
-                          {tr("验证")}
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -207,6 +182,78 @@ function ConfigForm({
     [defaultValue, setDefault] = useState(config?.is_default ?? true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const connection = JSON.stringify([
+    provider,
+    protocol,
+    base.trim(),
+    model.trim(),
+    key.trim(),
+  ]);
+  const currentConnection = useRef(connection);
+  currentConnection.current = connection;
+  const [checking, setChecking] = useState(false);
+  const [verification, setVerification] = useState<{
+    connection: string;
+    token: string;
+    expires: number;
+  } | null>(() =>
+    config?.verified_at ? { connection, token: "", expires: Infinity } : null,
+  );
+  const verified =
+    verification?.connection === connection &&
+    verification.expires > Date.now();
+  useEffect(() => {
+    if (!verification || !Number.isFinite(verification.expires)) return;
+    const timer = setTimeout(
+      () => setVerification(null),
+      Math.max(0, verification.expires - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [verification]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  async function verifyDraft() {
+    const snapshot = connection;
+    setChecking(true);
+    setError("");
+    try {
+      const result = await request<{
+        verification_token: string;
+        expires_at: string;
+      }>("/assistant/configs/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          id: config?.id,
+          scope,
+          name,
+          provider,
+          protocol,
+          base_url: base,
+          model,
+          api_key: key,
+          expected_revision: config?.revision,
+        }),
+      });
+      if (mounted.current && currentConnection.current === snapshot)
+        setVerification({
+          connection: snapshot,
+          token: result.verification_token,
+          expires: Date.parse(result.expires_at),
+        });
+    } catch (e) {
+      if (mounted.current && currentConnection.current === snapshot) {
+        setVerification(null);
+        setError((e as Error).message);
+      }
+    } finally {
+      if (mounted.current) setChecking(false);
+    }
+  }
   const modelListID = useId();
   const [models, setModels] = useState<string[] | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -264,8 +311,10 @@ function ConfigForm({
   return (
     <form
       className="ai-config-form"
+      aria-busy={busy || checking}
       onSubmit={async (e) => {
         e.preventDefault();
+        if (!verified || checking) return;
         setBusy(true);
         setError("");
         try {
@@ -274,6 +323,7 @@ function ConfigForm({
             {
               method: config ? "PUT" : "POST",
               body: JSON.stringify({
+                verification_token: verification?.token || undefined,
                 scope,
                 name,
                 provider,
@@ -289,6 +339,7 @@ function ConfigForm({
           setKey("");
           onDone();
         } catch (e) {
+          setVerification(null);
           setError((e as Error).message);
         } finally {
           setBusy(false);
@@ -302,140 +353,146 @@ function ConfigForm({
           size="icon"
           variant="ghost"
           aria-label={tr("取消")}
+          disabled={busy}
           onClick={onDone}
         >
           <X size={15} />
         </Button>
       </div>
-      <div className="ai-form-grid">
+      <fieldset disabled={busy} className="ai-config-fields">
+        <div className="ai-form-grid">
+          <label>
+            {tr("服务商")}
+            <select
+              value={provider}
+              onChange={(e) => {
+                const p = aiProviders.find((p) => p.id === e.target.value)!;
+                setProvider(p.id);
+                setProtocol(p.protocol);
+                setBase(p.base);
+                setKey("");
+                invalidateModels();
+              }}
+            >
+              {aiProviders.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {tr(p.name)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {tr("名称")}
+            <input
+              required
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+        </div>
+        {provider === "compatible" && (
+          <label>
+            {tr("协议")}
+            <select
+              value={protocol}
+              onChange={(e) => setProtocol(e.target.value)}
+            >
+              <option value="chat-completions">Chat Completions</option>
+              <option value="responses">Responses</option>
+            </select>
+          </label>
+        )}
         <label>
-          {tr("服务商")}
-          <select
-            value={provider}
+          API Base URL
+          <input
+            type="url"
+            required
+            value={base}
             onChange={(e) => {
-              const p = aiProviders.find((p) => p.id === e.target.value)!;
-              setProvider(p.id);
-              setProtocol(p.protocol);
-              setBase(p.base);
-              setKey("");
+              setBase(e.target.value);
               invalidateModels();
             }}
-          >
-            {aiProviders.map((p) => (
-              <option key={p.id} value={p.id}>
-                {tr(p.name)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {tr("名称")}
-          <input
-            required
-            maxLength={100}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            autoComplete="off"
           />
         </label>
-      </div>
-      {provider === "compatible" && (
         <label>
-          {tr("协议")}
-          <select
-            value={protocol}
-            onChange={(e) => setProtocol(e.target.value)}
-          >
-            <option value="chat-completions">Chat Completions</option>
-            <option value="responses">Responses</option>
-          </select>
+          {tr("模型")}
+          <input
+            required
+            maxLength={150}
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder={tr("填写账户可调用的模型 ID")}
+            autoComplete="off"
+            list={modelListID}
+          />
+          <datalist id={modelListID}>
+            {choices.map((id) => (
+              <option key={id} value={id} />
+            ))}
+          </datalist>
         </label>
-      )}
-      <label>
-        API Base URL
-        <input
-          type="url"
-          required
-          value={base}
-          onChange={(e) => {
-            setBase(e.target.value);
-            invalidateModels();
-          }}
-          autoComplete="off"
-        />
-      </label>
-      <label>
-        {tr("模型")}
-        <input
-          required
-          maxLength={150}
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder={tr("填写账户可调用的模型 ID")}
-          autoComplete="off"
-          list={modelListID}
-        />
-        <datalist id={modelListID}>
-          {choices.map((id) => (
-            <option key={id} value={id} />
+        <div className="ai-model-choices">
+          <span className="muted">
+            {tr(models ? "服务返回的模型" : "模型建议")}
+          </span>
+          {choices.slice(0, 4).map((id) => (
+            <Button
+              key={id}
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setModel(id)}
+            >
+              {id}
+            </Button>
           ))}
-        </datalist>
-      </label>
-      <div className="ai-model-choices">
-        <span className="muted">
-          {tr(models ? "服务返回的模型" : "模型建议")}
-        </span>
-        {choices.slice(0, 4).map((id) => (
           <Button
-            key={id}
             type="button"
             size="sm"
-            variant="outline"
-            onClick={() => setModel(id)}
+            variant="ghost"
+            disabled={fetching || busy || !base || (!key.trim() && !config)}
+            onClick={() => void fetchModels()}
           >
-            {id}
+            {fetching && <Loader2 size={14} className="animate-spin" />}
+            {tr(fetching ? "正在获取模型" : "自动获取模型")}
           </Button>
-        ))}
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={fetching || busy || !base || (!key.trim() && !config)}
-          onClick={() => void fetchModels()}
-        >
-          {fetching && <Loader2 size={14} className="animate-spin" />}
-          {tr(fetching ? "正在获取模型" : "自动获取模型")}
-        </Button>
-      </div>
-      <small className="muted" role="status" aria-live="polite">
-        {tr(modelNotice || "建议不代表账户权限；可直接填写自定义模型 ID")}
-      </small>
-      <label>
-        API Key
-        <input
-          type="password"
-          required={!config}
-          value={key}
-          onChange={(e) => {
-            setKey(e.target.value);
-            invalidateModels();
-          }}
-          placeholder={config ? tr("留空保留现有密钥") : undefined}
-          autoComplete="new-password"
-        />
-      </label>
-      <label className="ai-checkbox">
-        <input
-          type="checkbox"
-          checked={defaultValue}
-          onChange={(e) => setDefault(e.target.checked)}
-        />
-        {tr("设为默认配置")}
-      </label>
+        </div>
+        <small className="muted" role="status" aria-live="polite">
+          {tr(modelNotice || "建议不代表账户权限；可直接填写自定义模型 ID")}
+        </small>
+        <label>
+          API Key
+          <input
+            type="password"
+            required={!config}
+            value={key}
+            onChange={(e) => {
+              setKey(e.target.value);
+              invalidateModels();
+            }}
+            placeholder={config ? tr("留空保留现有密钥") : undefined}
+            autoComplete="new-password"
+          />
+        </label>
+        <label className="ai-checkbox">
+          <input
+            type="checkbox"
+            checked={defaultValue}
+            onChange={(e) => setDefault(e.target.checked)}
+          />
+          {tr("设为默认配置")}
+        </label>
+      </fieldset>
       {error && (
         <p role="alert" className="error-text">
           {tr(error)}
         </p>
       )}
+      <small className="muted">
+        {tr("验证会发送最小测试请求，服务商可能计费")}
+      </small>
       <div className="ai-form-actions">
         <Button
           type="button"
@@ -445,7 +502,22 @@ function ConfigForm({
         >
           {tr("取消")}
         </Button>
-        <Button disabled={busy}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy || checking || verified}
+          onClick={(e) => {
+            if (e.currentTarget.form?.reportValidity()) void verifyDraft();
+          }}
+        >
+          {checking ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : verified ? (
+            <Check size={14} />
+          ) : null}
+          {tr(checking ? "正在验证" : verified ? "已验证" : "验证")}
+        </Button>
+        <Button disabled={busy || checking || !verified}>
           {busy && <Loader2 size={14} className="animate-spin" />}
           {tr("保存配置")}
         </Button>

@@ -16,6 +16,7 @@ import {
   X,
   History,
   FileText,
+  Globe,
 } from "lucide-react";
 import {
   AssistantHistory,
@@ -35,6 +36,8 @@ import {
 } from "./ui/dialog";
 import {
   safeAssistantLink,
+  safeWebSourceLink,
+  supportsDeepseekWeb,
   templateTitle,
   type AIAction,
 } from "@/lib/assistant";
@@ -204,6 +207,20 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
           </Button>
         </div>
         <div className="ai-toolbar-end">
+          {!publicDemo && supportsDeepseekWeb(config) && (
+            <button
+              type="button"
+              className="ai-web-toggle"
+              aria-pressed={ai.webEnabled}
+              disabled={ai.busy}
+              title={tr("搜索词发送至 DeepSeek，搜索和抓取另行计费")}
+              onClick={() => ai.setWebEnabled(!ai.webEnabled)}
+            >
+              <Globe size={13} />
+              {tr("联网")}
+            </button>
+          )}
+
           {!publicDemo && (
             <button
               className="ai-stream-toggle"
@@ -357,6 +374,29 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
                       </Link>
                     ))}
                 </div>
+              )}
+              {turn.web_sources?.length ? (
+                <div className="ai-sources" aria-label={tr("网页来源")}>
+                  {turn.web_sources
+                    .filter((l) => safeWebSourceLink(l.url))
+                    .slice(0, 10)
+                    .map((l) => (
+                      <a
+                        key={l.url}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Globe size={13} />
+                        {l.title || l.url}
+                      </a>
+                    ))}
+                </div>
+              ) : null}
+              {turn.web_enabled && (
+                <small className="muted">
+                  {tr("联网请求：{0}", { 0: turn.web_requests ?? 0 })}
+                </small>
               )}
               {(turn.trace?.length || turn.usage) && (
                 <details className="ai-trace">

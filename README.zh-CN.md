@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.1-087354" alt="Version 0.4.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.2-087354" alt="Version 0.4.2" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -28,8 +28,12 @@ AI 服务配置增加服务商模型建议与**自动获取模型**，不支持�
 
 **开发中（Unreleased）：** 任务推进确认卡、Agent 增量游标与指定范围的接续事实，见[协作闭环](docs/COLLABORATION_LOOP.md)。需要新部署及能力发现，不属于已发布的 0.4.0 标签。
 
-本地 Unreleased 还包含可选任务验收：明确标准与验收人、提交依据、通过／退回历史和完成保护，见[任务验收](docs/TODO_ACCEPTANCE.md)。
+可选任务验收包含：明确标准与验收人、提交依据、通过／退回历史和完成保护，见[任务验收](docs/TODO_ACCEPTANCE.md)。
 
+
+DeepSeek 官方配置支持逐轮开启联网搜索／抓取，展示来源和独立请求数；定时任务与离线演示不启用联网。
+
+AI 配置在表单内先验证再保存；仅改名称或默认项可沿用验证，连接参数变化须重新验证。
 
 统一发布入口使用 `npm run release -- --help`，默认仅展示计划；实例配置和检查点留在私有目录，发布、各部署目标及上报分别选择。见[发布工具说明](docs/RELEASE_AUTOMATION.md)。
 
@@ -41,7 +45,7 @@ AI 服务配置增加服务商模型建议与**自动获取模型**，不支持�
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.4.1。**
+> **当前版本：0.4.2。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -101,7 +105,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.4.1**，包含 Timeline、Todo、Calendar 与 AI 助手首版。其余模型协议、外部写工具、Context 和统计继续独立规划。
+当前版本为 **0.4.2**，包含 Timeline、Todo、Calendar 与 AI 助手首版。其余模型协议、外部写工具、Context 和统计继续独立规划。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
@@ -186,7 +190,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.4.1
+├── VERSION           # 当前版本：0.4.2
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

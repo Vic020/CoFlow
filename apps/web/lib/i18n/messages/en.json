@@ -1219,5 +1219,14 @@
   "服务商或地址已更改，请重新填写 API Key": "Provider or URL changed. Enter the API key again.",
   "请填写 API Key 后获取模型": "Enter an API key to fetch models.",
   "无权编辑此 AI 配置": "You cannot edit this AI configuration.",
-  "仅网页登录可管理 AI 配置": "AI configuration requires a browser session."
+  "仅网页登录可管理 AI 配置": "AI configuration requires a browser session.",
+  "验证已失效，请重新验证后保存": "Verification expired or changed. Verify again before saving.",
+  "正在验证": "Verifying",
+  "验证会发送最小测试请求，服务商可能计费": "Verification sends a minimal test request. Your provider may charge for it.",
+  "联网": "Web",
+  "网页来源": "Web sources",
+  "搜索词发送至 DeepSeek，搜索和抓取另行计费": "Search queries are sent to DeepSeek. Search and fetch are billed separately.",
+  "联网请求：{0}": "Web requests: {0}",
+  "当前配置不支持 DeepSeek 联网": "This configuration does not support DeepSeek web access.",
+  "演示不连接外部联网服务": "The demo does not connect to external web services."
 }

@@ -47,8 +47,9 @@ type Config struct {
 }
 type ConfigInput struct {
 	Config
-	APIKey           string `json:"api_key"`
-	ExpectedRevision int    `json:"expected_revision"`
+	APIKey            string `json:"api_key"`
+	ExpectedRevision  int    `json:"expected_revision"`
+	VerificationToken string `json:"verification_token"`
 }
 
 func invalid(s string) error { return identity.Invalid(s) }
@@ -187,65 +188,94 @@ func (s *Service) config(ctx context.Context, p identity.Principal, id string) (
 	}
 	return c, e
 }
-func (s *Service) SaveConfig(ctx context.Context, p identity.Principal, id string, in ConfigInput) (Config, error) {
+func (s *Service) prepareConfig(ctx context.Context, p identity.Principal, id string, in ConfigInput) (ConfigInput, Config, string, error) {
 	if in.Scope != "team" && in.Scope != "personal" {
-		return Config{}, invalid("请选择配置来源")
+		return in, Config{}, "", invalid("请选择配置来源")
 	}
 	if in.Scope == "team" && !admin(p) {
-		return Config{}, identity.Denied("只有管理员可管理团队 AI 配置")
+		return in, Config{}, "", identity.Denied("只有管理员可管理团队 AI 配置")
 	}
 	if _, e := s.aead(); e != nil {
-		return Config{}, e
+		return in, Config{}, "", e
 	}
 	in.Name = strings.TrimSpace(in.Name)
 	in.Model = strings.TrimSpace(in.Model)
 	if in.Name == "" || len(in.Name) > 100 || in.Model == "" || len(in.Model) > 150 || strings.ContainsAny(in.Model, "\r\n") {
-		return Config{}, invalid("请填写配置名称和模型")
+		return in, Config{}, "", invalid("请填写配置名称和模型")
 	}
 	if in.Provider != "deepseek" && in.Provider != "glm" && in.Provider != "openai" && in.Provider != "compatible" {
-		return Config{}, invalid("服务商尚未适配")
+		return in, Config{}, "", invalid("服务商尚未适配")
 	}
 	if in.Protocol != "chat-completions" && in.Protocol != "responses" {
-		return Config{}, invalid("协议尚未适配")
+		return in, Config{}, "", invalid("协议尚未适配")
 	}
 	if in.Provider == "openai" && in.Protocol != "responses" || (in.Provider == "deepseek" || in.Provider == "glm") && in.Protocol != "chat-completions" {
-		return Config{}, invalid("请选择服务商对应的协议")
+		return in, Config{}, "", invalid("请选择服务商对应的协议")
 	}
 	var e error
 	in.BaseURL, e = endpoint(in.BaseURL)
 	if e != nil {
+		return in, Config{}, "", e
+	}
+	old := Config{}
+	if id != "" {
+		old, e = s.config(ctx, p, id)
+		if e != nil {
+			return in, old, "", e
+		}
+		if !old.Editable || old.Scope != in.Scope {
+			return in, old, "", identity.Denied("不能修改此 AI 配置")
+		}
+		if old.Revision != in.ExpectedRevision {
+			return in, old, "", conflict()
+		}
+	}
+	key := strings.TrimSpace(in.APIKey)
+	if key == "" && old.ID != "" {
+		if in.BaseURL != old.BaseURL || in.Provider != old.Provider {
+			return in, old, "", invalid("服务商或地址已更改，请重新填写 API Key")
+		}
+		key, e = s.open(old, p.TeamID)
+		if e != nil {
+			return in, old, "", e
+		}
+	}
+	if key == "" || len(key) > 4096 || strings.ContainsAny(key, "\r\n") {
+		return in, old, "", invalid("请填写有效的 API Key")
+	}
+
+	return in, old, key, nil
+}
+func (s *Service) SaveConfig(ctx context.Context, p identity.Principal, id string, in ConfigInput) (Config, error) {
+
+	in, old, key, e := s.prepareConfig(ctx, p, id, in)
+	if e != nil {
 		return Config{}, e
+	}
+	var verifiedAt *time.Time
+	if in.VerificationToken != "" {
+		if !s.validVerification(p, id, in, key, in.VerificationToken, time.Now()) {
+			return Config{}, invalid("验证已失效，请重新验证后保存")
+		}
+		now := time.Now()
+		verifiedAt = &now
+	} else if old.ID != "" && old.Provider == in.Provider && old.Protocol == in.Protocol && old.BaseURL == in.BaseURL && old.Model == in.Model {
+		previous, err := s.open(old, p.TeamID)
+		if err != nil {
+			return Config{}, err
+		}
+		if previous == key {
+			verifiedAt = old.VerifiedAt
+		}
+	}
+	if old.ID == "" {
+		id = store.ID()
 	}
 	owner := ""
 	var ownerArg any
 	if in.Scope == "personal" {
 		owner = p.UserID
 		ownerArg = owner
-	}
-	old := Config{}
-	if id != "" {
-		old, e = s.config(ctx, p, id)
-		if e != nil {
-			return old, e
-		}
-		if !old.Editable || old.Scope != in.Scope {
-			return old, identity.Denied("不能修改此 AI 配置")
-		}
-		if old.Revision != in.ExpectedRevision {
-			return old, conflict()
-		}
-	} else {
-		id = store.ID()
-	}
-	key := strings.TrimSpace(in.APIKey)
-	if key == "" && old.ID != "" {
-		key, e = s.open(old, p.TeamID)
-		if e != nil {
-			return old, e
-		}
-	}
-	if key == "" || len(key) > 4096 || strings.ContainsAny(key, "\r\n") {
-		return old, invalid("请填写有效的 API Key")
 	}
 	sealed, e := s.seal(id, p.TeamID, owner, key)
 	if e != nil {
@@ -266,10 +296,10 @@ func (s *Service) SaveConfig(ctx context.Context, p identity.Principal, id strin
 		}
 	}
 	if old.ID == "" {
-		_, e = tx.Exec(ctx, `INSERT INTO assistant_configs(id,team_id,owner_id,name,provider,protocol,base_url,model,secret,is_default) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, id, p.TeamID, ownerArg, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default)
+		_, e = tx.Exec(ctx, `INSERT INTO assistant_configs(id,team_id,owner_id,name,provider,protocol,base_url,model,secret,is_default,verified_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, id, p.TeamID, ownerArg, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, verifiedAt)
 	} else {
 		var tag interface{ RowsAffected() int64 }
-		tag, e = tx.Exec(ctx, `UPDATE assistant_configs SET name=$1,provider=$2,protocol=$3,base_url=$4,model=$5,secret=$6,is_default=$7,verified_at=NULL,revision=revision+1,updated_at=now() WHERE id=$8 AND revision=$9`, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, id, in.ExpectedRevision)
+		tag, e = tx.Exec(ctx, `UPDATE assistant_configs SET name=$1,provider=$2,protocol=$3,base_url=$4,model=$5,secret=$6,is_default=$7,verified_at=$10,revision=revision+1,updated_at=now() WHERE id=$8 AND revision=$9`, in.Name, in.Provider, in.Protocol, in.BaseURL, in.Model, sealed, in.Default, id, in.ExpectedRevision, verifiedAt)
 		if e == nil && tag.RowsAffected() != 1 {
 			return old, conflict()
 		}
@@ -303,6 +333,9 @@ func (s *Service) VerifyConfig(ctx context.Context, p identity.Principal, id str
 	}
 	if !c.Editable {
 		return c, identity.Denied("不能修改此 AI 配置")
+	}
+	if c.VerifiedAt != nil {
+		return c, nil
 	}
 	key, e := s.open(c, p.TeamID)
 	if e != nil {

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { LoadingStatus, PageLoading } from "./ui/loading-status";
 import { publicDemo } from "@/lib/runtime";
 import {
   Plus,
@@ -64,6 +65,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
   const { t: tr, locale, timeZone, date } = useI18n();
   const shared = useSharedFilters();
   const { project, domain, member: assignee } = shared.filters;
+  const [loading, setLoading] = useState(true);
   const [board, setBoard] = useState<TodoBoardData | null>(null),
     [tasks, setTasks] = useState<Todo[]>([]),
     [query, setQuery] = useState(""),
@@ -115,6 +117,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
     t.assignee_id === meta.current_user;
   const load = useCallback(async () => {
     const v = ++version.current;
+    setLoading(true);
     try {
       const [b, all] = await Promise.all([
         request<TodoBoardData>("/todo-board"),
@@ -134,6 +137,8 @@ export function TodoBoard({ meta }: { meta: Meta }) {
     } catch (e) {
       if (v === version.current && mounted.current)
         setError((e as Error).message);
+    } finally {
+      if (v === version.current && mounted.current) setLoading(false);
     }
   }, [query, project, domain, assignee, scope, archived]);
   useEffect(() => {
@@ -397,7 +402,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
     "restore-comment": "恢复评论",
   };
   return (
-    <section className="todo-workspace">
+    <section className="todo-workspace" aria-busy={loading}>
       <div className="todo-toolbar">
         <label className="search">
           <Search size={16} />
@@ -409,6 +414,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
           />
         </label>
         <div className="todo-actions">
+          <LoadingStatus active={loading} />
           {meta.mode !== "local-demo" && (
             <NotificationCenter
               team={meta.team.id}
@@ -527,7 +533,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
       )}
       {notice && <p role="status">{notice}</p>}
       {!board ? (
-        <p className="muted">{tr("加载中…")}</p>
+        <PageLoading active={loading} indicator={false} />
       ) : (
         <div className="todo-lanes">
           {board.columns

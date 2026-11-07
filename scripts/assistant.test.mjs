@@ -57,3 +57,13 @@ test('offline task progress waits for confirmation and preserves concurrent huma
  await publicDemoRequest('/todos/'+id,{method:'PATCH',body:JSON.stringify({action:'edit',title:'Human change',expected_revision:taskAfter.revision,operation_id:crypto.randomUUID()})});
  const failed=await publicDemoRequest('/assistant/actions/'+stale.id,init);assert.equal(failed.state,'failed');assert.ok((await publicDemoRequest('/todos/'+id)).completed_at);
 });
+
+test('web opt-in is limited to official verified DeepSeek configs and safe external source links', async()=>{
+ const {supportsDeepseekWeb,safeWebSourceLink}=await import('../apps/web/lib/assistant.ts');
+ const c={provider:'deepseek',protocol:'chat-completions',base_url:'https://api.deepseek.com/v1',verified_at:'2026-11-07'};
+ assert.equal(supportsDeepseekWeb(c),true);
+ for(const v of [{...c,provider:'compatible'},{...c,base_url:'https://proxy.example.com'},{...c,verified_at:null},{...c,protocol:'responses'}])assert.equal(supportsDeepseekWeb(v),false);
+ assert.equal(safeWebSourceLink('https://api-docs.deepseek.com/zh-cn/guides/search/'),true);
+ for(const url of ['javascript:alert(1)','http://example.com','https://user:pass@example.com','https://localhost./','https://127.1/','https://10.0.0.1/','https://site.example/?token=private'])assert.equal(safeWebSourceLink(url),false);
+ await assert.rejects(publicDemoRequest('/assistant/chat',{method:'POST',body:JSON.stringify({web_enabled:true,message:'Search public docs'})}),/演示不连接/);
+});

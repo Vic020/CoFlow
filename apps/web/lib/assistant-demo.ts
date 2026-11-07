@@ -256,6 +256,7 @@ export async function assistantDemo(
     return structuredClone(c);
   }
   if (path === "/assistant/chat" && method === "POST") {
+    if (input.web_enabled) throw new Error("演示不连接外部联网服务");
     const rid = String(input.request_id || "");
     const prior = turns.get(rid);
     if (prior) return structuredClone(prior);
