@@ -232,6 +232,8 @@ test("full pipeline and resume use only simulated GitHub/registry/hooks; plan pe
   const git = (...args) =>
     execFileSync(realGit, args, { cwd: root, encoding: "utf8" }).trim();
   git("init", "-b", "main");
+  git("config", "user.name", "Synthetic QA");
+  git("config", "user.email", "qa@example.test");
   git("remote", "add", "origin", "https://github.com/example/project.git");
   git("add", ".");
   git(
