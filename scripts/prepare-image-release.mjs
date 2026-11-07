@@ -9,7 +9,7 @@ export function validateTag(tag) {
 }
 export function validateBuildPaths(paths) {
   const examples = new Set(['.env.example', 'deploy/production.env.example']);
-  const previews = new Set(['timeline-desktop.png', 'logo-preview.png', 'public-preview.png']);
+  const previews = new Set(['timeline-desktop.png', 'logo-preview.png', 'public-preview.png', 'todo-preview.png', 'calendar-preview.png', 'assistant-preview.png']);
   for (const file of paths) {
     if (examples.has(file)) continue;
     const parts = file.split('/');

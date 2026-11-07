@@ -25,6 +25,9 @@ CoFlow **0.4.1** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 在 GitHub 构建通用 Docker 镜像 | [镜像构建](IMAGE_BUILDS.md) |
 | 维护文档、Wiki、Projects 与发布流程 | [维护规范](MAINTENANCE.md) |
 
+
+[可续跑发布工具](RELEASE_AUTOMATION.md)
+
 ## 协议源文件
 
 - [CoFlow Skill](../skills/coflow/SKILL.md)：安装、身份校验、上报和 Todo 共用一个入口，详细规则按需读取链接的参考文件。

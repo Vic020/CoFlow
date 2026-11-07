@@ -27,6 +27,9 @@ The repository guides below are maintained in Chinese. The Wiki provides English
 | Build generic Docker images on GitHub | [Image builds](IMAGE_BUILDS.md) |
 | Maintain docs, Wiki, Projects and releases | [Maintenance workflow](MAINTENANCE.md) |
 
+
+[Resumable release runner](RELEASE_AUTOMATION.md)
+
 ## Protocol sources
 
 - [CoFlow Skill](../skills/coflow/SKILL.md): one entry for installation, identity, reporting and Todo; operation details live in linked references.

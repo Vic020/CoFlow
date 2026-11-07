@@ -70,3 +70,5 @@ Release、[Pages 发布](GITHUB_PAGES.md)、[真实团队部署](DEPLOYMENT.md)�
 `npm run docs:check` 只检查本地文件目标（Markdown 内联及 HTML 链接，不校验页内锚点或外链）、README 中英入口、Wiki 映射源文件与页面标识；版本由 `version:check` 检查，界面翻译由 `test:i18n` 检查。CI 执行这些只读检查，不发布内容、不改状态、不递增版本。
 
 语义翻译是否准确、文档与功能是否一致、Wiki 远端内容、Projects 实际状态、部署结果仍需人工或有授权的 Agent 核对，不能从 CI 通过推断。
+
+本机可使用[可续跑发布入口](RELEASE_AUTOMATION.md)减少重复操作；入口不改变上述授权、版本与数据边界。

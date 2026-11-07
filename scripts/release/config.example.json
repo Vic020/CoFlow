@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "repository": "owner/project",
+  "branch": "main",
+  "pages_url": "https://owner.github.io/project",
+  "hooks": {},
+  "report_requires": []
+}

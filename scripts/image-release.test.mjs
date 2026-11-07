@@ -16,7 +16,7 @@ test('only stable version tags accepted, before Git is invoked',()=>{
  assert.equal(validateTag('v0.1.4'),'0.1.4');
 });
 test('private paths rejected, reviewed templates and previews allowed',()=>{
- validateBuildPaths(['.env.example','deploy/production.env.example','docs/design/public-preview.png','apps/api/internal/identity/service.go']);
+ validateBuildPaths(['.env.example','deploy/production.env.example','docs/design/public-preview.png','docs/design/todo-preview.png','docs/design/calendar-preview.png','docs/design/assistant-preview.png','apps/api/internal/identity/service.go']);
  for(const value of ['.env.production','apps/web/.env.local','deploy/config.env','deploy/config.env.production','.local/qa.json','backup.dump','agent.token','private.key','docs/design/unreviewed.png','apps/api/.data/demo.json'])assert.throws(()=>validateBuildPaths([value]),/private\/local/);
 });
 test('tag must match VERSION and belong to main',()=>{

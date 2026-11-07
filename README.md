@@ -28,6 +28,9 @@ AI service configuration also offers provider-specific model suggestions and a *
 
 The local Unreleased scope also includes optional task acceptance: explicit criteria/reviewer, evidence submission, acceptance/return history and completion guards. See [task acceptance](docs/TODO_ACCEPTANCE.md).
 
+
+Release automation is available through `npm run release -- --help`; it plans by default, keeps instance configuration/checkpoints private, and requires explicit switches for publication, each deployment and reporting. See the [release runner guide](docs/RELEASE_AUTOMATION.md).
+
 ## Why CoFlow
 
 One person can run several AI coding tools at once: one Agent updates an API, another builds a page, and a third writes tests. When everyone on the team works with their own Agents, collaboration takes on a different pace.
@@ -65,11 +68,30 @@ Timeline, Todo and Calendar now share project, domain and member filters in the 
 
 ## Preview
 
-Version 0.4.0 credential improvements distinguish granted scopes from Skill versions, offer optional task/report access setup, and let installation prompts carry explicit local replacement consent. Skill 1.3.0 creates a new report for new progress on a later reporting day, while retaining the same Todo. Projects connect to one space by default; additional reporting destinations require a private, explicit project preference. See [Agent setup](docs/AGENT_REPORTING.md).
+Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7, 2026. All screenshots use the offline public demo: synthetic team members, tasks and reports; the assistant response is simulated and no live model or private service is connected.
 
-![CoFlow Timeline with synthetic demo data](docs/design/public-preview.png)
+![CoFlow Timeline with shared filters and linked task progress](docs/design/public-preview.png)
 
-The preview uses synthetic identities and example delivery links.
+<details>
+<summary>Todo · collaborative delivery</summary>
+
+![CoFlow Todo delivery stages, owners and priorities](docs/design/todo-preview.png)
+
+</details>
+
+<details>
+<summary>Calendar · task schedules and milestones</summary>
+
+![CoFlow Calendar with linked task schedules and project milestones](docs/design/calendar-preview.png)
+
+</details>
+
+<details>
+<summary>AI Assistant · history and changes awaiting confirmation</summary>
+
+![CoFlow AI Assistant with a synthetic task draft awaiting confirmation](docs/design/assistant-preview.png)
+
+</details>
 
 ## Roadmap
 

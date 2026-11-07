@@ -30,6 +30,9 @@ AI 服务配置增加服务商模型建议与**自动获取模型**，不支持�
 
 本地 Unreleased 还包含可选任务验收：明确标准与验收人、提交依据、通过／退回历史和完成保护，见[任务验收](docs/TODO_ACCEPTANCE.md)。
 
+
+统一发布入口使用 `npm run release -- --help`，默认仅展示计划；实例配置和检查点留在私有目录，发布、各部署目标及上报分别选择。见[发布工具说明](docs/RELEASE_AUTOMATION.md)。
+
 ## 为什么需要 CoFlow
 
 一个人同时开着几个 AI Coding 工具：一个 Agent 改接口，一个写页面，另一个补测试。团队里每个人都有自己的 Agent 在并行工作，协作的节奏也随之改变。
@@ -69,11 +72,30 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 ## 界面预览
 
-0.3.0 的凭证管理区分实际权限与 Skill 版本，提供可选的任务／简报联动权限配置，并允许在安装提示词中明确本机替换授权。Skill 1.3.0 对跨上报日期的新进展新建简报，继续复用 Todo。项目默认单空间接入，额外上报目标需用户明确配置为私有项目偏好。详见 [Agent 接入](docs/AGENT_REPORTING.md)。
+当前 Timeline、Todo、Calendar 与 AI 助手界面，截图更新于 2026 年 11 月 7 日。全部来自离线公开演示，成员、任务和简报均为合成数据；助手回复为模拟结果，不连接真实模型或私有服务。
 
-![CoFlow Timeline（虚拟示例数据）](docs/design/public-preview.png)
+![CoFlow Timeline：全局筛选与关联任务进展](docs/design/public-preview.png)
 
-预览使用隔离测试库中的虚拟团队与示例交付链接，不含真实成员数据。
+<details>
+<summary>Todo · 多人、多 Agent 协同交付</summary>
+
+![CoFlow Todo：交付阶段、负责人和优先级](docs/design/todo-preview.png)
+
+</details>
+
+<details>
+<summary>Calendar · 任务排期与里程碑</summary>
+
+![CoFlow Calendar：关联任务排期与项目里程碑](docs/design/calendar-preview.png)
+
+</details>
+
+<details>
+<summary>AI 助手 · 历史对话与待确认操作</summary>
+
+![CoFlow AI 助手：等待确认的合成任务草稿](docs/design/assistant-preview.png)
+
+</details>
 
 ## 路线图
 

@@ -18,7 +18,9 @@
     "test:calendar": "node --test scripts/calendar.test.mjs scripts/calendar-week.test.mjs",
     "test:cache": "node --test scripts/read-cache.test.mjs",
     "test:assistant": "node --test scripts/assistant.test.mjs",
-    "test:todo-review": "node --test scripts/todo-review.test.mjs"
+    "test:todo-review": "node --test scripts/todo-review.test.mjs",
+    "release": "node scripts/release/run.mjs",
+    "test:release": "node --test scripts/release.test.mjs"
   },
   "workspaces": [
     "apps/web",
