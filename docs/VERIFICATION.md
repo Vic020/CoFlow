@@ -3,6 +3,16 @@
 更新：2026-11-07（Asia/Shanghai）；当前版本 0.4.1。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
 
 
+## 0.4.1 发布与双环境部署（2026-11-07）
+
+- 发布源码 `26f180d30e63011e7aabc8506b38e351ad0cbe48`，应用 0.4.1、统一 Skill 1.4.0；[Release](https://github.com/Vic020/CoFlow/releases/tag/v0.4.1) 与标签固定该提交。[精确源码 CI 42333092151](https://github.com/Vic020/CoFlow/actions/runs/42333092151) 全部成功，包含 PostgreSQL 完整 Go race（API 作业 7 分 47 秒）。66 项本地 JS、类型／多语言／文档／版本、隔离团队及演示 webpack 构建通过。
+- [镜像 42333946877](https://github.com/Vic020/CoFlow/actions/runs/42333946877) 成功；匿名 manifest 内容摘要与构建 Summary 一致，包含 linux/amd64。API：`ghcr.io/vic020/coflow-api@sha256:7390150223b500b632d1a0141b31de7b4f90a643c8f018eadc08ed4b18bf828b`；Web：`ghcr.io/vic020/coflow-web@sha256:46444af36096c24f2d5e9eaa2221cc77671c9d4c6fa6451dadcecbcd1b530cf1`。
+- 自用实例升级前完成服务器内数据库备份及完整解码检查，保留回滚配置和原加密主密钥；固定摘要只替换 API／Web，数据库／网关容器保持，既有数据计数未减少，14 个迁移及备份定时器正常。拉取 8.051 秒，切换及内部健康检查 2.534 秒；私有备份和操作资料不公开。
+- HTTPS health 为 team／ok／0.4.1，应用路由成功，未登录任务及助手配置／历史／定时／MCP 仍拒绝访问。Skill 入口、四参考与 OpenAPI 下载逐字节匹配源码。既有浏览器会话打开线上助手，流式按钮为单行／nowrap；没有新建生产模型配置、定时任务或 MCP 连接。
+- [Pages 42334014971](https://github.com/Vic020/CoFlow/actions/runs/42334014971) 从同一源码独立部署成功，六条页面路由与六份下载哈希通过，API 为 404；Chrome 可打开合成 Docs 并展示 Skill 1.4.0。公开演示不连接真实 API 或使用真实凭证。
+- README 中英、发布说明、手册与本机忽略发布规则同步。该条为发布后的验证追加，不移动源码标签。真实厂商账户、外部 MCP、跨会话 Agent 与容量专项继续独立待验收；Wiki／Projects 本轮未修改。本机已安装 Skill 未被自动覆盖。
+
+
 ## AI 服务商与模型选择（本地 Unreleased，2026-11-07）
 
 - 配置列表展示服务商；表单带出默认地址及经官方文档核对的模型建议，支持候选列表、自定义 ID 和手动获取服务端列表。查询不保存配置、不覆盖已选模型、不标记验证完成。

@@ -2,6 +2,8 @@
 
 公开入口：https://vic020.github.io/CoFlow/
 
+2026-11-07：0.4.1 已通过[独立手动部署 42334014971](https://github.com/Vic020/CoFlow/actions/runs/42334014971)，源码 `26f180d30e63011e7aabc8506b38e351ad0cbe48`。首页、Todo、Calendar、Docs、助手、设置均为 200，Skill 1.4.0 入口及四参考、OpenAPI 哈希匹配发布源码，API 为 404。Chrome 验证合成 Docs 可读并显示新版 Skill；服务器部署另见[验证记录](VERIFICATION.md)。
+
 2026-10-29：0.2.3 已通过[手动部署 40736666663](https://github.com/Vic020/CoFlow/actions/runs/40736666663)，源码 `a79223d393284d46cbbbf548245e0a0dd244df86`。独立出站 HTTPS 核验首页、Todo、Docs 为 200，Skill 1.2.0 四文件和 OpenAPI 哈希与发布源码一致，`/api/v1/meta` 为 404，无真实后端。本机 Chrome 访问仍遇到连接关闭，因此不宣称本机浏览器验收通过；服务器与 Pages 的部署结果分别记录。
 
 2026-10-28：0.2.2 演示已通过[独立手动部署](https://github.com/Vic020/CoFlow/actions/runs/40707090708)，源码 `c9ac58f98fe82b2f6355317869639daa0ea7f38e`。六条 Todo 示例的优先级边框、[Docs 阅读页](https://vic020.github.io/CoFlow/docs/)与 Skill 1.1.0 展示已核验；首页／Todo／Docs 为 200，Skill 入口、三份参考与 OpenAPI 哈希匹配规范，`/api/v1/meta` 为 404。此处仅提供合成数据，没有真实后端。
