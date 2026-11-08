@@ -2,6 +2,12 @@
 
 更新：2026-11-08（Asia/Shanghai）；当前版本 0.4.3。以下保留各阶段验收历史，其中本地未发布的描述为当时状态。
 
+## 0.4.3 发布与 Pages 部署（2026-11-08）
+
+- 发布源码 `eaccd951ebcdcb1e62f13c62f0d05b736db5f466`；[精确源码 CI](https://github.com/Vic020/CoFlow/actions/runs/42437461906) 的 Web 构建与 Go race／隔离 PostgreSQL 检查通过。[Release v0.4.3](https://github.com/Vic020/CoFlow/releases/tag/v0.4.3) 固定此提交；应用 0.4.3，Skill 1.4.0 不变。
+- [Pages 部署](https://github.com/Vic020/CoFlow/actions/runs/42437967415) 成功；本机 HTTPS 直接核对六份规范下载与固定源码一致，`/api/v1/meta` 返回 404，保持合成离线演示边界。本轮未声称浏览器专项验收。
+- 75 项本地 JS、类型、文档／版本／diff 检查通过；升级含迁移 015／016，总计 16，迁移及真实服务商边界见[发布说明](releases/v0.4.3.md)。镜像发布与自用服务器升级尚未执行，其运行版本及数据迁移不视为已完成；后续结果独立补记。本轮未上报 CoFlow 或同步 Wiki／Projects。
+
 ## GitHub Actions 运行时与 Runner（本地 Unreleased，2026-11-07）
 
 - CI、镜像、Pages 共 6 个作业固定 `ubuntu-24.04`；9 个直接依赖 Action 升级并锁定官方稳定发布的完整提交 SHA，JavaScript 运行时均为 Node.js 24。Pages 组合上传 Action 的底层 upload-artifact 同样核对为 Node.js 24。镜像 setup-node 显式禁用不需要的包管理器缓存，原权限、发布源校验和手动触发保持不变。
