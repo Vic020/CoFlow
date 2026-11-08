@@ -6,7 +6,9 @@
 
 - 发布源码 `eaccd951ebcdcb1e62f13c62f0d05b736db5f466`；[精确源码 CI](https://github.com/Vic020/CoFlow/actions/runs/42437461906) 的 Web 构建与 Go race／隔离 PostgreSQL 检查通过。[Release v0.4.3](https://github.com/Vic020/CoFlow/releases/tag/v0.4.3) 固定此提交；应用 0.4.3，Skill 1.4.0 不变。
 - [Pages 部署](https://github.com/Vic020/CoFlow/actions/runs/42437967415) 成功；本机 HTTPS 直接核对六份规范下载与固定源码一致，`/api/v1/meta` 返回 404，保持合成离线演示边界。本轮未声称浏览器专项验收。
-- 75 项本地 JS、类型、文档／版本／diff 检查通过；升级含迁移 015／016，总计 16，迁移及真实服务商边界见[发布说明](releases/v0.4.3.md)。镜像发布与自用服务器升级尚未执行，其运行版本及数据迁移不视为已完成；后续结果独立补记。本轮未上报 CoFlow 或同步 Wiki／Projects。
+- [镜像构建](https://github.com/Vic020/CoFlow/actions/runs/42439356074) 成功。工作流提交 `d8ff5197cee5703cf83f198f66f014e7a0cd04c3` 比发布源码仅多验收文档；构建按固定 `v0.4.3` 标签校验、检出发布源码。匿名核验两份 OCI 内容摘要、amd64 平台及镜像配置的版本／源码标签均匹配，不将工作流提交误当成构建源码。
+- 自用实例按固定摘要升级到 0.4.3，迁移 015／016 应用后总计 16。完整备份解码、业务数据保留、原主密钥、模型配置 ID／修订／验证时间及密文元数据保留检查通过；数据库／网关不替换，备份定时器、内部端口、HTTPS／未登录权限和六份规范下载验收通过。镜像拉取约 8.456 秒，应用切换及内部健康恢复约 2.404 秒。私有运维证据留在 Git 外。
+- 75 项本地 JS、类型、文档／版本／diff 检查通过；迁移与真实服务商边界见[发布说明](releases/v0.4.3.md)。未创建真实 AI 配置、付费请求、定时任务或 MCP 连接；本轮未上报 CoFlow 或同步 Wiki／Projects。真实服务商与跨会话／容量专项保持独立验收。
 
 ## GitHub Actions 运行时与 Runner（本地 Unreleased，2026-11-07）
 
