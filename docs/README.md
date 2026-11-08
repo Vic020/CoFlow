@@ -46,8 +46,8 @@ Download copies at `/agent/coflow/SKILL.md` and `/agent/openapi.yaml` are genera
 
 Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub Pages use separate synthetic data; Pages has no backend. Version 0.4.3 includes Timeline, Todo, Calendar and the first AI Assistant release. Provider-account compatibility and remaining model/Context/statistics capabilities require separate acceptance. External Agents use the unified CoFlow Skill and HTTP API; the assistant also supports approved read-only remote MCP Client connections. CLI and a public CoFlow MCP Server remain future integrations.
 
-- [Collaboration loop](COLLABORATION_LOOP.md): Unreleased Agent changes, handoff facts and confirmed task progress.
+- [Collaboration loop](COLLABORATION_LOOP.md): Agent changes since 0.4.1, handoff facts and confirmed task progress.
 
-- [Task acceptance](TODO_ACCEPTANCE.md): Unreleased criteria, designated reviewer and acceptance history.
+- [Task acceptance](TODO_ACCEPTANCE.md): criteria since 0.4.1, designated reviewer and acceptance history.
 
 - [Web service configuration](WEB_SERVICES.md): independent search/fetch providers, personal/team settings and usage boundaries.
