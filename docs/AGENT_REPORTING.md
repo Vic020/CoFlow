@@ -1,6 +1,6 @@
 # Agent 接入
 
-记录版本：0.2.1；统一 CoFlow Skill 版本 1.1.0。支持 Skill 与 HTTP API；CLI、MCP 尚未正式提供。
+记录版本：0.4.3；统一 CoFlow Skill 版本 1.4.0。外部 Agent 使用 Skill 与 HTTP API；CLI 与对外 MCP Server 尚未正式提供，平台助手支持经授权的只读 MCP Client。
 
 先了解协作理念、不同工具的接入方式与日常交付方案，可阅读 [CoFlow 协作指南](COLLABORATION_GUIDE.md)。本页继续维护安装、权限和协议细节。
 

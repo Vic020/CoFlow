@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.2-087354" alt="Version 0.4.2" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.3-087354" alt="Version 0.4.3" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -22,16 +22,16 @@ CoFlow brings people’s and Agents’ progress, deliverables, and discussions i
 
 **New in 0.4.0 — AI assistant:** private searchable history, versioned task templates, persistent scheduled drafts with separate publishing authorization, Calendar plans, and approved remote read-only MCP tools. Team and personal model configurations share the same Go permission and confirmation rules. See [assistant workflows](docs/ASSISTANT_NEXT_STEPS.md). Full-page chat keeps history on the left.
 
-**Unreleased:** Personal AI configuration lives in the bottom-left account menu → Personal AI settings → Model services and is available across your workspaces. Shared configuration stays in workspace Settings → AI services.
+**New in 0.4.3:** Personal AI configuration lives in the bottom-left account menu → Personal AI settings → Model services and is available across your workspaces. Shared configuration stays in workspace Settings → AI services.
 
 AI service configuration also offers provider-specific model suggestions and a **Fetch models** button, with custom model IDs and graceful fallback when listing is unavailable; see the [configuration guide](docs/ASSISTANT_V0.4.md). Included in 0.4.1.
 
-**In development (Unreleased):** task-progress confirmation cards, Agent change cursors and scoped handoff facts. See [collaboration loop](docs/COLLABORATION_LOOP.md); these require the new deployment/capabilities and are not part of the published 0.4.0 tag.
+**Included since 0.4.1:** task-progress confirmation cards, Agent change cursors and scoped handoff facts. See [collaboration loop](docs/COLLABORATION_LOOP.md); Agents discover the deployed capabilities before using them.
 
 Optional task acceptance includes explicit criteria/reviewer, evidence submission, acceptance/return history and completion guards. See [task acceptance](docs/TODO_ACCEPTANCE.md).
 
 
-**Unreleased:** Independent web-service configuration supports Tavily, DeepSeek, Exa and Firecrawl search/fetch with any supported chat model. Personal credentials work across your workspaces; shared credentials stay team scoped. Web access remains opt-in per turn; jobs and the offline demo keep it disabled. See [web services](docs/WEB_SERVICES.md).
+**New in 0.4.3:** Independent web-service configuration supports Tavily, DeepSeek, Exa and Firecrawl search/fetch with any supported chat model. Personal credentials work across your workspaces; shared credentials stay team scoped. Web access remains opt-in per turn; jobs and the offline demo keep it disabled. See [web services](docs/WEB_SERVICES.md).
 
 AI configuration forms verify the connection before saving; saved verification is reused for name/default changes and expires when connection settings change.
 
@@ -45,7 +45,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.4.2.**
+> **Current version: 0.4.3.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -103,7 +103,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.4.2**, including Timeline, Todo, Calendar and the first AI Assistant release. Further model adapters, external write tools, Context and statistics remain separate roadmap work.
+The current version is **0.4.3**, including Timeline, Todo, Calendar and the first AI Assistant release. Further model adapters, external write tools, Context and statistics remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |

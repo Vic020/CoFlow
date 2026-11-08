@@ -1,8 +1,10 @@
 # 更新日志
 
-记录 CoFlow 的功能、修复与兼容性变化。当前版本为 **0.4.2**。版本更新、GitHub Release 和部署分别由维护者决定。
+记录 CoFlow 的功能、修复与兼容性变化。当前版本为 **0.4.3**。版本更新、GitHub Release 和部署分别由维护者决定。
 
 ## [Unreleased]
+
+## [0.4.3] - 2026-11-08
 
 - CI、镜像与 Pages 工作流升级到原生 Node.js 24 的 Action 并固定完整提交 SHA；Runner 明确使用 Ubuntu 24.04，消除 Node.js 20 弃用及 ubuntu-latest 迁移警告。镜像流程显式关闭不需要的 npm 自动缓存，保留原有权限和手动发布边界。
 
