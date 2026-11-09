@@ -36,6 +36,10 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: '1'
   api:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -54,7 +58,6 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
-      - run: go test -race -count=1 ./...
-        working-directory: apps/api
+      - run: python3 scripts/test-api-ci.py --shard ${{ matrix.shard }} --total 3
         env:
           COFLOW_TEST_DATABASE_URL: postgres://coflow_test:ci_disposable_only@127.0.0.1:5432/coflow_ci?sslmode=disable
