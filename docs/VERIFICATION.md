@@ -628,3 +628,11 @@
 
 - 首个候选提交 `010cc8d3957c16f6217e14354abf8939fd80f933` 的 Web CI 通过，API 在密码哈希计算中达到 Go 默认 10 分钟总超时；未出现业务断言失败或 race 报告，未据此创建 Release 或部署。
 - API CI 改用三个确定性测试名分组，保留 `-race -count=1`，每组独立测试数据库，单组明确 15 分钟上限；其他 Go 包由第一组完整执行。只读枚举核对 51 项 HTTP 测试全部且仅覆盖一次，未降低生产哈希成本或跳过测试。最终精确源码 CI 结果后续记录。
+
+## 2026-11-10 · 0.5.0 发布与部分部署
+
+- 正式源码 `612e93419e90d33ba42fa0ca8a2616591d19e3ec`；[精确源码 CI](https://github.com/Vic020/CoFlow/actions/runs/42669790181) 的 Web 和三个 API race 分组全部成功，最长作业约 4 分钟。[Release v0.5.0](https://github.com/Vic020/CoFlow/releases/tag/v0.5.0) 已发布，统一 Skill 1.5.0；标签固定在上述源码。
+- [镜像工作流](https://github.com/Vic020/CoFlow/actions/runs/42670574621) 成功，两份公开镜像的 index／manifest／config 摘要、amd64 平台及源码／版本标签经匿名验证。自用实例固定摘要部署成功，备份完整解码、16 项迁移、原数据／加密主密钥／模型配置密文元数据保留、健康、七份规范下载及 Context 页面通过；镜像拉取 7.841 秒，切换及内部健康 2.411 秒。新增 Context／目录／图谱／委托接口匿名访问全部为 401。
+- **Pages 尚未升级。** [原运行](https://github.com/Vic020/CoFlow/actions/runs/42671131856) 三次尝试在构建前或部署作业启动前失败，实际执行的构建成功，公开运行注释为 GitHub “Internal server error”。保留失败历史后发起的[同源码新运行](https://github.com/Vic020/CoFlow/actions/runs/42673176378) 也失败；没有更改部署保护或伪造完成检查点。GitHub [官方 Actions 事故](https://stspg.io/7yw63xl9ztrv) 当时状态为 investigating／major outage，仍待平台恢复后续跑并做线上校验。
+- 两个获授权空间均已上报真实部分完成和 Pages 阻塞，任务／简报关联已回读；复用 Context 主任务至待确认，发布任务保持进行中，没有关闭真实模型、MCP、Coding Agent 或容量专项。真实空间身份、业务对象 ID、私有备份和凭证不写入公开记录。
+- 发布检查点、失败运行历史、固定摘要、未完成 Pages 阶段及恢复命令保存在 Git 忽略的本机记录中。服务器、Release、镜像与 Pages 分别计状态，不把前三项完成写成全部部署完成；本节的后续文档提交不改变正式源码标签，也不代表其 CI 已通过。
