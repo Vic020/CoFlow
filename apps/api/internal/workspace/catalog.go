@@ -17,8 +17,9 @@ import (
 )
 
 type Service struct {
-	Pool     *pgxpool.Pool
-	TodoDemo *TodoMemory
+	SourceReports store.Repository
+	Pool          *pgxpool.Pool
+	TodoDemo      *TodoMemory
 }
 type Category struct {
 	ID         string   `json:"id"`

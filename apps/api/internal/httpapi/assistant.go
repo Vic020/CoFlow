@@ -20,6 +20,20 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 	aiLimit := assistantLimiter()
 	g := r.Group("/api/v1/assistant", sessionOnly)
 	s := &assistant.Service{Slots: make(chan struct{}, 3), Identity: cfg.Identity, Pool: cfg.Identity.Pool, Workspace: ws, Repo: repo, Key: cfg.AIEncryptionKey, Client: cfg.AIClient}
+	g.POST("/context-auto", aiLimit, func(c *gin.Context) {
+		var in assistant.ContextAutoInput
+		if !decode(c, &in) {
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 55*time.Second)
+		defer cancel()
+		result, e := s.AutoContext(ctx, principal(c), in)
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, result)
+	})
 	g.GET("/web-configs", func(c *gin.Context) {
 		items, e := s.WebConfigs(c.Request.Context(), principal(c))
 		if e != nil {

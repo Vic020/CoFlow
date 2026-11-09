@@ -28,39 +28,135 @@ type Action struct {
 	Result    any             `json:"result,omitempty"`
 }
 type ToolArgs struct {
-	ChangeAction         string              `json:"change_action"`
-	BoardRevision        int                 `json:"board_revision"`
-	AssigneeID           string              `json:"assignee_id"`
-	AssigneeName         string              `json:"assignee_name,omitempty"`
-	OriginalAssigneeName string              `json:"original_assignee_name,omitempty"`
-	OriginalAssigneeID   string              `json:"original_assignee_id,omitempty"`
-	OriginalColumnName   string              `json:"original_column_name,omitempty"`
-	Domain               string              `json:"domain"`
-	MemberID             string              `json:"member_id"`
-	ReportID             string              `json:"report_id"`
-	Revision             string              `json:"revision"`
-	ProjectName          string              `json:"project_name,omitempty"`
-	ColumnName           string              `json:"column_name,omitempty"`
-	OriginalSchedule     *workspace.Schedule `json:"original_schedule,omitempty"`
-	ProjectID            string              `json:"project_id"`
-	Q                    string              `json:"q"`
-	Offset               int                 `json:"offset"`
-	From                 string              `json:"from"`
-	To                   string              `json:"to"`
-	Timezone             string              `json:"timezone"`
-	Cursor               string              `json:"cursor"`
-	Title                string              `json:"title"`
-	Body                 string              `json:"body"`
-	ColumnID             string              `json:"column_id"`
-	TodoID               string              `json:"todo_id"`
-	ExpectedRevision     int                 `json:"expected_revision"`
-	Schedule             *workspace.Schedule `json:"schedule"`
-	TodoIDs              []string            `json:"todo_ids"`
+	EventID              string                  `json:"event_id"`
+	ContextState         string                  `json:"state"`
+	ContextID            string                  `json:"context_id"`
+	Knowledge            *workspace.ContextEntry `json:"knowledge,omitempty"`
+	ChangeAction         string                  `json:"change_action"`
+	BoardRevision        int                     `json:"board_revision"`
+	AssigneeID           string                  `json:"assignee_id"`
+	AssigneeName         string                  `json:"assignee_name,omitempty"`
+	OriginalAssigneeName string                  `json:"original_assignee_name,omitempty"`
+	OriginalAssigneeID   string                  `json:"original_assignee_id,omitempty"`
+	OriginalColumnName   string                  `json:"original_column_name,omitempty"`
+	Domain               string                  `json:"domain"`
+	MemberID             string                  `json:"member_id"`
+	ReportID             string                  `json:"report_id"`
+	Revision             string                  `json:"revision"`
+	ProjectName          string                  `json:"project_name,omitempty"`
+	ColumnName           string                  `json:"column_name,omitempty"`
+	OriginalSchedule     *workspace.Schedule     `json:"original_schedule,omitempty"`
+	ProjectID            string                  `json:"project_id"`
+	Q                    string                  `json:"q"`
+	Offset               int                     `json:"offset"`
+	From                 string                  `json:"from"`
+	To                   string                  `json:"to"`
+	Timezone             string                  `json:"timezone"`
+	Cursor               string                  `json:"cursor"`
+	Title                string                  `json:"title"`
+	Body                 string                  `json:"body"`
+	ColumnID             string                  `json:"column_id"`
+	TodoID               string                  `json:"todo_id"`
+	ExpectedRevision     int                     `json:"expected_revision"`
+	Schedule             *workspace.Schedule     `json:"schedule"`
+	TodoIDs              []string                `json:"todo_ids"`
 }
 
 func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a ToolArgs) (any, *Action, []Link, error) {
 	links := []Link{}
 	switch name {
+	case "read_context_tree":
+		xs, e := s.Workspace.ContextTree(ctx, p, workspace.ContextFilter{Project: a.ProjectID, Domain: a.Domain, Member: a.MemberID})
+		if e != nil {
+			return nil, nil, nil, e
+		}
+		start := a.Offset
+		if start < 0 {
+			start = 0
+		}
+		if start > len(xs) {
+			start = len(xs)
+		}
+		end := start + 50
+		if end > len(xs) {
+			end = len(xs)
+		}
+		return map[string]any{"items": xs[start:end], "total": len(xs), "next_offset": end, "has_more": end < len(xs), "content_included": false}, nil, nil, nil
+	case "find_context":
+		state := a.ContextState
+		if state == "" {
+			state = "active"
+		}
+		if state != "active" && state != "pending" {
+			return nil, nil, nil, invalid("Context search state must be active or pending")
+		}
+		xs, total, e := s.Workspace.Contexts(ctx, p, workspace.ContextFilter{Q: a.Q, Project: a.ProjectID, Domain: a.Domain, Member: a.MemberID, State: state, Offset: a.Offset, Limit: 5})
+		out := []workspace.ContextEntry{}
+		for _, x := range xs {
+			if state == "active" && (x.NeedsReview || x.ValidFrom != "" && x.ValidFrom > time.Now().UTC().Format("2006-01-02")) {
+				continue
+			}
+			x.History = nil
+			if len(x.Sources) > 5 {
+				x.Sources = x.Sources[:5]
+			}
+			if len([]rune(x.Body)) > 1200 {
+				x.Body = string([]rune(x.Body)[:1200]) + "…"
+			}
+			for i := range x.Sources {
+				if len([]rune(x.Sources[i].Quote)) > 300 {
+					x.Sources[i].Quote = string([]rune(x.Sources[i].Quote)[:300]) + "…"
+				}
+			}
+			out = append(out, x)
+			links = append(links, Link{x.Title, "/context?context=" + url.QueryEscape(x.ID)})
+		}
+		return map[string]any{"items": out, "total_candidates": total, "next_offset": a.Offset + len(xs), "has_more": a.Offset+len(xs) < total, "excerpted": true, "conflicts_require_human_review": true}, nil, links, e
+	case "read_context":
+		x, e := s.Workspace.GetContext(ctx, p, a.ContextID)
+		x.History = nil
+		excerpted := false
+		text := []rune(x.Body)
+		start := a.Offset
+		if start < 0 {
+			start = 0
+		}
+		if start > len(text) {
+			start = len(text)
+		}
+		end := start + 4000
+		if end > len(text) {
+			end = len(text)
+		}
+		x.Body = string(text[start:end])
+		excerpted = start > 0 || end < len(text)
+		for i := range x.Sources {
+			if len([]rune(x.Sources[i].Quote)) > 500 {
+				x.Sources[i].Quote = string([]rune(x.Sources[i].Quote)[:500]) + "…"
+				excerpted = true
+			}
+		}
+		return map[string]any{"entry": x, "excerpted": excerpted, "body_offset": start, "body_total": len(text), "next_offset": end, "has_more": end < len(text)}, nil, []Link{{x.Title, "/context?context=" + url.QueryEscape(x.ID)}}, e
+	case "read_delegations":
+		xs, e := s.Workspace.Delegations(ctx, p)
+		filtered := []workspace.Delegation{}
+		for _, d := range xs {
+			if a.ProjectID != "" && d.ProjectID != a.ProjectID && d.TaskProjectID != a.ProjectID || a.TodoID != "" && d.TodoID != a.TodoID {
+				continue
+			}
+			d.History = nil
+			filtered = append(filtered, d)
+		}
+		start, end := window(a.Offset, len(filtered))
+		return map[string]any{"items": filtered[start:end], "total": len(filtered), "next_offset": end, "has_more": end < len(filtered), "does_not_dispatch_agents": true}, nil, nil, e
+	case "propose_context":
+		if e := s.validateAction(ctx, p, name, a); e != nil {
+			return nil, nil, nil, e
+		}
+		a.Knowledge.State = "pending"
+		raw, _ := json.Marshal(a)
+		action := &Action{ID: store.ID(), Kind: name, Title: a.Knowledge.Title, Payload: raw, State: "pending"}
+		return map[string]any{"action_id": action.ID, "state": "awaiting_user_confirmation", "not_executed": true}, action, nil, nil
 	case "read_workspace":
 		m, e := s.Identity.Metadata(ctx, p)
 		if e != nil {
@@ -128,6 +224,9 @@ func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a
 		v, e := s.Workspace.CalendarSchedule(ctx, p, q)
 		links = append(links, Link{"Calendar", "/calendar?mode=schedule&date=" + url.QueryEscape(a.From)})
 		return v, nil, links, e
+	case "read_calendar_event":
+		v, e := s.Workspace.GetCalendarEvent(ctx, p, a.EventID)
+		return v, nil, []Link{{v.Title, "/calendar?event=" + url.QueryEscape(a.EventID)}}, e
 	case "read_todo":
 		t, e := s.Workspace.GetTodo(ctx, p, a.TodoID)
 		if e != nil {
@@ -292,6 +391,25 @@ func window(offset, n int) (int, int) {
 	return offset, end
 }
 func (s *Service) validateAction(ctx context.Context, p identity.Principal, name string, a ToolArgs) error {
+	if name == "propose_context" {
+		if a.Knowledge == nil || strings.TrimSpace(a.Knowledge.Title) == "" || strings.TrimSpace(a.Knowledge.Body) == "" || len(a.Knowledge.Body) > 20000 || len(a.Knowledge.Sources) > 20 {
+			return invalid("Context 草稿无效")
+		}
+		if a.ContextID != "" {
+			x, e := s.Workspace.GetContext(ctx, p, a.ContextID)
+			if e != nil {
+				return e
+			}
+			if x.Revision != a.ExpectedRevision {
+				return conflict()
+			}
+			if x.CreatorID != p.UserID && (!admin(p) || x.Visibility == "personal") {
+				return identity.Denied("无权维护此 Context")
+			}
+		}
+		return nil
+	}
+
 	if name == "propose_task_change" {
 		t, e := s.Workspace.GetTodo(ctx, p, a.TodoID)
 		if e != nil {
@@ -300,7 +418,7 @@ func (s *Service) validateAction(ctx context.Context, p identity.Principal, name
 		if t.Archived || t.Revision != a.ExpectedRevision {
 			return conflict()
 		}
-		if a.ChangeAction != "comment" && !admin(p) && t.CreatorID != p.UserID && t.AssigneeID != p.UserID {
+		if a.ChangeAction != "comment" && !admin(p) && t.CreatorID != p.UserID && t.AssigneeID != p.UserID && !(has(t.AllowedActions, "move") && (a.ChangeAction == "move" || a.ChangeAction == "complete" || a.ChangeAction == "reopen")) {
 			return identity.Denied("无权修改此任务")
 		}
 		switch a.ChangeAction {
@@ -373,7 +491,7 @@ func (s *Service) validateAction(ctx context.Context, p identity.Principal, name
 		if t.Archived || t.Revision != a.ExpectedRevision {
 			return conflict()
 		}
-		if !admin(p) && t.CreatorID != p.UserID && t.AssigneeID != p.UserID {
+		if !admin(p) && t.CreatorID != p.UserID && t.AssigneeID != p.UserID && !has(t.AllowedActions, "schedule") {
 			return identity.Denied("无权修改此任务")
 		}
 		return nil
@@ -420,12 +538,19 @@ func (s *Service) validateAction(ctx context.Context, p identity.Principal, name
 }
 func (s *Service) execute(ctx context.Context, p identity.Principal, id, kind string, a ToolArgs) (any, error) {
 	p.SourceAgent = "CoFlow Assistant"
-	if kind != "propose_schedule" && kind != "propose_task_change" {
+	if kind != "propose_schedule" && kind != "propose_task_change" && kind != "propose_context" {
 		if e := s.validateAction(ctx, p, kind, a); e != nil {
 			return nil, e
 		}
 	}
 	switch kind {
+	case "propose_context":
+		v := *a.Knowledge
+		v.State = "pending"
+		if !strings.HasPrefix(v.SourceID, "auto-context:") {
+			v.SourceID = "assistant:" + id
+		}
+		return s.Workspace.ChangeContext(ctx, p, a.ContextID, workspace.ContextInput{ContextEntry: v, ExpectedRevision: a.ExpectedRevision, OperationID: "assistant:" + id})
 	case "propose_task_change":
 		// Existing Todo service owns revision, board revision, permissions and replay.
 		// Do not pre-check revisions here: a committed write must still replay after a lost response.

@@ -1,3 +1,4 @@
+import { knowledgeDemo } from "./knowledge-demo.ts";
 import { assistantDemo } from "./assistant-demo.ts";
 import { calendarDemo } from "./calendar-demo.ts";
 import { validSchedule, civilDay } from "./calendar.ts";
@@ -18,6 +19,16 @@ const reviewConfig = (
   return { criteria, reviewer_id, state: "draft" };
 };
 const reviewCompletion = (t: Todo) => {
+  if (
+    t.blockers?.some((b) =>
+      b.todo_id
+        ? !todoBoard.tasks.some(
+            (x) => x.id === b.todo_id && !x.archived && x.completed_at,
+          )
+        : !b.resolved_at,
+    )
+  )
+    throw Error("任务仍有未解除的阻塞");
   if (t.review && t.review.state !== "approved")
     throw Error("此任务需要指定验收人通过后才能完成");
 };
@@ -70,7 +81,16 @@ export const demoMeta: Meta = {
   domains: ["产品", "研发", "设计", "内容", "运营"],
   current_user: "demo-alice",
   mode: "local-demo",
-  agent_capabilities: ["todo-review-v1"],
+  agent_capabilities: [
+    "todo-review-v1",
+    "todo-blockers-v1",
+    "delegations-v1",
+    "knowledge-v1",
+    "context-wiki-v1",
+    "context-graph-v1",
+    "context-explore-v1",
+    "context-auto-v1",
+  ],
   timezone: "Asia/Shanghai",
   role: "member",
   team: {
@@ -327,6 +347,14 @@ export async function publicDemoRequest(
   init?: RequestInit,
 ): Promise<unknown> {
   const method = init?.method?.toUpperCase() || "GET";
+  if (path.startsWith("/context") || path.startsWith("/delegations"))
+    return knowledgeDemo(
+      path,
+      method,
+      typeof init?.body === "string" ? JSON.parse(init.body) : {},
+      demoMeta,
+      publicDemoRequest,
+    );
   const clone = <T>(value: T): T => structuredClone(value);
   if (path.startsWith("/assistant/"))
     return assistantDemo(
@@ -568,7 +596,17 @@ function demoTodoChange(
     if (id) {
       const task = board.tasks.find((t) => t.id === id);
       if (!task) throw new Error("任务不存在");
-      return task;
+      return {
+        ...task,
+        blocked:
+          task.blockers?.some((v) =>
+            v.todo_id
+              ? !board.tasks.some(
+                  (x) => x.id === v.todo_id && !x.archived && x.completed_at,
+                )
+              : !v.resolved_at,
+          ) || false,
+      };
     }
     const items = board.tasks
       .filter(
@@ -611,6 +649,14 @@ function demoTodoChange(
     return {
       items: items.slice(start, end).map((t) => ({
         ...t,
+        blocked:
+          t.blockers?.some((v) =>
+            v.todo_id
+              ? !board.tasks.some(
+                  (x) => x.id === v.todo_id && !x.archived && x.completed_at,
+                )
+              : !v.resolved_at,
+          ) || false,
         history: [],
         comments: [],
       })),
@@ -914,6 +960,7 @@ function demoTodoChange(
             "due_date",
             "schedule",
             "links",
+            "blockers",
           ] as const)
             if (payload[key] !== undefined)
               Object.assign(task, {
@@ -927,6 +974,34 @@ function demoTodoChange(
           }
       }
       event(task, before, payload.action || "edit");
+    }
+
+    if (task.blockers) {
+      if (task.blockers.length > 20) throw Error("最多 20 项阻塞");
+      for (const v of task.blockers) {
+        if (
+          v.todo_id &&
+          (!board.tasks.some((x) => x.id === v.todo_id && !x.archived) ||
+            v.todo_id === task.id)
+        )
+          throw Error("请选择其他有效任务");
+        if (!v.todo_id && !v.condition.trim()) throw Error("阻塞条件无效");
+      }
+      const visiting = new Set<string>(),
+        done = new Set<string>();
+      function walk(id: string): boolean {
+        if (visiting.has(id)) return false;
+        if (done.has(id)) return true;
+        visiting.add(id);
+        const x = board.tasks.find((x) => x.id === id);
+        if (x?.blockers?.some((v) => v.todo_id && !walk(v.todo_id)))
+          return false;
+        visiting.delete(id);
+        done.add(id);
+        return true;
+      }
+      if (!walk(task.id)) throw Error("任务依赖不能形成循环");
+      if (task.completed_at) reviewCompletion(task);
     }
     if (!validSchedule(task.schedule)) throw new Error("Invalid schedule");
     if (!task.title.trim()) throw new Error("请填写标题");

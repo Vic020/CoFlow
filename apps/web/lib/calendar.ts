@@ -32,6 +32,7 @@ export type CalendarEvent = {
   history: TodoEvent[];
 };
 export type CalendarItem = {
+  blocked?: boolean;
   creator_id: string;
   id: string;
   key: string;

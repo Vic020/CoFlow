@@ -17,6 +17,7 @@ import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { DialogTitle, DialogDescription } from "./ui/dialog";
 import { DeleteAction, TrashList } from "./content-actions";
+import { RememberContext } from "./context-workspace";
 import { ReportTodos } from "./report-todos";
 import { ReportCompose } from "./report-compose";
 import { ClassificationEditor } from "./catalog-manager";
@@ -198,6 +199,16 @@ export function ReportDetail({
           {dateKey(r.created_at, timeZone)}
         </DialogDescription>
         <div className="detail-status">
+          <RememberContext
+            meta={meta}
+            kind="report"
+            id={r.id}
+            title={r.title}
+            body={r.body}
+            project={r.project_id}
+            domains={r.domains}
+            revision={r.updated_at}
+          />
           {canEdit && (
             <Button
               variant="outline"

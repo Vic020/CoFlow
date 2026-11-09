@@ -108,6 +108,7 @@ const skillLabels = [
   "Timeline 上报",
   "Todo 管理",
   "Calendar",
+  "Context",
 ];
 
 function SkillShowcase({ files }: { files: SkillFile[] }) {
@@ -228,7 +229,7 @@ function SkillShowcase({ files }: { files: SkillFile[] }) {
               document.getElementById(`skill-tab-${next}`)?.focus();
             }}
           >
-            {t(skillLabels[index])}
+            {t(skillLabels[index] || item.name)}
           </button>
         ))}
       </div>

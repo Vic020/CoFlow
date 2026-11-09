@@ -193,6 +193,9 @@ function AssistantScope({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
   const refreshWeb = useCallback(async () => {
     try {
       const v = await request<{ items: WebConfig[]; configured: boolean }>(
@@ -315,6 +318,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
             web_config_id: webEnabled ? selectedWeb.current : "",
             context: {
               page: pathname,
+              knowledge: params.get("context") || "",
               project: params.get("project") || "",
               domain: params.get("domain") || "",
               member: params.get("member") || "",

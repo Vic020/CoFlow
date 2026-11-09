@@ -136,10 +136,24 @@ try {
     throw Error(
       "Commit reviewed public changes first; the runner never stages or commits files.",
     );
-  if (selected.some((s) => ["release", "images", "pages", "server", "report"].includes(s))) {
-    const existing = git("ls-remote", "origin", `refs/tags/${tag}`, `refs/tags/${tag}^{}`);
-    if (existing && !existing.split("\n").some((line) => line.split(/\s/)[0] === sha)) {
-      throw Error("Version already labels another source. Choose the next version explicitly before publication.");
+  if (
+    selected.some((s) =>
+      ["release", "images", "pages", "server", "report"].includes(s),
+    )
+  ) {
+    const existing = git(
+      "ls-remote",
+      "origin",
+      `refs/tags/${tag}`,
+      `refs/tags/${tag}^{}`,
+    );
+    if (
+      existing &&
+      !existing.split("\n").some((line) => line.split(/\s/)[0] === sha)
+    ) {
+      throw Error(
+        "Version already labels another source. Choose the next version explicitly before publication.",
+      );
     }
   }
   const paths = git("ls-tree", "-rz", "--name-only", sha)
@@ -368,15 +382,17 @@ try {
             const files = [
               ["/agent/coflow/SKILL.md", "skills/coflow/SKILL.md"],
               ["/agent/openapi.yaml", "docs/openapi.yaml"],
-              ...[
-                "installation.md",
-                "reporting.md",
-                "todos.md",
-                "calendar.md",
-              ].map((n) => [
-                "/agent/coflow/references/" + n,
-                "skills/coflow/references/" + n,
-              ]),
+              ...paths
+                .filter(
+                  (p) =>
+                    p.startsWith("skills/coflow/references/") &&
+                    p.endsWith(".md"),
+                )
+                .map((p) => [
+                  "/agent/coflow/references/" +
+                    p.slice("skills/coflow/references/".length),
+                  p,
+                ]),
             ];
             for (const [url, file] of files) {
               const r = await fetch(

@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "./ui/loading-status";
 import {
   createContext,
   useCallback,
@@ -128,11 +129,7 @@ export function SharedFilterProvider({ children }: { children: ReactNode }) {
     [filters, update, path, query],
   );
   if (!ready || state.current.identity !== identity)
-    return (
-      <p role="status" className="workspace-loading">
-        {tr("加载中…")}
-      </p>
-    );
+    return <PageLoading variant="workspace" />;
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
@@ -140,7 +137,8 @@ export function GlobalFilters({ meta }: { meta: Meta }) {
   const { filters, update, reporter } = useSharedFilters();
   const { t: tr } = useI18n();
   const active = Object.values(filters).some(Boolean);
-  const role = tr(reporter ? "上报人" : "负责人");
+  const knowledge = usePathname().replace(/\/$/, "") === "/context";
+  const role = tr(knowledge ? "记录人" : reporter ? "上报人" : "负责人");
   const projects = meta.projects.map((p) => ({ value: p.id, label: p.name }));
   const domains = meta.domains.map((d) => ({ value: d, label: d }));
   const members = meta.members.map((m) => ({
@@ -173,7 +171,12 @@ export function GlobalFilters({ meta }: { meta: Meta }) {
         value={filters.member}
         onChange={(member) => update({ member })}
         options={[
-          { value: "", label: tr(reporter ? "全部上报人" : "全部负责人") },
+          {
+            value: "",
+            label: tr(
+              knowledge ? "全部记录人" : reporter ? "全部上报人" : "全部负责人",
+            ),
+          },
           ...members,
         ]}
       />

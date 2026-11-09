@@ -18,6 +18,8 @@ export type AIAction = {
   kind: string;
   title: string;
   payload: {
+    knowledge?: import("./context").ContextEntry;
+    context_id?: string;
     board_revision?: number;
     expected_revision?: number;
     column_id?: string;
@@ -125,7 +127,7 @@ export function defaultAIConfig(configs: AIConfig[]) {
 }
 // Only Go-generated object links are navigable; model text stays plain text.
 export function safeAssistantLink(url: string) {
-  return /^\/(?:\?(?:report)=[a-zA-Z0-9_-]+|todo\?todo=[a-zA-Z0-9_-]+|calendar\?(?:mode=schedule&date=\d{4}-\d{2}-\d{2}|event=[a-zA-Z0-9_-]+))$/.test(
+  return /^\/(?:\?(?:report)=[a-zA-Z0-9_-]+|todo\?todo=[a-zA-Z0-9_-]+|context\?context=[a-zA-Z0-9_-]+|calendar\?(?:mode=schedule&date=\d{4}-\d{2}-\d{2}|event=[a-zA-Z0-9_-]+))$/.test(
     url,
   );
 }
@@ -197,6 +199,9 @@ export function templateTitle(
   return tr(
     (
       {
+        "builtin-wiki": "整理 Context Wiki",
+        "builtin-context-init": "初始化 Context",
+        "builtin-knowledge": "记住决定",
         "builtin-progress": "查看项目进度",
         "builtin-schedule": "安排任务时间",
         "builtin-brief": "整理交付简报",
@@ -212,6 +217,9 @@ export function templateDescription(
   return tr(
     (
       {
+        "builtin-wiki": "维护项目介绍、目录与引用",
+        "builtin-context-init": "从项目记录提取首批知识草稿",
+        "builtin-knowledge": "保留来源，确认背景与约束",
         "builtin-progress": "任务、进展与阻塞",
         "builtin-schedule": "预览后确认排期",
         "builtin-brief": "从实际交付生成草稿",

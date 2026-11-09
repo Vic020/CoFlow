@@ -1,13 +1,426 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.4.3
+  version: 0.5.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /context-graph:
+    get:
+      operationId: readContextGraph
+      description: 'Requires context:read and original source read scopes. Filters select
+        visible Context roots; directly linked sources/parentage and explicit Todo-report
+        or Calendar links are included only when readable, possibly outside root filters.
+        Metadata only: no bodies, quotes or histories. Default excludes archived roots.
+        Caps 120 roots, 600 nodes, 2400 edges; inspect truncated. Not a semantic similarity
+        graph.'
+      parameters:
+      - name: project
+        in: query
+        schema:
+          type: string
+      - name: domain
+        in: query
+        schema:
+          type: string
+      - name: member
+        in: query
+        schema:
+          type: string
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: state
+        in: query
+        schema:
+          type: string
+      - name: kind
+        in: query
+        schema:
+          type: string
+      - name: source
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Authorized knowledge relationships
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeGraph'
+        '403':
+          $ref: '#/components/responses/Error'
+  /assistant/context-auto:
+    post:
+      operationId: automaticallyOrganizeContext
+      security:
+      - sessionCookie: []
+      description: 'One-click browser mandate for scoped automatic Context maintenance
+        only. Verified model required. Auto saves and activates current sourced knowledge;
+        stale/pending sources retain review status. Partial writes are possible: inspect
+        errors and reuse the same request_id on uncertain retries. No original module
+        writes, web, MCP or schedules. Not available to Agent Tokens.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - request_id
+              - config_id
+              properties:
+                request_id:
+                  type: string
+                  maxLength: 100
+                config_id:
+                  type: string
+                project:
+                  type: string
+                domain:
+                  type: string
+                member:
+                  type: string
+                source_kind:
+                  type: string
+                  enum:
+                  - todo
+                  - report
+                  - calendar
+                  - context
+                source_id:
+                  type: string
+                locale:
+                  type: string
+                mode:
+                  type: string
+                  enum:
+                  - extract
+                  - organize
+      responses:
+        '200':
+          description: Actual saved items and partial errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_id:
+                    type: string
+                  reply:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextEntry'
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /context-tree:
+    get:
+      operationId: readContextTree
+      description: Requires context:read and original source scopes, including transitive
+        Context sources. Permission-filtered metadata only, up to the team cap of 1000;
+        not full document content. Unavailable parents are projected as roots. Supports
+        q/kind/source filtering for progressive exploration. Filtered parents may be
+        omitted; never reconstruct inaccessible ancestors. Results contain metadata
+        only, not evidence that bodies were read.
+      parameters:
+      - name: project
+        in: query
+        schema:
+          type: string
+      - name: domain
+        in: query
+        schema:
+          type: string
+      - name: member
+        in: query
+        schema:
+          type: string
+      - name: state
+        in: query
+        schema:
+          type: string
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: kind
+        in: query
+        schema:
+          type: string
+      - name: source
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Visible Wiki directory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextNode'
+                  total:
+                    type: integer
+        '403':
+          $ref: '#/components/responses/Error'
+  /context:
+    get:
+      operationId: listContext
+      description: Requires context:read plus the original module read scopes for linked
+        sources. Personal entries are creator-only. Unreadable/deleted source content
+        is omitted, including from totals. Offset pagination, literal case-insensitive
+        search; needs_review and future validity must be checked before model use.
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: project
+        in: query
+        schema:
+          type: string
+      - name: domain
+        in: query
+        schema:
+          type: string
+      - name: member
+        in: query
+        schema:
+          type: string
+      - name: state
+        in: query
+        schema:
+          type: string
+      - name: kind
+        in: query
+        schema:
+          type: string
+      - name: source
+        in: query
+        schema:
+          type: string
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextEntry'
+                  total:
+                    type: integer
+                  next_offset:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createContext
+      description: Requires context:read/write. A stable source_id per creator and operation_id
+        prevent duplicate extraction. Tokens save pending only. Go captures or validates
+        source versions. Does not modify original modules. Known credential patterns
+        are rejected; never submit credentials.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextInput'
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextEntry'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /context/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      operationId: readContext
+      description: Requires context:read and source permissions. Current and historical
+        content are checked separately; sharing an entry does not share old private
+        snapshots.
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextEntry'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+    patch:
+      operationId: changeContext
+      description: Creator or browser administrator for team entries. Edits require
+        the COMPLETE editable document and expected_revision. Archive/restore/merge
+        accept lifecycle metadata. Restore returns pending. Merge retains target body,
+        combines sources and archives this record; target_revision is required. Explicit
+        source review must actually read changed originals.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextInput'
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextEntry'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /delegations:
+    get:
+      operationId: listDelegations
+      description: Requires todos:read. Only current grantor/grantee or browser administrator
+        sees grants. Expired/revoked records remain visible. No token scopes or execution
+        authority are implied.
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Delegation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: grantDelegation
+      security:
+      - sessionCookie: []
+      description: Human session only. One current-team member, one task or administrator-owned
+        project, explicit actions and expiry within 90 days. Rechecks grantor authority
+        on every delegated write. Does not delegate ownership, review decisions, blockers,
+        notifications or agent dispatch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DelegationInput'
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delegation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /delegations/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      operationId: revokeDelegation
+      security:
+      - sessionCookie: []
+      description: Grantor or browser administrator revokes with action=revoke, expected_revision
+        and operation_id. Changed scope must be revoked and granted anew.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DelegationInput'
+      responses:
+        '200':
+          description: Visible current-team result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delegation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
   /assistant/web-configs:
     get:
       operationId: listWebConfigs
@@ -1489,6 +1902,8 @@ paths:
                     - comments:write
                     - calendar:read
                     - calendar:write
+                    - context:read
+                    - context:write
                 expires_in_days:
                   type: integer
                   minimum: 1
@@ -2408,6 +2823,7 @@ components:
     CalendarItem:
       type: object
       properties:
+        blocked: {type: boolean, readOnly: true}
         id: {type: string}
         creator_id: {type: string, description: Original creator; source write permissions are still enforced by Go.}
         key: {type: string, description: Source-prefixed projection key; use id with the original source endpoint to mutate.}
@@ -2729,6 +3145,346 @@ components:
           decision_by: {type: string, readOnly: true}
           decided_at: {type: string, format: date-time, readOnly: true}
           decision_note: {type: string, readOnly: true}
+    KnowledgeGraphNode:
+      type: object
+      required:
+      - key
+      - id
+      - kind
+      - title
+      - url
+      - root
+      properties:
+        key:
+          type: string
+        id:
+          type: string
+        kind:
+          type: string
+          enum:
+          - context
+          - project
+          - domain
+          - todo
+          - report
+          - calendar
+        title:
+          type: string
+        url:
+          type: string
+        state:
+          type: string
+        needs_review:
+          type: boolean
+        root:
+          type: boolean
+          description: True only for selected Context roots; related objects can lie outside
+            root filters.
+    KnowledgeGraphEdge:
+      type: object
+      required:
+      - from
+      - to
+      - kind
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        kind:
+          type: string
+          enum:
+          - project
+          - domain
+          - source
+          - parent
+          - todo_report
+          - calendar_todo
+          - calendar_report
+    KnowledgeGraph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          maxItems: 600
+          items:
+            $ref: '#/components/schemas/KnowledgeGraphNode'
+        edges:
+          type: array
+          maxItems: 2400
+          items:
+            $ref: '#/components/schemas/KnowledgeGraphEdge'
+        total_contexts:
+          type: integer
+        shown_contexts:
+          type: integer
+          maximum: 120
+        truncated:
+          type: boolean
+    ContextNode:
+      type: object
+      properties:
+        reference_ids:
+          type: array
+          items: {type: string}
+          description: Visible structured Context source IDs for backlinks, never source text.
+        id:
+          type: string
+        title:
+          type: string
+        project_id:
+          type: string
+        kind:
+          type: string
+          enum:
+          - background
+          - decision
+          - rule
+          - conclusion
+          - risk
+          - date
+          - document
+          - index
+        visibility:
+          type: string
+          enum:
+          - team
+          - personal
+        state:
+          type: string
+          enum:
+          - pending
+          - active
+          - expired
+          - archived
+        domains:
+          type: array
+          items:
+            type: string
+        revision:
+          type: integer
+          readOnly: true
+        needs_review:
+          type: boolean
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        parent_id:
+          type: string
+        creator_id:
+          type: string
+    ContextSource:
+      type: object
+      required:
+      - kind
+      - id
+      properties:
+        kind:
+          type: string
+          enum:
+          - todo
+          - report
+          - calendar
+          - context
+        needs_review:
+          type: boolean
+          readOnly: true
+        id:
+          type: string
+        revision:
+          type: string
+        quote:
+          type: string
+          maxLength: 2000
+        url:
+          type: string
+          readOnly: true
+        changed:
+          type: boolean
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+    ContextEntry:
+      type: object
+      properties:
+        parent_id:
+          type: string
+          description: Optional compatible document/index parent. Same project and visibility; personal parent must have same creator. No cycles, maximum 12 levels.
+        agent: {type: string, readOnly: true, description: Server-derived creation source; external token, platform assistant or manual browser. Never a guessed model identity.}
+        id:
+          type: string
+        source_id:
+          type: string
+        creator_id:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        project_id:
+          type: string
+        superseded_by:
+          type: string
+        kind:
+          type: string
+          enum:
+          - background
+          - decision
+          - rule
+          - conclusion
+          - risk
+          - date
+          - document
+          - index
+        visibility:
+          type: string
+          enum:
+          - team
+          - personal
+        state:
+          type: string
+          enum:
+          - pending
+          - active
+          - expired
+          - archived
+        domains:
+          type: array
+          items:
+            type: string
+        sources:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ContextSource'
+        revision:
+          type: integer
+          readOnly: true
+        needs_review:
+          type: boolean
+          readOnly: true
+        history:
+          type: array
+          items:
+            type: object
+          description: Revision, actor, action, timestamp and snapshots when still authorized;
+            unavailable hides body, title and sources.
+        valid_from:
+          type: string
+          description: Empty or YYYY-MM-DD, inclusive UTC civil dates.
+        valid_until:
+          type: string
+          description: Empty or YYYY-MM-DD, inclusive UTC civil dates.
+        review_on:
+          type: string
+          description: Empty or YYYY-MM-DD, inclusive UTC civil dates.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    ContextInput:
+      allOf:
+      - $ref: '#/components/schemas/ContextEntry'
+      - type: object
+        required:
+        - operation_id
+        properties:
+          expected_revision:
+            type: integer
+          target_revision:
+            type: integer
+          operation_id:
+            type: string
+            maxLength: 160
+          action:
+            type: string
+            enum:
+            - edit
+            - confirm
+            - review
+            - archive
+            - restore
+            - merge
+      description: Create requires title/body/kind/visibility/state/source_id. Edit sends
+        full editable record. Lifecycle actions require revision and operation identity;
+        merge also requires superseded_by and target_revision.
+    TodoBlocker:
+      type: object
+      properties:
+        id:
+          type: string
+        todo_id:
+          type: string
+        waiting_member_id:
+          type: string
+        condition:
+          type: string
+          maxLength: 2000
+        resolved_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    Delegation:
+      type: object
+      properties:
+        id:
+          type: string
+        grantor_id:
+          type: string
+        member_id:
+          type: string
+        todo_id:
+          type: string
+        project_id:
+          type: string
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            type: string
+            enum:
+            - edit
+            - move
+            - comment
+            - schedule
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        revision:
+          type: integer
+        history:
+          type: array
+          items:
+            type: object
+    DelegationInput:
+      allOf:
+      - $ref: '#/components/schemas/Delegation'
+      - type: object
+        required:
+        - operation_id
+        properties:
+          operation_id:
+            type: string
+          expected_revision:
+            type: integer
+          action:
+            type: string
+            enum:
+            - revoke
     TodoInput:
       type: object
       description: >-
@@ -2740,6 +3496,7 @@ components:
         approved content needs reopening before editing, and reopening resets approval but preserves history.
         Direct completion, joint report moves, drag moves and column completion cannot bypass a required review.
       properties:
+        blockers: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/TodoBlocker'}}
         review: {oneOf: [{$ref: '#/components/schemas/TodoReviewConfig'}, {type: 'null'}], description: 'Optional acceptance requirement; absence preserves it on edit. Discover todo-review-v1 before using.'}
         title: {type: string, description: "Required on create; 1–500 UTF-8 bytes."}
         body: {type: string, description: "Task Markdown at most 50000 UTF-8 bytes; for submit-review it is required delivery evidence, for request-changes a required reason, and for approve-review an optional note (at most 12000 bytes)."}
@@ -2772,6 +3529,8 @@ components:
           creator_id: {type: string}
           previous_column_id: {type: string}
           collaboration_id: {type: string}
+          blocked: {type: boolean, readOnly: true, description: Derived current prerequisite status; absence means false. All completion paths retain guards.}
+          allowed_actions: {type: array, readOnly: true, items: {type: string}, description: Current edit/move/schedule authority; does not grant token scope or dispatch agents.}
           unavailable_reports: {type: integer, readOnly: true, description: Count of deleted source reports without exposing their content.}
           revision: {type: integer}
           archived: {type: boolean}

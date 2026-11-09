@@ -1,4 +1,5 @@
 "use client";
+import { createPortal } from "react-dom";
 
 import {
   useCallback,
@@ -27,6 +28,8 @@ import { ActionMenu } from "./ui/action-menu";
 import { AgentAccess } from "./agent-access";
 import { todoManagementPrompt } from "@/lib/report-prompt";
 import { TodoAgentAccess, TodoAPIAccess } from "./todo-agent-access";
+import { RememberContext } from "./context-workspace";
+import { TodoCollaboration, DelegationManager } from "./todo-collaboration";
 import { TodoReviewPanel, reviewLabels } from "./todo-review";
 import { TodoDetailFields } from "./todo-detail-fields";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -62,9 +65,14 @@ function ManualTaskPanel({
 }
 
 export function TodoBoard({ meta }: { meta: Meta }) {
+  const [headerTarget, setHeaderTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeaderTarget(document.getElementById("todo-header-actions"));
+  }, []);
   const { t: tr, locale, timeZone, date } = useI18n();
   const shared = useSharedFilters();
   const { project, domain, member: assignee } = shared.filters;
+  const [delegating, setDelegating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [board, setBoard] = useState<TodoBoardData | null>(null),
     [tasks, setTasks] = useState<Todo[]>([]),
@@ -403,58 +411,66 @@ export function TodoBoard({ meta }: { meta: Meta }) {
   };
   return (
     <section className="todo-workspace" aria-busy={loading}>
-      <div className="todo-toolbar">
-        <label className="search">
-          <Search size={16} />
-          <input
-            aria-label={tr("搜索任务")}
-            placeholder={tr("搜索任务")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        <div className="todo-actions">
-          <LoadingStatus active={loading && !!board} />
-          {meta.mode !== "local-demo" && (
-            <NotificationCenter
-              team={meta.team.id}
-              onSelect={(id) =>
-                window.location.assign(`/?report=${encodeURIComponent(id)}`)
-              }
-              onTodo={(id) => void open(id)}
-            />
-          )}
-          <Button
-            variant="outline"
-            className="todo-agent-quick"
-            onClick={() => void copyTodoPrompt()}
-          >
-            {copiedTarget?.target === "management" ? (
-              <Check size={15} />
-            ) : (
-              <Copy size={15} />
-            )}
-            <span aria-live="polite">
-              {tr(
-                copiedTarget?.target === "management"
-                  ? "已复制"
-                  : "Agent 一键管理",
+      {headerTarget &&
+        createPortal(
+          <div className="todo-toolbar">
+            <label className="search">
+              <Search size={16} />
+              <input
+                aria-label={tr("搜索任务")}
+                placeholder={tr("搜索任务")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <div className="todo-actions">
+              <Button variant="ghost" onClick={() => setDelegating(true)}>
+                {tr("持续委托")}
+              </Button>
+              <LoadingStatus active={loading && !!board} />
+              {meta.mode !== "local-demo" && (
+                <NotificationCenter
+                  team={meta.team.id}
+                  onSelect={(id) =>
+                    window.location.assign(`/?report=${encodeURIComponent(id)}`)
+                  }
+                  onTodo={(id) => void open(id)}
+                />
               )}
-            </span>
-          </Button>
-          <Button
-            onClick={() =>
-              create(
-                board?.columns.find((c) => !c.archived && !c.done)?.id || "",
-              )
-            }
-            disabled={!board}
-          >
-            <Plus size={16} />
-            {tr("新建任务")}
-          </Button>
-        </div>
-      </div>
+              <Button
+                variant="outline"
+                className="todo-agent-quick"
+                onClick={() => void copyTodoPrompt()}
+              >
+                {copiedTarget?.target === "management" ? (
+                  <Check size={15} />
+                ) : (
+                  <Copy size={15} />
+                )}
+                <span aria-live="polite">
+                  {tr(
+                    copiedTarget?.target === "management"
+                      ? "已复制"
+                      : "Agent 一键管理",
+                  )}
+                </span>
+              </Button>
+              <Button
+                onClick={() =>
+                  create(
+                    board?.columns.find((c) => !c.archived && !c.done)?.id ||
+                      "",
+                  )
+                }
+                disabled={!board}
+              >
+                <Plus size={16} />
+                {tr("新建任务")}
+              </Button>
+            </div>
+          </div>,
+          headerTarget,
+        )}
       <div className="todo-filters">
         <div className="todo-scopes">
           {[
@@ -693,6 +709,11 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                               <span>{tr(priorities[t.priority])}</span>
                             )}
                           </span>
+                          {t.blocked && (
+                            <small className="context-warning">
+                              {tr("等待解除阻塞")}
+                            </small>
+                          )}
                           {t.review && (
                             <small className="todo-review-badge">
                               {tr(reviewLabels[t.review.state] || "待提交验收")}
@@ -860,6 +881,28 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                       busy={busy || reviewEditing}
                       onSave={(patch) => change(selected, "edit", patch)}
                       onEditingChange={setFieldEditing}
+                    />
+                    <RememberContext
+                      meta={meta}
+                      kind="todo"
+                      id={selected.id}
+                      title={selected.title}
+                      body={selected.body}
+                      project={selected.project_id}
+                      domains={selected.domains}
+                      revision={String(selected.revision)}
+                    />
+                    <TodoCollaboration
+                      task={selected}
+                      tasks={tasks}
+                      meta={meta}
+                      writable={canWrite(selected)}
+                      busy={busy}
+                      onSave={(patch) => change(selected, "edit", patch)}
+                      onAction={(action, extra) =>
+                        change(selected, action, extra)
+                      }
+                      columns={board?.columns || []}
                     />
                     {(meta.agent_capabilities?.includes("todo-review-v1") ||
                       selected.review) && (
@@ -1481,6 +1524,9 @@ export function TodoBoard({ meta }: { meta: Meta }) {
           )}
         </DialogContent>
       </Dialog>
+      {delegating && (
+        <DelegationManager meta={meta} onClose={() => setDelegating(false)} />
+      )}
       <Dialog open={reporting} onOpenChange={setReporting}>
         <DialogContent className="info-dialog report-hub-dialog">
           <DialogTitle className="modal-title">{tr("上报进展")}</DialogTitle>

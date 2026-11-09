@@ -310,6 +310,14 @@ export function CalendarWeekView({
                       {item.due_date === column.day && (
                         <span>{tr("截止日期")} · </span>
                       )}
+                      {item.blocked && (
+                        <span
+                          className="context-warning"
+                          title={tr("等待解除阻塞")}
+                        >
+                          !{" "}
+                        </span>
+                      )}
                       {item.title}
                     </button>
                   ))}
@@ -541,6 +549,14 @@ export function CalendarWeekView({
                         {event.item && event.item.kind !== "todo" && event.point
                           ? "◆ "
                           : ""}
+                        {event.item?.blocked && (
+                          <span
+                            className="context-warning"
+                            title={tr("等待解除阻塞")}
+                          >
+                            !{" "}
+                          </span>
+                        )}
                         {event.title}
                       </span>
                     </>

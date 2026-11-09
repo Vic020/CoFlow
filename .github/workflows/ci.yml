@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:filters
       - run: npm run test:calendar
       - run: npm run test:assistant
+      - run: npm run test:knowledge
       - run: npm run test:todo-review
       - run: npm run test:demo
       - run: npm run typecheck

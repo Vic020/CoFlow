@@ -46,6 +46,9 @@ type TodoComment struct {
 	Deleted   bool      `json:"deleted"`
 }
 type Todo struct {
+	AllowedActions     []string      `json:"allowed_actions,omitempty"`
+	Blockers           []TodoBlocker `json:"blockers,omitempty"`
+	Blocked            bool          `json:"blocked,omitempty"`
 	Review             *TodoReview   `json:"review,omitempty"`
 	UnavailableReports int           `json:"unavailable_reports"`
 	ID                 string        `json:"id"`
@@ -80,6 +83,8 @@ type TodoReplay struct {
 	Result json.RawMessage `json:"result"`
 }
 type TodoBoard struct {
+	Contexts           []ContextEntry        `json:"contexts,omitempty"`
+	Delegations        []Delegation          `json:"delegations,omitempty"`
 	CalendarEvents     []CalendarEvent       `json:"calendar_events,omitempty"`
 	CalendarOperations map[string]TodoReplay `json:"calendar_operations,omitempty"`
 	History            []TodoEvent           `json:"history"`
@@ -234,6 +239,9 @@ func replayTodo(b *TodoBoard, p identity.Principal, id string, input any, out an
 	return false, nil
 }
 func saveTodoReplay(b *TodoBoard, p identity.Principal, id string, input, out any) {
+	if b.Operations == nil {
+		b.Operations = map[string]TodoReplay{}
+	}
 	raw, _ := json.Marshal(input)
 	result, _ := json.Marshal(out)
 	b.Operations[p.UserID+":"+id] = TodoReplay{fmt.Sprintf("%x", sha256.Sum256(raw)), result}
@@ -246,6 +254,10 @@ func (s *Service) TodoBoard(ctx context.Context, p identity.Principal) (TodoBoar
 		out.Operations = nil
 		out.CalendarEvents = nil
 		out.CalendarOperations = nil
+		out.Contexts = nil
+		out.Delegations = nil
+		out.Contexts = nil
+		out.Delegations = nil
 		return nil
 	})
 	return out, err
@@ -257,6 +269,8 @@ func (s *Service) Todos(ctx context.Context, p identity.Principal) ([]Todo, erro
 			t.History = nil
 			t.Comments = nil
 			t.ReportIDs = []string{}
+			t.Blocked = blocked(b, t)
+			t.AllowedActions = allowedTodoActions(ctx, tx, p, b, t)
 			out = append(out, t)
 		}
 		return nil
@@ -271,6 +285,8 @@ func (s *Service) GetTodo(ctx context.Context, p identity.Principal, id string) 
 			return store.ErrNotFound
 		}
 		out = *t
+		out.Blocked = blocked(b, *t)
+		out.AllowedActions = allowedTodoActions(ctx, tx, p, b, *t)
 		out.Comments = append([]TodoComment{}, t.Comments...)
 		for i := range out.Comments {
 			if out.Comments[i].Deleted {
@@ -397,6 +413,9 @@ func todoMove(b *TodoBoard, t *Todo, column, before, after string) error {
 		return identity.Invalid("只允许一个排序锚点")
 	}
 	if c.Done {
+		if e := blockersAllowCompletion(b, *t); e != nil {
+			return e
+		}
 		if e := reviewAllowsCompletion(*t); e != nil {
 			return e
 		}
@@ -527,9 +546,14 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				}
 			}
 			t.CollaborationID = ""
+			t.AllowedActions = nil
+			t.Blocked = false
 			t.CompletedAt = nil
 			t.PreviousColumnID = ""
 			t.CreatedAt = time.Now().UTC()
+			if err = validateBlockers(ctx, tx, p, b, &t); err != nil {
+				return err
+			}
 			if err = validateTodo(ctx, tx, p, b, &t, nil); err != nil {
 				return err
 			}
@@ -550,7 +574,7 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				return store.ErrNotFound
 			}
 			reviewDecision := (in.Action == "approve-review" || in.Action == "request-changes") && t.Review != nil && t.Review.ReviewerID == p.UserID
-			if in.Action != "comment" && in.Action != "delete-comment" && in.Action != "restore-comment" && !reviewDecision && !todoWrite(p, *t) {
+			if in.Action != "comment" && in.Action != "delete-comment" && in.Action != "restore-comment" && !reviewDecision && !todoWrite(p, *t) && !delegatedWrite(ctx, tx, p, b, *t, in) {
 				return identity.Denied("无权维护此任务")
 			}
 			if in.ExpectedRevision != t.Revision {
@@ -631,6 +655,12 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				b.Revision++
 			case "", "edit":
 				candidate := *t
+				if _, ok := in.Fields["blockers"]; ok {
+					candidate.Blockers = append([]TodoBlocker{}, in.Blockers...)
+					if e := validateBlockers(ctx, tx, p, b, &candidate); e != nil {
+						return e
+					}
+				}
 				if _, ok := in.Fields["review"]; ok {
 					if t.Review != nil && (t.Review.State == "pending" || t.Review.State == "approved") {
 						return identity.Invalid("请先撤回验收或重新打开任务，再修改验收设置")
@@ -690,6 +720,27 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			}
 			recordTodo(p, t, before, in.Action, in.Agent, in.Model)
 			out = *t
+			out.Blocked = blocked(b, *t)
+
+			if (before.CompletedAt == nil) != (t.CompletedAt == nil) || before.Archived != t.Archived {
+				for _, dependent := range b.Tasks {
+					if dependent.Archived || dependent.CompletedAt != nil {
+						continue
+					}
+					for _, v := range dependent.Blockers {
+						if v.TodoID == t.ID {
+							kind := "todo-blocked"
+							if !blocked(b, dependent) {
+								kind = "todo-unblocked"
+							}
+							if err = todoNotify(ctx, tx, p, dependent, []string{dependent.CreatorID, dependent.AssigneeID}, kind); err != nil {
+								return err
+							}
+							break
+						}
+					}
+				}
+			}
 			reviewChanged := !sameReview(before.Review, t.Review)
 			if reviewChanged || before.AssigneeID != t.AssigneeID || before.CompletedAt == nil && t.CompletedAt != nil || before.CompletedAt != nil && t.CompletedAt == nil {
 				recipients := []string{t.AssigneeID, t.CreatorID}
@@ -708,6 +759,8 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				}
 			}
 		}
+		out.Blocked = blocked(b, out)
+		out.AllowedActions = allowedTodoActions(ctx, tx, p, b, out)
 		saveTodoReplay(b, p, in.OperationID, struct {
 			ID     string
 			Input  TodoInput
@@ -819,6 +872,9 @@ func (s *Service) ChangeTodoColumn(ctx context.Context, p identity.Principal, id
 						if t.ColumnID == id {
 							before := *t
 							if in.Done {
+								if e := blockersAllowCompletion(b, *t); e != nil {
+									return e
+								}
 								if e := reviewAllowsCompletion(*t); e != nil {
 									return e
 								}
@@ -871,6 +927,8 @@ func (s *Service) ChangeTodoColumn(ctx context.Context, p identity.Principal, id
 		out.Operations = nil
 		out.CalendarEvents = nil
 		out.CalendarOperations = nil
+		out.Contexts = nil
+		out.Delegations = nil
 		saveTodoReplay(b, p, in.OperationID, struct {
 			ID    string
 			Input ColumnInput
@@ -1057,6 +1115,40 @@ func reclassifyTodos(ctx context.Context, tx pgx.Tx, p identity.Principal, kind 
 		}
 		if changed {
 			recordTodo(p, t, before, "classification")
+		}
+	}
+	for i := range b.Contexts {
+		x := &b.Contexts[i]
+		changed := false
+		if kind == "project" && x.ProjectID == old.ID {
+			x.ProjectID = out.ID
+			changed = true
+		}
+		if kind == "domain" {
+			ds := []string{}
+			for _, d := range x.Domains {
+				if d == old.Name {
+					d = out.Name
+					changed = true
+				}
+				if !stringIn(ds, d) {
+					ds = append(ds, d)
+				}
+			}
+			x.Domains = ds
+		}
+		if changed {
+			contextHistory(p, x, "classification")
+		}
+	}
+	// A project merge never broadens a grant to all destination tasks.
+	for i := range b.Delegations {
+		d := &b.Delegations[i]
+		if kind == "project" && d.ProjectID == old.ID && d.RevokedAt == nil {
+			now := time.Now().UTC()
+			d.RevokedAt = &now
+			d.Revision++
+			d.History = append(d.History, TodoEvent{ID: store.ID(), ActorID: p.UserID, ActorKind: p.Kind, Action: "classification-revoke", CreatedAt: now})
 		}
 	}
 	return saveTodoBoard(ctx, tx, p.TeamID, b)

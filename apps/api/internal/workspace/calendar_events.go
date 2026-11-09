@@ -91,6 +91,8 @@ func (s *Service) safeEvent(ctx context.Context, tx pgx.Tx, b *TodoBoard, p iden
 	v.ReportIDs = append([]string{}, v.ReportIDs...)
 	v.History = append([]TodoEvent{}, v.History...)
 	clean := func(x *CalendarEvent) error {
+		x.Links = append([]store.Link{}, x.Links...)
+		x.Domains = append([]string{}, x.Domains...)
 		if !p.Can("todos:read") {
 			x.TodoIDs = []string{}
 		}
@@ -431,6 +433,7 @@ func reclassifyCalendarEvents(ctx context.Context, tx pgx.Tx, p identity.Princip
 }
 
 type CalendarItem struct {
+	Blocked   bool      `json:"blocked"`
 	CreatorID string    `json:"creator_id"`
 	ID        string    `json:"id"`
 	Key       string    `json:"key"`
@@ -480,7 +483,7 @@ func (s *Service) CalendarSchedule(ctx context.Context, p identity.Principal, q 
 				if !match {
 					continue
 				}
-				xs = append(xs, CalendarItem{CreatorID: t.CreatorID, ID: t.ID, Key: "todo:" + t.ID, Source: "todo", Kind: "todo", Title: t.Title, ProjectID: t.ProjectID, Domains: t.Domains, MemberID: t.AssigneeID, Schedule: t.Schedule, DueDate: t.DueDate, Completed: t.CompletedAt != nil, Revision: t.Revision})
+				xs = append(xs, CalendarItem{Blocked: blocked(board, t), CreatorID: t.CreatorID, ID: t.ID, Key: "todo:" + t.ID, Source: "todo", Kind: "todo", Title: t.Title, ProjectID: t.ProjectID, Domains: t.Domains, MemberID: t.AssigneeID, Schedule: t.Schedule, DueDate: t.DueDate, Completed: t.CompletedAt != nil, Revision: t.Revision})
 			}
 		}
 		if out.Capabilities["events"] && !q.Unscheduled && q.Kind != "todo" {

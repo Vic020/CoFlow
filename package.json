@@ -18,6 +18,7 @@
     "test:calendar": "node --test scripts/calendar.test.mjs scripts/calendar-week.test.mjs",
     "test:cache": "node --test scripts/read-cache.test.mjs",
     "test:assistant": "node --test scripts/assistant.test.mjs",
+    "test:knowledge": "node --test scripts/knowledge.test.mjs",
     "test:todo-review": "node --test scripts/todo-review.test.mjs",
     "release": "node scripts/release/run.mjs",
     "test:release": "node --test scripts/release.test.mjs"
@@ -26,6 +27,6 @@
     "apps/web",
     "apps/cli"
   ],
-  "version": "0.4.3",
+  "version": "0.5.0",
   "license": "MIT"
 }

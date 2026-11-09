@@ -29,7 +29,8 @@
         "skills/coflow/references/todos.md",
         "skills/coflow/references/calendar.md",
         "docs/openapi.yaml",
-        "docs/COLLABORATION_GUIDE.md"
+        "docs/COLLABORATION_GUIDE.md",
+        "skills/coflow/references/context.md"
       ]
     },
     {
@@ -40,7 +41,8 @@
         "docs/PRODUCT.md",
         "docs/COLLABORATION_GUIDE.md",
         "docs/ASSISTANT_V0.4.md",
-        "docs/WEB_SERVICES.md"
+        "docs/WEB_SERVICES.md",
+        "docs/CONTEXT.md"
       ]
     },
     {

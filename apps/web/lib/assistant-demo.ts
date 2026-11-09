@@ -1,3 +1,4 @@
+import { blankContext } from "./context.ts";
 import type {
   AIAction,
   AIConfig,
@@ -10,7 +11,69 @@ import type {
 import type { Meta, Report } from "./types";
 import type { Todo, TodoBoardData } from "./todo";
 import { validCivilDay, wallTimeCandidates, civilDay } from "./calendar.ts";
+const autoRuns = new Map<string, unknown>();
 const templateItems: AITemplate[] = [
+  {
+    id: "builtin-wiki",
+    scope: "builtin",
+    title: "Organize Context Wiki",
+    description: "Review sources, maintain introductions and indexes",
+    instructions:
+      "Organize the bounded project Wiki: read the directory and original sources, deduplicate, disclose gaps and prepare sourced pending documents/indexes. Human confirmation is required. Use plain language, a clear topic, supported text diagrams/tables when useful, and consolidate related material into an existing main document or parent index before creating fragments.",
+    parameters: [
+      { name: "project", label: "Project", required: false },
+      { name: "period", label: "Period", required: false },
+    ],
+    tools: [
+      "read_context_tree",
+      "find_context",
+      "read_context",
+      "propose_context",
+    ],
+    version: 1,
+    revision: 1,
+    editable: false,
+  },
+  {
+    editable: false,
+    id: "builtin-context-init",
+    scope: "builtin",
+    title: "Initialize Context",
+    description: "Extract a first knowledge set from project evidence",
+    instructions:
+      "Initialize Context for {{project}} during {{period}}. Read bounded original sources and existing Context, reuse duplicates, disclose conflicts and propose at most five sourced pending drafts. Human confirmation is required.",
+    parameters: [
+      { name: "project", label: "Project", required: true },
+      { name: "period", label: "Period", required: false },
+    ],
+    tools: [
+      "read_workspace",
+      "find_context",
+      "read_context",
+      "read_handoff",
+      "find_todos",
+      "find_reports",
+      "read_todo",
+      "read_report",
+      "read_calendar",
+      "propose_context",
+    ],
+    version: 1,
+    revision: 1,
+  },
+  {
+    editable: false,
+    id: "builtin-knowledge",
+    scope: "builtin",
+    title: "Remember a decision",
+    description: "Traceable decisions and constraints",
+    instructions:
+      "Read sources and prepare pending knowledge for {{project}} only when requested.",
+    parameters: [{ name: "project", label: "Project", required: false }],
+    tools: ["find_context", "read_context", "propose_context"],
+    version: 1,
+    revision: 1,
+  },
   {
     id: "builtin-resume",
     scope: "builtin",
@@ -166,6 +229,86 @@ export async function assistantDemo(
 ): Promise<unknown> {
   const url = new URL(path, "https://offline.invalid");
   path = url.pathname;
+  const autoJSON = (body: unknown, method: string) => ({
+    method,
+    body: JSON.stringify(body),
+  });
+  if (path === "/assistant/context-auto" && method === "POST") {
+    const key = "auto:" + String(input.request_id || "");
+    const prior = autoRuns.get(key);
+    if (prior) return structuredClone(prior);
+    const sourceKind = String(input.source_kind || ""),
+      sourceID = String(input.source_id || "");
+    if (sourceKind === "context") {
+      const item = await call("/context/" + encodeURIComponent(sourceID));
+      const result = {
+        items: [item],
+        errors: [],
+        reply:
+          "Offline simulation: existing synthetic knowledge retained; no model was called.",
+      };
+      autoRuns.set(key, result);
+      return result;
+    }
+    if (!sourceID)
+      return {
+        items: [],
+        errors: [],
+        reply: "Offline simulation: no new source selected.",
+      };
+    const source = (await call(
+      (sourceKind === "todo"
+        ? "/todos/"
+        : sourceKind === "report"
+          ? "/reports/"
+          : "/calendar/events/") + encodeURIComponent(sourceID),
+    )) as {
+      title: string;
+      body?: string;
+      project_id?: string;
+      domains?: string[];
+      revision?: number;
+      updated_at?: string;
+    };
+    const existing = (
+      (await call("/context")) as { items: import("./context").ContextEntry[] }
+    ).items.find((x) => x.source_id === `demo-auto:${sourceKind}:${sourceID}`);
+    const value = await call(
+      existing ? "/context/" + existing.id : "/context",
+      autoJSON(
+        {
+          ...blankContext(),
+          ...existing,
+          title: source.title,
+          body: source.body || source.title,
+          project_id: source.project_id || "",
+          domains: source.domains || [],
+          kind: "background",
+          state: "active",
+          source_id: `demo-auto:${sourceKind}:${sourceID}`,
+          sources: [
+            {
+              kind: sourceKind,
+              id: sourceID,
+              revision: String(source.revision || source.updated_at),
+              quote: (source.body || source.title).slice(0, 500),
+            },
+          ],
+          expected_revision: existing?.revision,
+          operation_id: key,
+        },
+        existing ? "PATCH" : "POST",
+      ),
+    );
+    const result = {
+      items: [value],
+      errors: [],
+      reply:
+        "Offline simulation: a synthetic source was copied, no model was called.",
+    };
+    autoRuns.set(key, result);
+    return result;
+  }
   if (path === "/assistant/templates" && method === "GET")
     return { items: structuredClone(templateItems) };
   if (path === "/assistant/templates" && method === "POST") {
@@ -338,6 +481,29 @@ export async function assistantDemo(
       actions.set(a.id, a);
     };
     if (
+      ["builtin-context-init", "builtin-wiki"].includes(
+        conversation.template?.id || "",
+      )
+    ) {
+      turn.reply = en
+        ? "This offline demo does not infer project knowledge. In team mode this template reads the selected project's records and existing Context, proposes sourced pending drafts, and discloses conflicts and coverage gaps. Nothing has been saved."
+        : "离线演示不推断项目知识。团队模式下，此模板会读取指定项目记录与已有 Context，去重并提出带来源的待确认草稿，说明冲突与覆盖范围。本次未保存记录。";
+    } else if (/记住|记录到 Context|remember|save.*context/i.test(modeText)) {
+      const text = message
+        .replace(/^(记住|remember)[：:\s]*/i, "")
+        .slice(0, 2000);
+      propose("propose_context", text.slice(0, 100), {
+        knowledge: {
+          ...blankContext(),
+          title: text.slice(0, 100),
+          body: text,
+          project_id: project || "",
+        },
+      });
+      turn.reply = en
+        ? "Pending knowledge draft prepared. Confirm to save it, then review the fact in Context."
+        : "知识草稿已准备，确认后保存为待确认记录。";
+    } else if (
       /提交验收|撤回验收|完成任务|重开任务|移动任务|转派任务|评论任务|submit review|withdraw review|complete task|reopen task|move task|assign task|comment task/i.test(
         message,
       )
@@ -541,7 +707,20 @@ export async function assistantDemo(
       body: JSON.stringify(body),
     });
     try {
-      if (a.kind === "propose_task_change") {
+      if (a.kind === "propose_context") {
+        a.result = (await call(
+          "/context",
+          json(
+            {
+              ...a.payload.knowledge,
+              state: "pending",
+              source_id: a.id,
+              operation_id: a.id,
+            },
+            "POST",
+          ),
+        )) as AIAction["result"];
+      } else if (a.kind === "propose_task_change") {
         const change = a.payload.change_action;
         const body: Record<string, unknown> = {
           action: change,

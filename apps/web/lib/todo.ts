@@ -30,6 +30,15 @@ export type TodoReview = {
   decision_note?: string;
 };
 export type Todo = {
+  blockers?: {
+    id: string;
+    todo_id: string;
+    waiting_member_id: string;
+    condition: string;
+    resolved_at?: string;
+  }[];
+  blocked?: boolean;
+  allowed_actions?: string[];
   review?: TodoReview | null;
   unavailable_reports?: number;
   id: string;

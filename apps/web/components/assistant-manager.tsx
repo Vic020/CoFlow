@@ -48,6 +48,11 @@ export function AssistantTools({
   );
 }
 const tools = [
+  "read_context_tree",
+  "find_context",
+  "read_context",
+  "read_delegations",
+  "propose_context",
   "read_workspace",
   "read_handoff",
   "read_changes",
@@ -55,6 +60,7 @@ const tools = [
   "find_todos",
   "find_reports",
   "read_calendar",
+  "read_calendar_event",
   "read_todo",
   "read_report",
   "propose_todo",

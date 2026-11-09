@@ -62,8 +62,9 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		registerTodos(protected, ws)
 	}
 	registerCalendar(protected, ws, repo)
+	registerKnowledge(protected, ws, repo)
 	protected.GET("/api/v1/meta", func(c *gin.Context) {
-		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") && !principal(c).Can("calendar:read") {
+		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") && !principal(c).Can("calendar:read") && !principal(c).Can("context:read") {
 			fail(c, identity.Denied("需要读取权限"))
 			c.Abort()
 			return
@@ -71,7 +72,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		c.Next()
 	}, func(c *gin.Context) {
 		if cfg.Demo {
-			c.JSON(200, gin.H{"agent_capabilities": []string{"todo-review-v1"}, "members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
+			c.JSON(200, gin.H{"agent_capabilities": []string{"todo-review-v1", "todo-blockers-v1", "delegations-v1", "knowledge-v1", "context-wiki-v1", "context-graph-v1", "context-explore-v1", "context-auto-v1"}, "members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
 			return
 		}
 		v, err := cfg.Identity.Metadata(c.Request.Context(), principal(c))
@@ -99,7 +100,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		v["projects"] = projects
 		v["domains"] = domains
 		v["catalog"] = catalog
-		v["agent_capabilities"] = []string{"changes-v1", "context-v1", "todo-review-v1"}
+		v["agent_capabilities"] = []string{"changes-v1", "context-v1", "todo-review-v1", "todo-blockers-v1", "delegations-v1", "knowledge-v1", "context-wiki-v1", "context-graph-v1", "context-explore-v1", "context-auto-v1"}
 		c.JSON(200, v)
 	})
 	protected.GET("/api/v1/reports", requireScope("reports:read"), func(c *gin.Context) {

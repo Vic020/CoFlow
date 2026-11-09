@@ -85,29 +85,35 @@ export function TokenManager() {
     setError("");
     try {
       const scopes =
-        scope === "calendar"
-          ? ["calendar:read", "calendar:write"]
-          : scope === "calendar-read"
-            ? ["calendar:read"]
-            : scope === "todo"
-              ? ["todos:read", "todos:write", "comments:write"]
-              : scope === "all"
-                ? [
-                    "reports:read",
-                    "reports:write",
-                    "todos:read",
-                    "todos:write",
-                    "comments:write",
-                    "calendar:read",
-                    "calendar:write",
-                  ]
-                : scope === "todo-read"
-                  ? ["todos:read"]
-                  : scope === "read"
-                    ? ["reports:read"]
-                    : scope === "comment"
-                      ? ["reports:read", "reports:write", "comments:write"]
-                      : ["reports:read", "reports:write"];
+        scope === "context-read"
+          ? ["context:read"]
+          : scope === "context"
+            ? ["context:read", "context:write"]
+            : scope === "calendar"
+              ? ["calendar:read", "calendar:write"]
+              : scope === "calendar-read"
+                ? ["calendar:read"]
+                : scope === "todo"
+                  ? ["todos:read", "todos:write", "comments:write"]
+                  : scope === "all"
+                    ? [
+                        "reports:read",
+                        "reports:write",
+                        "todos:read",
+                        "todos:write",
+                        "comments:write",
+                        "calendar:read",
+                        "calendar:write",
+                        "context:read",
+                        "context:write",
+                      ]
+                    : scope === "todo-read"
+                      ? ["todos:read"]
+                      : scope === "read"
+                        ? ["reports:read"]
+                        : scope === "comment"
+                          ? ["reports:read", "reports:write", "comments:write"]
+                          : ["reports:read", "reports:write"];
       const v = await request<{
         credential: string;
       }>("/tokens", {
@@ -207,6 +213,8 @@ export function TokenManager() {
           >
             <option value="todo">{tr("读取与管理任务")}</option>
             <option value="todo-read">{tr("只读任务")}</option>
+            <option value="context-read">{tr("Context 只读")}</option>
+            <option value="context">{tr("Context 读写")}</option>
             <option value="all">{tr("上报、任务、日历与评论")}</option>
             <option value="calendar">{tr("读取与管理日历节点")}</option>
             <option value="calendar-read">{tr("只读日历节点")}</option>

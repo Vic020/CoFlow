@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.3-087354" alt="Version 0.4.3" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.0-087354" alt="Version 0.5.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -37,6 +37,8 @@ AI configuration forms verify the connection before saving; saved verification i
 
 Release automation is available through `npm run release -- --help`; it plans by default, keeps instance configuration/checkpoints private, and requires explicit switches for publication, each deployment and reporting. See the [release runner guide](docs/RELEASE_AUTOMATION.md).
 
+**New in 0.5.0:** Task blockers and expiring, revocable delegations; a Context knowledge space with project/domain documents, a directory tree, progressive topic exploration, a cross-module knowledge graph, source review and one-click AI Wiki extraction/organization. See [Context and collaboration](docs/CONTEXT.md).
+
 ## Why CoFlow
 
 One person can run several AI coding tools at once: one Agent updates an API, another builds a page, and a third writes tests. When everyone on the team works with their own Agents, collaboration takes on a different pace.
@@ -45,7 +47,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.4.3.**
+> **Current version: 0.5.0.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -103,7 +105,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.4.3**, including Timeline, Todo, Calendar and the first AI Assistant release. Further model adapters, external write tools, Context and statistics remain separate roadmap work.
+The current version is **0.5.0**, including Timeline, Todo, Calendar, AI Assistant and Context. Further model adapters, external write tools and analytics remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |
@@ -111,7 +113,7 @@ The current version is **0.4.3**, including Timeline, Todo, Calendar and the fir
 | **0.2 · Todo** | Available (0.4.0) | Customizable boards, scoped Agent access, and atomic Timeline integration |
 | **0.3 · Calendar** | Available (0.4.0) | Default report calendar linked to Timeline/Todo, scheduling, Gantt, Big Days and version milestones; [implementation plan](docs/CALENDAR_V0.3.md) |
 | **0.4 · AI Assistant** | Available (0.4.0, first release) | Three common tasks, shared/personal settings, Chat Completions and Responses adapters; [usage and limits](docs/ASSISTANT_V0.4.md) |
-| **0.5 · Context** | Planned | Capture important cross-module knowledge for teams and AI |
+| **0.5 · Context** | Available (0.5.0) | Capture important cross-module knowledge for teams and AI |
 | **0.6 · Analytics** | Planned | Progress, task flow, and delivery trends with filters and source drill-down |
 
 See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria, and the [0.2 Todo implementation plan](docs/TODO_V0.2.md) for execution details.
@@ -151,7 +153,7 @@ Install one CoFlow Skill for reporting, Todo and available Calendar operations; 
 
 Reporting concrete work through the enhanced Skill also reconciles its Todo records: reuse or create tasks for work in progress, confirmed future work and finished work, then link the report. Repeated progress updates reuse the same tasks; delivery awaiting acceptance stays under review. This is a client workflow, with explicit report-only and missing-access handling; the API does not create tasks automatically.
 
-The unified Skill is **v1.4.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
+The unified Skill is **v1.5.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
 
 [Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
 

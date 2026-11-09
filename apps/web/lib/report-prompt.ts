@@ -32,6 +32,7 @@ export function credentialCapabilities(scopes: readonly string[]) {
     todos,
     collaboration: reports && todos,
     calendar: has("calendar:read", "calendar:write"),
+    context: has("context:read", "context:write"),
     comments: scopes.includes("comments:write"),
     readOnly: !scopes.some((scope) => scope.endsWith(":write")),
   };

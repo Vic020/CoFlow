@@ -108,7 +108,7 @@ func (s *Service) Handoff(ctx context.Context, p identity.Principal, repo store.
 	if project == "" && todo == "" {
 		return nil, identity.Invalid("请指定 project 或 todo")
 	}
-	if !p.Can("todos:read") && !p.Can("reports:read") && !p.Can("calendar:read") {
+	if !p.Can("todos:read") && !p.Can("reports:read") && !p.Can("calendar:read") && !p.Can("context:read") {
 		return nil, identity.Denied("需要模块读取权限")
 	}
 	var focus *Todo
@@ -284,6 +284,52 @@ func (s *Service) Handoff(ctx context.Context, p identity.Principal, repo store.
 		for _, event := range section["items"].([]CalendarEvent) {
 			sources = append(sources, store.Link{Title: event.Title, URL: "/calendar?event=" + event.ID})
 		}
+	}
+
+	if p.Can("context:read") {
+		xs, total, e := s.Contexts(ctx, p, ContextFilter{Project: project, State: "active", Limit: 10})
+		if e != nil {
+			return nil, e
+		}
+		safe := []ContextEntry{}
+		for _, x := range xs {
+			if focus != nil {
+				related := len(x.Sources) == 0 && x.ProjectID == project
+				for _, source := range x.Sources {
+					related = related || source.Kind == "todo" && source.ID == todo
+				}
+				if !related {
+					continue
+				}
+			}
+			if x.NeedsReview || x.ValidFrom != "" && x.ValidFrom > time.Now().UTC().Format("2006-01-02") {
+				continue
+			}
+			x.Body = handoffExcerpt(x.Body)
+			x.History = nil
+			for i := range x.Sources {
+				x.Sources[i].Quote = handoffExcerpt(x.Sources[i].Quote)
+			}
+			safe = append(safe, x)
+			sources = append(sources, store.Link{Title: x.Title, URL: "/context?context=" + x.ID})
+		}
+		out["knowledge"] = map[string]any{"items": safe, "total_candidates": total, "truncated": total > len(xs), "source": "/api/v1/context"}
+	} else {
+		omitted = append(omitted, "context:read")
+	}
+	if p.Can("todos:read") {
+		ds, e := s.Delegations(ctx, p)
+		if e != nil {
+			return nil, e
+		}
+		selected := []Delegation{}
+		for _, d := range ds {
+			if d.RevokedAt == nil && d.ExpiresAt.After(time.Now()) && ((todo != "" && d.TodoID == todo) || (project != "" && (d.ProjectID == project || d.TaskProjectID == project))) {
+				d.History = nil
+				selected = append(selected, d)
+			}
+		}
+		out["delegations"] = selected
 	}
 	out["sources"] = sources
 	out["omitted_scopes"] = omitted

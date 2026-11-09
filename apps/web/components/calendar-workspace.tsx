@@ -1,4 +1,6 @@
 "use client";
+import { createPortal } from "react-dom";
+import { RememberContext } from "./context-workspace";
 import {
   PageLoading,
   LoadingStatus,
@@ -87,6 +89,10 @@ const labels: Record<string, string> = {
 };
 
 export function CalendarWorkspace({ meta }: { meta: Meta }) {
+  const [headerTarget, setHeaderTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeaderTarget(document.getElementById("calendar-header-filters"));
+  }, []);
   const { t: tr, timeZone, date, locale } = useI18n();
   const shared = useSharedFilters();
   const router = useRouter();
@@ -570,6 +576,11 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
             <span className="calendar-deadline-label">{tr("截止日期")} - </span>
           )}
           {item.completed && <span aria-label={tr("已完成")}>✓ </span>}
+          {item.blocked && (
+            <span className="context-warning" title={tr("等待解除阻塞")}>
+              !{" "}
+            </span>
+          )}
           {item.title}
         </button>
         {resize &&
@@ -732,123 +743,129 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
           )}
         </div>
       </div>
-      <div className="calendar-filters">
-        <input
-          type="search"
-          aria-label={tr("搜索")}
-          placeholder={tr("搜索")}
-          defaultValue={search.get("q") || ""}
-          key={`q:${search.get("q")}`}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") navigate({ q: e.currentTarget.value });
-          }}
-          onBlur={(e) => {
-            if (e.target.value !== (search.get("q") || ""))
-              navigate({ q: e.target.value });
-          }}
-        />
-        {mode === "reports" ? (
-          <>
-            <select
-              aria-label={tr("状态")}
-              value={search.get("status") || ""}
-              onChange={(e) => navigate({ status: e.target.value })}
+      {headerTarget &&
+        createPortal(
+          <div className="calendar-filters">
+            <input
+              type="search"
+              aria-label={tr("搜索")}
+              placeholder={tr("搜索")}
+              defaultValue={search.get("q") || ""}
+              key={`q:${search.get("q")}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") navigate({ q: e.currentTarget.value });
+              }}
+              onBlur={(e) => {
+                if (e.target.value !== (search.get("q") || ""))
+                  navigate({ q: e.target.value });
+              }}
+            />
+            {mode === "reports" ? (
+              <>
+                <select
+                  aria-label={tr("状态")}
+                  value={search.get("status") || ""}
+                  onChange={(e) => navigate({ status: e.target.value })}
+                >
+                  <option value="">{tr("全部状态")}</option>
+                  {Object.entries(statuses).map(([key, s]) => (
+                    <option value={key} key={key}>
+                      {tr(s.label)}
+                    </option>
+                  ))}
+                </select>
+                {["agent", "model"].map((key) => (
+                  <input
+                    key={`${key}:${search.get(key)}`}
+                    aria-label={key === "agent" ? "Agent" : "Model"}
+                    placeholder={key === "agent" ? "Agent" : "Model"}
+                    defaultValue={search.get(key) || ""}
+                    onBlur={(e) => {
+                      if (e.target.value !== (search.get(key) || ""))
+                        navigate({ [key]: e.target.value });
+                    }}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                <select
+                  aria-label={tr("类型")}
+                  value={search.get("kind") || ""}
+                  onChange={(e) => navigate({ kind: e.target.value })}
+                >
+                  <option value="">{tr("全部类型")}</option>
+                  {Object.entries(labels).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {tr(label)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label={tr("任务状态")}
+                  value={search.get("task_status") || ""}
+                  onChange={(e) => navigate({ task_status: e.target.value })}
+                >
+                  <option value="">{tr("全部任务状态")}</option>
+                  <option value="open">{tr("未完成")}</option>
+                  <option value="completed">{tr("已完成")}</option>
+                </select>
+                <Button
+                  size="sm"
+                  variant={
+                    search.get("archived") === "true" ? "outline" : "ghost"
+                  }
+                  aria-pressed={search.get("archived") === "true"}
+                  onClick={() =>
+                    navigate({
+                      archived: search.get("archived") === "true" ? "" : "true",
+                    })
+                  }
+                >
+                  {tr("已归档")}
+                </Button>
+                {view === "gantt" && (
+                  <select
+                    aria-label={tr("分组")}
+                    value={groupBy}
+                    onChange={(e) => navigate({ group: e.target.value })}
+                  >
+                    <option value="project">{tr("项目")}</option>
+                    <option value="domain">{tr("领域")}</option>
+                  </select>
+                )}
+              </>
+            )}
+            <div
+              className="calendar-zone"
+              title={tr("按显示时区归日；全天排期不转换日期")}
             >
-              <option value="">{tr("全部状态")}</option>
-              {Object.entries(statuses).map(([key, s]) => (
-                <option value={key} key={key}>
-                  {tr(s.label)}
-                </option>
-              ))}
-            </select>
-            {["agent", "model"].map((key) => (
-              <input
-                key={`${key}:${search.get(key)}`}
-                aria-label={key === "agent" ? "Agent" : "Model"}
-                placeholder={key === "agent" ? "Agent" : "Model"}
-                defaultValue={search.get(key) || ""}
-                onBlur={(e) => {
-                  if (e.target.value !== (search.get(key) || ""))
-                    navigate({ [key]: e.target.value });
-                }}
+              <TimezonePicker
+                value={zone}
+                zones={["UTC", ...Intl.supportedValuesOf("timeZone")]}
+                onSelect={(z) => navigate({ timezone: z })}
               />
-            ))}
-          </>
-        ) : (
-          <>
-            <select
-              aria-label={tr("类型")}
-              value={search.get("kind") || ""}
-              onChange={(e) => navigate({ kind: e.target.value })}
-            >
-              <option value="">{tr("全部类型")}</option>
-              {Object.entries(labels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {tr(label)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={tr("任务状态")}
-              value={search.get("task_status") || ""}
-              onChange={(e) => navigate({ task_status: e.target.value })}
-            >
-              <option value="">{tr("全部任务状态")}</option>
-              <option value="open">{tr("未完成")}</option>
-              <option value="completed">{tr("已完成")}</option>
-            </select>
+            </div>
             <Button
               size="sm"
-              variant={search.get("archived") === "true" ? "outline" : "ghost"}
-              aria-pressed={search.get("archived") === "true"}
+              variant="ghost"
               onClick={() =>
                 navigate({
-                  archived: search.get("archived") === "true" ? "" : "true",
+                  q: "",
+                  agent: "",
+                  model: "",
+                  status: "",
+                  kind: "",
+                  task_status: "",
+                  archived: "",
                 })
               }
             >
-              {tr("已归档")}
+              {tr("重置本页")}
             </Button>
-            {view === "gantt" && (
-              <select
-                aria-label={tr("分组")}
-                value={groupBy}
-                onChange={(e) => navigate({ group: e.target.value })}
-              >
-                <option value="project">{tr("项目")}</option>
-                <option value="domain">{tr("领域")}</option>
-              </select>
-            )}
-          </>
+          </div>,
+          headerTarget,
         )}
-        <div
-          className="calendar-zone"
-          title={tr("按显示时区归日；全天排期不转换日期")}
-        >
-          <TimezonePicker
-            value={zone}
-            zones={["UTC", ...Intl.supportedValuesOf("timeZone")]}
-            onSelect={(z) => navigate({ timezone: z })}
-          />
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() =>
-            navigate({
-              q: "",
-              agent: "",
-              model: "",
-              status: "",
-              kind: "",
-              task_status: "",
-              archived: "",
-            })
-          }
-        >
-          {tr("重置本页")}
-        </Button>
-      </div>
       <p className="calendar-caption">
         {tr(
           mode === "reports"
@@ -917,6 +934,14 @@ export function CalendarWorkspace({ meta }: { meta: Meta }) {
                           {group} · {tr(labels[item.kind] || item.kind)}
                         </small>
                         <button onClick={() => void open(item)}>
+                          {item.blocked && (
+                            <span
+                              className="context-warning"
+                              title={tr("等待解除阻塞")}
+                            >
+                              !{" "}
+                            </span>
+                          )}
                           {item.title}
                         </button>
                       </div>
@@ -1524,6 +1549,18 @@ function CalendarEventDialog({
         <DialogDescription className="modal-description">
           {tr("阶段和节点记录计划，交付证据保留在 Todo 与 Timeline。")}
         </DialogDescription>
+        {initial.id && (
+          <RememberContext
+            meta={meta}
+            kind="calendar"
+            id={initial.id}
+            title={initial.title}
+            body={initial.body}
+            project={initial.project_id}
+            domains={initial.domains}
+            revision={String(initial.revision)}
+          />
+        )}
         {error && (
           <>
             <p role="alert">{tr(error)}</p>
@@ -1824,7 +1861,7 @@ function CalendarEventDialog({
                   {tr("查看关联上报")}
                 </Link>
               ))}
-              {initial.links.map((link, i) => (
+              {(initial.links || []).map((link, i) => (
                 <a
                   key={i}
                   href={link.url}

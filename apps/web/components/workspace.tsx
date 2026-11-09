@@ -48,6 +48,7 @@ import {
 import { GlobalFilters, useSharedFilters } from "./shared-filters";
 import { Avatar, Agent, Status, Markdown, ReportDetail } from "./report-detail";
 import { CalendarWorkspace } from "@/components/calendar-workspace";
+import { ContextWorkspace } from "./context-workspace";
 import { TodoBoard } from "@/components/todo-board";
 import { ReportHub, type ReportTab } from "@/components/report-hub";
 import Link from "next/link";
@@ -132,6 +133,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname().replace(/\/$/, "") || "/";
   const assistantPage = pathname === "/assistant";
+  const contextPage = pathname === "/context";
   const todoPage = pathname === "/todo";
   const calendarPage = pathname === "/calendar";
   const credentialsPage = pathname === "/credentials";
@@ -140,6 +142,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const timelinePage = useRef(false);
   timelinePage.current =
     !assistantPage &&
+    !contextPage &&
     !todoPage &&
     !calendarPage &&
     !credentialsPage &&
@@ -333,6 +336,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       loading ||
       !timelineReady.current ||
       !meta ||
+      contextPage ||
       todoPage ||
       calendarPage ||
       credentialsPage ||
@@ -351,6 +355,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     loading,
     meta,
     reports,
+    contextPage,
     todoPage,
     calendarPage,
     credentialsPage,
@@ -640,6 +645,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           href={shared.href("/")}
           className={
             !assistantPage &&
+            !contextPage &&
             !todoPage &&
             !calendarPage &&
             !credentialsPage &&
@@ -649,6 +655,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           }
           aria-current={
             !assistantPage &&
+            !contextPage &&
             !todoPage &&
             !calendarPage &&
             !credentialsPage &&
@@ -684,6 +691,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         >
           <CalendarDays size={18} />
           <span className="nav-label">Calendar</span>
+        </Link>
+        <Link
+          href={shared.href("/context")}
+          className={contextPage ? "nav-active" : ""}
+          aria-current={contextPage ? "page" : undefined}
+          title="Context"
+          aria-label="Context"
+          onClick={() => setNav(false)}
+        >
+          <BookOpen size={18} />
+          <span className="nav-label">Context</span>
         </Link>
         <Link
           href={shared.href("/assistant")}
@@ -789,7 +807,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           </div>
         )}
         <div
-          className={`workspace-content${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
+          className={`workspace-content${contextPage ? " knowledge-content" : ""}${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
           {!credentialsPage &&
             !settingsPage &&
@@ -802,7 +820,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 aria-hidden="true"
               />
             ))}
-          <header className="page-heading">
+          <header
+            className={`page-heading${contextPage ? " context-page-heading" : todoPage ? " todo-page-heading module-page-heading" : calendarPage ? " calendar-page-heading module-page-heading" : ""}`}
+          >
             <div className="heading-start">
               <Button
                 variant="ghost"
@@ -817,16 +837,19 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <h1>
                   {assistantPage
                     ? tr("AI 助手")
-                    : todoPage
-                      ? "Todo"
-                      : calendarPage
-                        ? "Calendar"
-                        : credentialsPage
-                          ? tr("Agent 凭证")
-                          : settingsPage
-                            ? tr("团队设置")
-                            : tr("团队动态")}
+                    : contextPage
+                      ? "Context"
+                      : todoPage
+                        ? "Todo"
+                        : calendarPage
+                          ? "Calendar"
+                          : credentialsPage
+                            ? tr("Agent 凭证")
+                            : settingsPage
+                              ? tr("团队设置")
+                              : tr("团队动态")}
                   {!assistantPage &&
+                    !contextPage &&
                     !todoPage &&
                     !calendarPage &&
                     !credentialsPage &&
@@ -838,6 +861,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   </span>
                 )}
                 {!assistantPage &&
+                  !contextPage &&
                   !todoPage &&
                   !calendarPage &&
                   !credentialsPage &&
@@ -848,7 +872,22 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   )}
               </div>
             </div>
+            {(todoPage || calendarPage) && (
+              <div
+                id={
+                  todoPage ? "todo-header-actions" : "calendar-header-filters"
+                }
+                className="module-header-tools"
+              />
+            )}
+            {contextPage && (
+              <div
+                id="context-header-actions"
+                className="top-actions context-header-actions"
+              />
+            )}
             {!assistantPage &&
+              !contextPage &&
               !todoPage &&
               !calendarPage &&
               !credentialsPage &&
@@ -875,7 +914,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   </label>
                   {meta?.mode !== "local-demo" && meta ? (
                     <NotificationCenter
-                      key={meta.team.id}
+                      key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
                       team={meta.team.id}
                       onSelect={(id) => {
                         const r = reports.find((r) => r.id === id);
@@ -913,14 +952,29 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           ) : calendarPage ? (
             meta ? (
               <Suspense fallback={<PageLoading variant="calendar" />}>
-                <CalendarWorkspace key={meta.team.id} meta={meta} />
+                <CalendarWorkspace
+                  key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
+                  meta={meta}
+                />
               </Suspense>
             ) : (
               <PageLoading variant="calendar" />
             )
+          ) : contextPage ? (
+            meta ? (
+              <ContextWorkspace
+                key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
+                meta={meta}
+              />
+            ) : (
+              <PageLoading variant="list" />
+            )
           ) : todoPage ? (
             meta ? (
-              <TodoBoard key={meta.team.id} meta={meta} />
+              <TodoBoard
+                key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
+                meta={meta}
+              />
             ) : (
               <PageLoading variant="board" />
             )
@@ -928,7 +982,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             <div className="team-settings-content">
               {meta ? (
                 <TeamSettings
-                  key={meta.team.id}
+                  key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
                   meta={meta}
                   onChange={() => void load()}
                 />
@@ -1049,7 +1103,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 {catalogOpen && meta && auth.mode !== "local-demo" && (
                   <div className="timeline-catalog-editor">
                     <CatalogManager
-                      key={meta.team.id}
+                      key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
                       meta={meta}
                       onChange={() => void load()}
                       onClose={() => setCatalogOpen(false)}

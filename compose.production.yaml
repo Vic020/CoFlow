@@ -22,7 +22,7 @@ services:
       retries: 10
     logging: *logging
   api:
-    image: coflow-api:0.4.3
+    image: coflow-api:0.5.0
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -40,7 +40,7 @@ services:
     mem_limit: 256m
     logging: *logging
   web:
-    image: coflow-web:0.4.3
+    image: coflow-web:0.5.0
     build:
       context: .
       dockerfile: apps/web/Dockerfile

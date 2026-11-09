@@ -605,15 +605,18 @@ function ActionCard({
     [error, setError] = useState("");
   const schedule = action.payload.schedule;
   const labels: Record<string, string> = {
+    propose_context: "记录到 Context",
     propose_todo: "新建任务",
     propose_schedule: "调整排期",
     propose_report: "发布简报",
     propose_task_change: "推进任务",
   };
   const target = action.result?.id
-    ? action.kind === "propose_report"
-      ? `/?report=${action.result.id}`
-      : `/todo?todo=${action.result.id}`
+    ? action.kind === "propose_context"
+      ? `/context?context=${action.result.id}`
+      : action.kind === "propose_report"
+        ? `/?report=${action.result.id}`
+        : `/todo?todo=${action.result.id}`
     : "";
   return (
     <div className="ai-action-card">
@@ -682,6 +685,13 @@ function ActionCard({
               ? ` · ${action.payload.column_name}`
               : ""}
           </small>
+          {action.payload.knowledge && (
+            <div>
+              <p>{action.payload.knowledge.title}</p>
+              <p className="context-body">{action.payload.knowledge.body}</p>
+              <small>{tr("保存为待确认 Context")}</small>
+            </div>
+          )}
           {action.kind === "propose_task_change" && (
             <p className="ai-draft-body">
               {tr(
