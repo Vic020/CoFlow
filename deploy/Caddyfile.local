@@ -1,0 +1,13 @@
+{
+    auto_https off
+    admin off
+}
+:8080 {
+    encode gzip
+    handle /api/* {
+        reverse_proxy api:8080
+    }
+    handle {
+        reverse_proxy web:3000
+    }
+}

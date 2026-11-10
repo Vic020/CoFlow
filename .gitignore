@@ -35,3 +35,6 @@ apps/api/internal/httpapi/local_browser_pilot_test.go
 # Static GitHub Pages build artifacts.
 apps/web/.next-pages/
 apps/web/out/
+
+# Independent hot-reload output for the persistent local team environment.
+apps/web/.next-team/

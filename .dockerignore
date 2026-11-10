@@ -17,3 +17,8 @@ playwright-report
 **/*.dump
 **/*.har
 **/*.trace.zip
+
+# Never send browser build caches to the local or release Docker build context.
+**/.next-pages
+**/.next-team
+apps/web/out

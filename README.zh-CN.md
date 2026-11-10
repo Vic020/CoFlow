@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.0-087354" alt="Version 0.5.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.1-087354" alt="Version 0.5.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -49,7 +49,9 @@ AI 配置在表单内先验证再保存；仅改名称或默认项可沿用验�
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-> **当前版本：0.5.0。**
+**0.5.1 新增：** 一键 AI 操作可在助手中查看进度与结果，支持停止／继续，刷新后如实标记待确认状态，见 [Context 操作说明](docs/CONTEXT.md)。
+
+> **当前版本：0.5.1。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -109,7 +111,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.5.0**，包含 Timeline、Todo、Calendar、AI 助手与 Context。其余模型协议、外部写工具和统计继续独立规划。
+当前版本为 **0.5.1**，包含 Timeline、Todo、Calendar、AI 助手与 Context。其余模型协议、外部写工具和统计继续独立规划。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
@@ -138,6 +140,8 @@ npm run dev
 ```
 
 打开 [127.0.0.1:3000](http://127.0.0.1:3000)。真实团队配置见[开发指南](docs/DEVELOPMENT.md)，自托管见[部署指南](docs/DEPLOYMENT.md)。
+
+需要持久化本地团队、真实登录及 AI 配置时，执行 `npm run local:team -- up`，打开 [127.0.0.1:3103](http://127.0.0.1:3103)。与原有离线演示分开，登录信息只保存在忽略的 `.local/local-team/`；启动、停止、备份与热更新见[本地部署模拟](docs/LOCAL_TEAM.md)，不会自动导入或调用厂商 Key。
 
 ## Agent 接入
 
@@ -194,7 +198,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.5.0
+├── VERSION           # 当前版本：0.5.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

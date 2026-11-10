@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Activity,
   ArrowUp,
   ArrowUpRight,
   CalendarClock,
@@ -42,13 +43,19 @@ import {
   type AIAction,
 } from "@/lib/assistant";
 import { request } from "@/lib/types";
+import { AssistantOperations } from "./assistant-operations";
+import { operationActive } from "@/lib/ai-operations";
 import { publicDemo } from "@/lib/runtime";
 
 export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
   const ai = useAssistant(),
     { t: tr } = useI18n();
-  const [page, setPage] = useState<AssistantToolsPage | "chat">("chat");
+  const [page, setPage] = useState<AssistantToolsPage | "chat" | "operations">(
+    "chat",
+  );
+  const activeOperations = ai.operations.filter(operationActive).length;
   const navigation = [
+    { id: "operations", label: "运行任务", Icon: Activity },
     { id: "templates", label: "任务模板", Icon: ListChecks },
     { id: "jobs", label: "定时任务", Icon: CalendarClock },
     { id: "mcp", label: "MCP 连接", Icon: Plug },
@@ -74,12 +81,15 @@ export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
             <button
               key={id}
               type="button"
-              disabled={ai.busy}
+              disabled={ai.busy && id !== "operations"}
               aria-current={page === id ? "page" : undefined}
               onClick={() => setPage(id)}
             >
               <Icon size={15} />
               {tr(label)}
+              {id === "operations" && activeOperations > 0 && (
+                <span className="ai-operation-count">{activeOperations}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -112,11 +122,15 @@ export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
               {tr("返回对话")}
             </Button>
           </header>
-          <AssistantTools
-            key={page}
-            page={page}
-            onClose={() => setPage("chat")}
-          />
+          {page === "operations" ? (
+            <AssistantOperations onOpen={() => setPage("chat")} />
+          ) : (
+            <AssistantTools
+              key={page}
+              page={page}
+              onClose={() => setPage("chat")}
+            />
+          )}
         </section>
       )}
     </div>
@@ -267,6 +281,20 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
             onClick={() => ai.setManager("templates")}
           >
             <ListChecks size={16} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={compact ? undefined : "ai-history-mobile"}
+            onClick={() => ai.setManager("operations")}
+          >
+            <Activity size={15} />
+            {tr("运行任务")}
+            {ai.operations.filter(operationActive).length > 0 && (
+              <span className="ai-operation-count">
+                {ai.operations.filter(operationActive).length}
+              </span>
+            )}
           </Button>
           <span className="ai-team-name">
             {auth.me?.teams.find((t) => t.id === auth.me?.current_team)?.name ||
@@ -867,6 +895,16 @@ export function AssistantTrigger() {
     >
       <MessageSquare size={16} />
       <span>{tr("AI 助手")}</span>
+      {ai.operations.some(operationActive) && (
+        <span
+          className="ai-operation-count"
+          aria-label={tr("{count} 个 AI 任务运行中", {
+            count: ai.operations.filter(operationActive).length,
+          })}
+        >
+          {ai.operations.filter(operationActive).length}
+        </span>
+      )}
     </Button>
   );
 }

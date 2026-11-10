@@ -28,10 +28,11 @@ import type {
   AIRun,
   AIMCP,
 } from "@/lib/assistant";
+import { AssistantOperations } from "./assistant-operations";
 import { Plus, Search } from "lucide-react";
 
-type Page = "history" | "templates" | "jobs" | "mcp";
-export type AssistantToolsPage = Exclude<Page, "history">;
+type Page = "history" | "templates" | "jobs" | "mcp" | "operations";
+export type AssistantToolsPage = Exclude<Page, "history" | "operations">;
 export function AssistantTools({
   page,
   onClose,
@@ -86,6 +87,7 @@ export function AssistantManager({
         <div className="ai-manager-tabs">
           {(
             [
+              ["operations", "运行任务"],
               ["history", "历史对话"],
               ["templates", "任务模板"],
               ["jobs", "定时任务"],
@@ -102,7 +104,9 @@ export function AssistantManager({
             </button>
           ))}
         </div>
-        {page === "history" ? (
+        {page === "operations" ? (
+          <AssistantOperations onOpen={onClose} />
+        ) : page === "history" ? (
           <AssistantHistory onClose={onClose} />
         ) : page === "templates" ? (
           <TemplateManager onClose={onClose} />

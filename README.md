@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.0-087354" alt="Version 0.5.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.1-087354" alt="Version 0.5.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -39,6 +39,8 @@ Release automation is available through `npm run release -- --help`; it plans by
 
 **New in 0.5.0:** Task blockers and expiring, revocable delegations; a Context knowledge space with project/domain documents, a directory tree, progressive topic exploration, a cross-module knowledge graph, source review and one-click AI Wiki extraction/organization. See [Context and collaboration](docs/CONTEXT.md).
 
+**New in 0.5.1:** One-click AI operations are visible in the assistant with progress, results, stop/resume and refresh-safe status. See [Context operation tracking](docs/CONTEXT.md).
+
 ## Why CoFlow
 
 One person can run several AI coding tools at once: one Agent updates an API, another builds a page, and a third writes tests. When everyone on the team works with their own Agents, collaboration takes on a different pace.
@@ -47,7 +49,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.5.0.**
+> **Current version: 0.5.1.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -105,7 +107,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.5.0**, including Timeline, Todo, Calendar, AI Assistant and Context. Further model adapters, external write tools and analytics remain separate roadmap work.
+The current version is **0.5.1**, including Timeline, Todo, Calendar, AI Assistant and Context. Further model adapters, external write tools and analytics remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |
@@ -136,6 +138,8 @@ npm run dev
 ```
 
 Open [127.0.0.1:3000](http://127.0.0.1:3000). For real teams, see the [development guide](docs/DEVELOPMENT.md) and [deployment guide](docs/DEPLOYMENT.md).
+
+For a persistent local team with real sign-in, encrypted AI settings and linked practice data, run `npm run local:team -- up` and open [127.0.0.1:3103](http://127.0.0.1:3103). Keep the existing offline demo separate. Local credentials stay in the ignored `.local/local-team/` directory; see [local deployment simulation](docs/LOCAL_TEAM.md) for start, stop, backup and hot reload. No vendor keys are imported or called automatically.
 
 ## Agent integration
 

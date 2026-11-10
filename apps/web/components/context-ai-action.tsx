@@ -11,17 +11,13 @@ import { useAssistant } from "./assistant-provider";
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { defaultAIConfig } from "@/lib/assistant";
-import { request } from "@/lib/types";
-import { publicDemo } from "@/lib/runtime";
-import type { ContextEntry, ContextNode } from "@/lib/context";
-export type ContextAIScope = {
-  project?: string;
-  domain?: string;
-  member?: string;
-  source_kind?: string;
-  source_id?: string;
-  mode?: "extract" | "organize";
-};
+import {
+  contextOperationKey,
+  operationActive,
+  type ContextAIScope,
+} from "@/lib/ai-operations";
+import type { ContextEntry } from "@/lib/context";
+export type { ContextAIScope } from "@/lib/ai-operations";
 export function ContextAIAction({
   scope,
   label = "AI 提取",
@@ -37,161 +33,107 @@ export function ContextAIAction({
   variant?: "default" | "outline" | "ghost";
   onSaved?: (v: ContextEntry) => void;
 }) {
-  const ai = useAssistant();
-  const { t: tr, locale } = useI18n();
-  const [busy, setBusy] = useState(false),
-    [progress, setProgress] = useState(""),
-    [message, setMessage] = useState(""),
-    [failed, setFailed] = useState(false),
-    [feedback, setFeedback] = useState<
-      "" | "organized" | "review" | "stopped" | "empty" | "demo"
-    >("");
-  const alive = useRef(true),
-    stop = useRef(false),
-    retry = useRef<{
-      fingerprint: string;
-      id: string;
-      queue: ContextAIScope[];
-      index: number;
-      items: Map<string, ContextEntry>;
-      attempts: Record<number, number>;
-    } | null>(null);
+  const ai = useAssistant(),
+    { t: tr, locale } = useI18n();
+  const config =
+    ai.configs.find((c) => c.id === ai.configID && c.verified_at) ||
+    defaultAIConfig(ai.configs);
+  const fingerprint = contextOperationKey({
+    scope,
+    contextIDs,
+    configID: config?.id || "",
+    locale,
+  });
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
-      stop.current = true;
     };
   }, []);
+  const [id, setID] = useState(""),
+    [notice, setNotice] = useState(false);
+  const job = ai.operations.find(
+    (v) => v.fingerprint === fingerprint && (v.id === id || operationActive(v)),
+  );
+  const busy = !!job && operationActive(job);
+  const failed = job?.status === "failed";
   useEffect(() => {
-    if (!message || failed) return;
-    const timer = setTimeout(() => {
-      setMessage("");
-      setFeedback("");
-    }, 2500);
+    if (!job) return;
+    setNotice(true);
+    if (operationActive(job) || job.status === "failed") return;
+    const timer = setTimeout(() => setNotice(false), 2500);
     return () => clearTimeout(timer);
-  }, [message, failed]);
-  async function run() {
-    if (busy) return;
-    const config =
-      ai.configs.find((c) => c.id === ai.configID && c.verified_at) ||
-      defaultAIConfig(ai.configs);
+  }, [job?.id, job?.status]);
+  function run() {
     if (!config) {
       ai.openSettings("personal");
       return;
     }
-    stop.current = false;
-    setBusy(true);
-    setMessage("");
-    setFeedback("");
-    setFailed(false);
-    try {
-      const fingerprint = JSON.stringify([scope, contextIDs, config.id]);
-      if (retry.current?.fingerprint !== fingerprint) {
-        let queue = [scope];
-        if (contextIDs) {
-          queue = contextIDs.map((id) => ({
-            ...scope,
-            source_kind: "context",
-            source_id: id,
-          }));
-        } else if (!scope.source_id) {
-          const params = new URLSearchParams({
-            project: scope.project || "",
-            domain: scope.domain || "",
-            member: scope.member || "",
-          });
-          const tree = await request<{ items: ContextNode[] }>(
-            "/context-tree?" + params,
-          );
-          const nodes = tree.items.filter((n) => n.state !== "archived");
-          if (nodes.length)
-            queue = nodes.map((n) => ({
-              ...scope,
-              source_kind: "context",
-              source_id: n.id,
-            }));
-        }
-        retry.current = {
-          fingerprint,
-          id: crypto.randomUUID(),
-          queue,
-          index: 0,
-          items: new Map(),
-          attempts: {},
-        };
-      }
-      const job = retry.current!;
-      while (job.index < job.queue.length && !stop.current) {
-        if (alive.current) setProgress(`${job.index + 1}/${job.queue.length}`);
-        const result = await request<{
-          items: ContextEntry[];
-          errors: string[];
-          reply: string;
-        }>("/assistant/context-auto", {
-          method: "POST",
-          body: JSON.stringify({
-            ...job.queue[job.index],
-            config_id: config.id,
-            request_id: `${job.id}-${job.index}-${job.attempts[job.index] || 0}`,
-            locale,
-          }),
-        });
-        for (const value of result.items) {
-          job.items.set(value.id, value);
-          if (alive.current) onSaved?.(value);
-        }
-        window.dispatchEvent(new Event("coflow-knowledge-change"));
-        window.dispatchEvent(new Event("coflow:assistant-change"));
-        if (result.errors.length) {
-          job.attempts[job.index] = (job.attempts[job.index] || 0) + 1;
-          throw Error(result.errors.join(" · "));
-        }
-        job.index++;
-      }
-      const reviewCount = [...job.items.values()].filter(
-        (v) => v.needs_review || v.state === "pending",
-      ).length;
-      if (alive.current)
-        setFeedback(
-          stop.current
-            ? "stopped"
-            : publicDemo
-              ? "demo"
-              : reviewCount
-                ? "review"
-                : job.items.size
-                  ? "organized"
-                  : "empty",
-        );
-      if (alive.current)
-        setMessage(
-          stop.current
-            ? tr("已停止，已保存的内容保留")
-            : publicDemo
-              ? tr("离线演示：仅模拟整理，未调用 AI，原文保持不变")
-              : reviewCount
-                ? tr("已整理 {count} 条，{review} 条待复核", {
-                    count: job.items.size,
-                    review: reviewCount,
-                  })
-                : job.items.size
-                  ? tr("已整理 {count} 条", { count: job.items.size })
-                  : tr("没有需要新增的知识"),
-        );
-      if (!stop.current) retry.current = null;
-    } catch (e) {
-      if (alive.current) {
-        setFailed(true);
-        setMessage(tr((e as Error).message));
-      }
-    } finally {
-      if (alive.current) {
-        setBusy(false);
-        setProgress("");
-      }
+    if (busy) return;
+    if (
+      job &&
+      ["failed", "stopped"].includes(job.status) &&
+      ai.canRetryOperation(job.id)
+    ) {
+      ai.retryOperation(job.id);
+      return;
     }
+    const origin = window.location.pathname + window.location.search;
+    setID(
+      ai.startOperation({
+        scope,
+        contextIDs,
+        configID: config.id,
+        locale,
+        origin,
+        onSaved: (v) => {
+          if (alive.current && currentFingerprint.current === fingerprint)
+            onSaved?.(v);
+        },
+      }),
+    );
   }
+  const message = job
+    ? failed
+      ? tr(job.error || "AI 操作失败")
+      : job.status === "stopping"
+        ? tr("停止后不再处理后续文档；当前请求可能继续保存。")
+        : busy
+          ? tr("已处理 {done}/{total}", {
+              done: job.completed,
+              total: job.total,
+            })
+          : job.status === "stopped"
+            ? tr("已停止，已保存的内容保留")
+            : job.demo
+              ? tr("离线演示：仅模拟整理，未调用 AI，原文保持不变")
+              : tr("已保存 {count} 条，待复核 {review} 条", {
+                  count: job.saved,
+                  review: job.review,
+                })
+    : "";
+  const text = busy
+    ? job!.total
+      ? `${job!.completed}/${job!.total}`
+      : tr("整理中…")
+    : notice && job
+      ? tr(
+          failed
+            ? "失败"
+            : job.status === "stopped"
+              ? "已停止"
+              : job.demo
+                ? "演示完成"
+                : job.review
+                  ? "需复核"
+                  : job.saved
+                    ? "已整理"
+                    : "无新增",
+        )
+      : tr(label);
   return (
     <span
       className="context-ai-action"
@@ -207,14 +149,14 @@ export function ContextAIAction({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          void run();
+          run();
         }}
       >
         {busy ? (
           <LoaderCircle size={14} className="animate-spin" />
         ) : failed ? (
           <CircleAlert size={14} />
-        ) : feedback ? (
+        ) : notice && job ? (
           <Check size={14} />
         ) : (
           <Sparkles size={14} />
@@ -224,29 +166,13 @@ export function ContextAIAction({
             <span aria-hidden="true" className="context-ai-label-size">
               {tr("整理中…")}
             </span>
-            <span>
-              {busy
-                ? progress || tr("整理中…")
-                : feedback
-                  ? tr(
-                      (
-                        {
-                          organized: "已整理",
-                          review: "需复核",
-                          stopped: "已停止",
-                          empty: "无新增",
-                          demo: "演示完成",
-                        } as const
-                      )[feedback],
-                    )
-                  : tr(label)}
-            </span>
+            <span>{text}</span>
           </span>
         )}
       </Button>
       <button
         type="button"
-        disabled={!busy}
+        disabled={!busy || job?.status === "stopping"}
         style={{ visibility: busy ? "visible" : "hidden" }}
         className="context-ai-stop"
         title={tr("停止")}
@@ -254,19 +180,29 @@ export function ContextAIAction({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          stop.current = true;
+          if (job) ai.stopOperation(job.id);
         }}
       >
         <Square size={12} />
       </button>
-      {(message || (busy && progress)) && (
-        <span
-          role={failed ? "alert" : "status"}
-          className={
-            failed || size === "icon" ? "context-ai-result" : "sr-only"
-          }
-        >
-          {busy ? progress : message}
+      {job && (busy || notice) && (
+        <span className="context-ai-result context-ai-task-feedback">
+          <span
+            role={failed ? "alert" : "status"}
+            className={size === "icon" || failed ? "" : "sr-only"}
+          >
+            {message}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              ai.setManager("operations");
+            }}
+          >
+            {tr("查看任务")}
+          </button>
         </span>
       )}
     </span>

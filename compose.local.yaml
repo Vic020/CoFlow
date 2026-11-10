@@ -1,0 +1,49 @@
+name: coflow-local-team
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coflow
+      POSTGRES_DB: coflow
+      POSTGRES_PASSWORD: ${COFLOW_LOCAL_DB_PASSWORD:?Run local:team init first}
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U coflow -d coflow]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    image: coflow-local-team-api:current
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://coflow:${COFLOW_LOCAL_DB_PASSWORD}@db:5432/coflow?sslmode=disable
+      COFLOW_ADDR: 0.0.0.0:8080
+      COFLOW_DEMO: 'false'
+      COFLOW_SECURE_COOKIES: 'false'
+      COFLOW_AI_ENCRYPTION_KEY: ${COFLOW_LOCAL_AI_KEY:?Run local:team init first}
+      COFLOW_BOOTSTRAP_TOKEN: ${COFLOW_LOCAL_BOOTSTRAP_TOKEN:-}
+      COFLOW_WEB_ORIGIN: http://127.0.0.1:${COFLOW_LOCAL_WEB_PORT:-3103}
+    ports: ['127.0.0.1:${COFLOW_LOCAL_API_PORT:-18083}:8080']
+    depends_on:
+      db: {condition: service_healthy}
+  web:
+    image: coflow-local-team-web:current
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+  gateway:
+    image: coflow-local-team-gateway:current
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.local-gateway
+    restart: unless-stopped
+    ports: ['127.0.0.1:${COFLOW_LOCAL_WEB_PORT:-3103}:8080']
+    depends_on: [api, web]
+volumes:
+  database:

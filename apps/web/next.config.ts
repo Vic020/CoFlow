@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 const demo = process.env.NEXT_PUBLIC_COFLOW_PUBLIC_DEMO === "true";
 const config: NextConfig = {
   output: demo ? "export" : "standalone",
+  distDir: demo ? ".next-pages" : process.env.COFLOW_WEB_DIST_DIR || ".next",
   ...(demo
     ? {
-        distDir: ".next-pages",
         basePath: process.env.NEXT_PUBLIC_COFLOW_BASE_PATH || "",
         trailingSlash: true,
         images: { unoptimized: true },

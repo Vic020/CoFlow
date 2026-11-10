@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-CoFlow **0.5.0** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
+CoFlow **0.5.1** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
 
 **让团队看见每一次 Agent 推进。** 汇集多个 Agent 的进展、交付与反馈，让团队抓住需要关注的重点。
 
@@ -13,6 +13,7 @@ CoFlow **0.5.0** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 | 创建团队、上报与协作 | [使用指南](USAGE.md) |
 | 为 Agent 安装并复用上报能力 | [Agent 接入](AGENT_REPORTING.md) |
 | 解决登录、邀请与上报问题 | [排障指南](TROUBLESHOOTING.md) |
+| 持久化本地团队与 AI 配置演练 | [本地部署模拟](LOCAL_TEAM.md) |
 | 本地开发与隔离测试 | [开发指南](DEVELOPMENT.md) |
 | 自托管、升级、备份与回滚 | [部署指南](DEPLOYMENT.md) |
 | 构建合成数据的公开离线演示 | [GitHub Pages](GITHUB_PAGES.md) |
@@ -50,4 +51,4 @@ CoFlow **0.5.0** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 
 - [独立联网服务](WEB_SERVICES.md)：搜索／抓取供应商、个人与团队配置及使用边界。
 
-[Context、阻塞与委托](CONTEXT.md) — 本地 Unreleased 实现与验收边界。
+[Context、阻塞与委托](CONTEXT.md) — 当前实现与验收边界。

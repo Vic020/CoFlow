@@ -28,7 +28,9 @@ import { PersonalAISettings } from "./personal-ai-settings";
 import { PersonalProfile } from "./personal-profile";
 import { AssistantManager } from "./assistant-manager";
 
-type State = {
+import { useAIOperations } from "./assistant-operations";
+
+type State = ReturnType<typeof useAIOperations> & {
   streamed: string;
   streaming: boolean;
   webEnabled: boolean;
@@ -50,7 +52,7 @@ type State = {
   setTemplate: (t: AITemplate | null, p?: Record<string, string>) => void;
   mcpIDs: string[];
   setMCPIDs: (ids: string[]) => void;
-  manager: "history" | "templates" | "jobs" | "mcp" | null;
+  manager: "history" | "templates" | "jobs" | "mcp" | "operations" | null;
   setManager: (s: State["manager"]) => void;
   configs: AIConfig[];
   configured: boolean;
@@ -92,6 +94,10 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 }
 function AssistantScope({ children }: { children: ReactNode }) {
   const { locale, timeZone } = useI18n();
+  const auth = useAuth();
+  const operations = useAIOperations(
+    `${auth.mode}:${auth.me?.user.id}:${auth.me?.current_team}`,
+  );
   const router = useRouter();
   const [personalSettings, openPersonalSettings] = useState<
     "profile" | "ai" | "web" | null
@@ -439,6 +445,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
     }
   }
   const value: State = {
+    ...operations,
     streamed,
     streaming,
     setStreaming,

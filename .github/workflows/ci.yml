@@ -22,12 +22,14 @@ jobs:
       - run: npm run docs:check
       - run: npm run test:release
       - run: npm run test:images
+      - run: npm run test:local-team
       - run: npm run test:i18n
       - run: npm run test:agent
       - run: npm run test:cache
       - run: npm run test:filters
       - run: npm run test:calendar
       - run: npm run test:assistant
+      - run: npm run test:ai-operations
       - run: npm run test:knowledge
       - run: npm run test:todo-review
       - run: npm run test:demo
