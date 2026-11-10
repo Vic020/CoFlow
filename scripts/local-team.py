@@ -93,7 +93,15 @@ class LocalTeam:
     def compose(self, *args, **kwargs):
         env = {k: v for k, v in os.environ.items() if not k.startswith('COFLOW_LOCAL_')}
         kwargs.setdefault('timeout', 1200 if '--build' in args else 180)
-        return subprocess.run(['docker', 'compose', '--env-file', str(self.env_file), '-f', 'compose.local.yaml', *args], cwd=self.root, env=env, check=True, **kwargs)
+        files = ['-f', 'compose.local.yaml']
+        override = self.directory / 'network.compose.yaml'
+        if override.is_symlink() or (override.exists() and not override.is_file()):
+            raise RuntimeError('Invalid private local network override')
+        if override.exists():
+            if stat.S_IMODE(override.stat().st_mode) != 0o600:
+                raise RuntimeError('Local network override must have permission 600')
+            files += ['-f', str(override)]
+        return subprocess.run(['docker', 'compose', '--env-file', str(self.env_file), *files, *args], cwd=self.root, env=env, check=True, **kwargs)
 
     def api(self, path, body=None, method=None, opener=None, headers=None):
         request_headers = {'Content-Type': 'application/json', 'Origin': self.origin, **(headers or {})}

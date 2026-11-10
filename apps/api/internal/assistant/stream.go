@@ -139,7 +139,10 @@ func readProviderStream(r io.Reader, protocol, key string, emit func(string)) ([
 	if protocol == "responses" {
 		return json.Marshal(response)
 	}
-	if finish == "" || finish == "length" || finish == "content_filter" {
+	if finish == "length" {
+		return nil, invalid(outputLimitMessage)
+	}
+	if finish == "" || finish == "content_filter" {
 		return nil, invalid("模型回复未完成")
 	}
 	items := []any{}

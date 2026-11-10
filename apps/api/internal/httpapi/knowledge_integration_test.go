@@ -1,8 +1,13 @@
 package httpapi
 
 import (
+	"coflow/api/internal/identity"
 	"coflow/api/internal/store"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -544,5 +549,43 @@ func TestKnowledgeGraphModuleLinksAndScopePrivacy(t *testing.T) {
 	owner.call("DELETE", "/api/v1/reports/"+report["id"].(string), map[string]any{"expected_updated_at": report["updated_at"]}, 200)
 	if guest.call("GET", "/api/v1/context-graph", nil, 200)["total_contexts"].(float64) != 1 {
 		t.Fatal("deleted source derived node retained")
+	}
+}
+
+func TestContextOneClickCommitsProposalWithoutExtraNarrationRound(t *testing.T) {
+	owner, _, repo := assistantFixture(t, "propose_context", map[string]any{})
+	config := configureAI(owner, "personal")
+	task := owner.call("POST", "/api/v1/todos", map[string]any{"title": "Synthetic bounded extraction source", "column_id": "backlog", "source_id": store.ID(), "operation_id": store.ID()}, 200)
+	for _, proposalRound := range []int{5, 6} {
+		calls := 0
+		client := &http.Client{Transport: modelTransport(func(r *http.Request) (*http.Response, error) {
+			calls++
+			name, args := "read_workspace", map[string]any{}
+			if calls == proposalRound {
+				name = "propose_context"
+				args["knowledge"] = map[string]any{"title": fmt.Sprintf("Synthetic bounded proposal %d", proposalRound), "body": "A source-backed extraction.", "kind": "document", "visibility": "team", "sources": []any{map[string]any{"kind": "todo", "id": task["id"], "revision": "1"}}}
+			}
+			if calls > proposalRound {
+				t.Fatal("an unnecessary narration request discarded valid work")
+			}
+			arguments, _ := json.Marshal(args)
+			body, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"finish_reason": "tool_calls", "message": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"id": fmt.Sprintf("call-%d", calls), "type": "function", "function": map[string]any{"name": name, "arguments": string(arguments)}}}}}}})
+			return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(string(body)))}, nil
+		})}
+		owner.h = NewWithConfig(repo, Config{Identity: identity.New(repo.Pool()), BootstrapToken: testBootstrapToken, AIEncryptionKey: base64.StdEncoding.EncodeToString(make([]byte, 32)), AIClient: client})
+		in := map[string]any{"config_id": config, "request_id": "bounded-" + store.ID(), "source_kind": "todo", "source_id": task["id"], "mode": "extract"}
+		result := owner.call("POST", "/api/v1/assistant/context-auto", in, 200)
+		if len(result["errors"].([]any)) != 0 || len(result["items"].([]any)) != 1 || calls != proposalRound {
+			t.Fatal("bounded proposal was not saved", calls, result["errors"])
+		}
+		item := result["items"].([]any)[0].(map[string]any)
+		saved := owner.call("GET", "/api/v1/context/"+item["id"].(string), nil, 200)
+		if saved["state"] != "active" {
+			t.Fatal("proposal did not activate")
+		}
+		owner.call("POST", "/api/v1/assistant/context-auto", in, 200)
+		if calls != proposalRound {
+			t.Fatal("replay invoked model again")
+		}
 	}
 }

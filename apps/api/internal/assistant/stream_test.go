@@ -41,3 +41,11 @@ func TestStreamingAdaptersAndSecretBoundaries(t *testing.T) {
 		t.Fatal(string(body), shown.String(), e)
 	}
 }
+
+func TestStreamLengthLimitRejectsPartialTool(t *testing.T) {
+	raw := `data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"partial","function":{"name":"propose_context","arguments":"{\"title\":"}}]},"finish_reason":"length"}]}` + "\n\ndata: [DONE]\n\n"
+	body, err := readProviderStream(strings.NewReader(raw), "chat-completions", "synthetic", func(string) {})
+	if err == nil || err.Error() != outputLimitMessage || body != nil {
+		t.Fatalf("partial streamed call escaped: %s, %v", body, err)
+	}
+}

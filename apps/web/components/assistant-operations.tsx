@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { request } from "@/lib/types";
 import { publicDemo } from "@/lib/runtime";
 import {
@@ -63,11 +64,7 @@ export function AssistantOperations({ onOpen }: { onOpen: () => void }) {
       className="ai-manager-body ai-operations"
       aria-label={tr("运行任务")}
     >
-      <p className="muted">
-        {tr(
-          "这里显示本次浏览器会话发起的 AI 操作；切换页面继续执行。刷新不会自动重跑，已保存的助手记录可继续查看。",
-        )}
-      </p>
+      <p className="muted">{tr("本次会话 · 点击任务查看详情")}</p>
       {!ai.operations.length && (
         <p className="empty-state">
           {tr(
@@ -76,137 +73,242 @@ export function AssistantOperations({ onOpen }: { onOpen: () => void }) {
         </p>
       )}
       {ai.operations.map((v) => (
-        <article key={v.id} className="ai-operation" data-state={v.status}>
-          <header>
-            <strong>{tr(v.kind === "organize" ? "AI 整理" : "AI 提取")}</strong>
-            <span role={operationActive(v) ? "status" : undefined}>
-              {tr(statuses[v.status])}
-            </span>
-            <time dateTime={v.started_at}>
-              {date(v.started_at, { hour: "2-digit", minute: "2-digit" })}
-            </time>
-          </header>
-          <small className="muted">
-            {tr("来自 {module}", {
-              module: v.origin.split("?")[0].includes("/todo")
-                ? "Todo"
-                : v.origin.split("?")[0].includes("/calendar")
-                  ? "Calendar"
-                  : v.origin.split("?")[0].includes("/context")
-                    ? "Context"
-                    : "Timeline",
-            })}
-          </small>
-          <div className="ai-operation-progress">
-            <span>
-              {v.total
-                ? tr("已处理 {done}/{total}", {
-                    done: v.completed,
-                    total: v.total,
-                  })
-                : tr(v.status === "running" ? "正在读取范围" : "未处理文档")}
-            </span>
-            <span>
-              {tr("已保存 {count} 条，待复核 {review} 条", {
-                count: v.saved,
-                review: v.review,
-              })}
-            </span>
-          </div>
-          {!!v.total && (
-            <progress
-              aria-label={tr("任务进度")}
-              value={v.completed}
-              max={v.total}
-            />
-          )}
-          {v.status === "completed" && v.total === 0 && (
-            <p>{tr("当前范围没有可处理的文档。")}</p>
-          )}
-          {v.status === "unconfirmed" && (
-            <p>
-              {tr(
-                "页面刷新或身份切换后无法确认在途请求；已发出的请求可能仍保存结果。先查看助手记录和原页面，再决定是否重新发起。",
-              )}
-            </p>
-          )}
-          {v.status === "stopping" && (
-            <p>{tr("停止后不再处理后续文档；当前请求可能继续保存。")}</p>
-          )}
-          {v.error && <p role="alert">{tr(v.error)}</p>}
-          {v.demo && <p className="muted">{tr("离线演示：未调用真实 AI。")}</p>}
-          {v.reply && (
-            <details>
-              <summary>{tr("处理说明")}</summary>
-              <p className="ai-operation-reply">{v.reply}</p>
-            </details>
-          )}
-          <div className="ai-operation-actions">
-            {operationActive(v) && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={v.status === "stopping"}
-                onClick={() => ai.stopOperation(v.id)}
+        <details key={v.id} className="ai-operation" data-state={v.status}>
+          <summary className="ai-operation-summary">
+            <span className="ai-operation-heading">
+              <ChevronRight size={14} className="ai-operation-chevron" />
+              <strong>
+                {tr(v.kind === "organize" ? "AI 整理" : "AI 提取")}
+              </strong>
+              <small className="ai-operation-source">
+                {tr("来自 {module}", {
+                  module: v.origin.split("?")[0].includes("/todo")
+                    ? "Todo"
+                    : v.origin.split("?")[0].includes("/calendar")
+                      ? "Calendar"
+                      : v.origin.split("?")[0].includes("/context")
+                        ? "Context"
+                        : "Timeline",
+                })}
+              </small>
+              <span
+                className="ai-operation-state"
+                role="status"
               >
-                {tr("停止")}
-              </Button>
+                {tr(statuses[v.status])}
+              </span>
+              <time dateTime={v.started_at}>
+                {date(v.started_at, { hour: "2-digit", minute: "2-digit" })}
+              </time>
+            </span>
+            <span className="ai-operation-progress">
+              <span>
+                {v.total
+                  ? tr("已处理 {done}/{total}", {
+                      done: v.completed,
+                      total: v.total,
+                    })
+                  : tr(v.status === "running" ? "正在读取范围" : "未处理文档")}
+              </span>
+              <span>
+                {tr("已保存 {count} 条", { count: v.saved })}
+                {v.review > 0 &&
+                  ` · ${tr("待复核 {count} 条", { count: v.review })}`}
+              </span>
+            </span>
+            <span className="ai-operation-meter">
+              {operationActive(v) && !!v.total && (
+                <progress
+                  aria-label={tr("任务进度")}
+                  value={v.completed}
+                  max={v.total}
+                />
+              )}
+            </span>
+          </summary>
+          <div className="ai-operation-body">
+            {v.status === "completed" && v.total === 0 && (
+              <p>{tr("当前范围没有可处理的文档。")}</p>
             )}
-            {["failed", "stopped"].includes(v.status) &&
-              ai.canRetryOperation(v.id) && (
+            {v.status === "unconfirmed" && (
+              <p>
+                {tr(
+                  "页面刷新或身份切换后无法确认在途请求；已发出的请求可能仍保存结果。先查看助手记录和原页面，再决定是否重新发起。",
+                )}
+              </p>
+            )}
+            {v.status === "stopping" && (
+              <p>{tr("停止后不再处理后续文档；当前请求可能继续保存。")}</p>
+            )}
+            {v.error && <p role="alert">{tr(v.error)}</p>}
+            {v.demo && (
+              <p className="muted">{tr("离线演示：未调用真实 AI。")}</p>
+            )}
+            {v.status === "failed" && v.saved > 0 && (
+              <p>
+                {tr("任务已中断，已保存的 {count} 条内容仍保留。", {
+                  count: v.saved,
+                })}
+              </p>
+            )}
+            <div className="ai-operation-steps">
+              <h4>{tr("任务明细（{count} 项）", { count: v.steps.length })}</h4>
+              {!v.steps.length ? (
+                <p className="muted">
+                  {tr("此任务暂无逐项记录，可查看已保存内容或助手历史。")}
+                </p>
+              ) : (
+                <ol>
+                  {v.steps.map((step, index) => {
+                    const type =
+                      (
+                        {
+                          context: "Context",
+                          todo: "Todo",
+                          report: "Timeline",
+                          calendar: "Calendar",
+                        } as Record<string, string>
+                      )[step.source_kind] || tr("当前范围");
+                    const path = (
+                      {
+                        context: "/context/?context=",
+                        todo: "/todo/?todo=",
+                        report: "/?report=",
+                        calendar: "/calendar/?event=",
+                      } as Record<string, string>
+                    )[step.source_kind];
+                    const label =
+                      step.title ||
+                      tr("{type} · 第 {index} 项", { type, index: index + 1 });
+                    const status = {
+                      pending: "未开始",
+                      running: "处理中，等待模型返回",
+                      completed: "已处理",
+                      failed: "失败",
+                      unconfirmed: "状态待确认",
+                    }[step.state];
+                    return (
+                      <li key={index} data-state={step.state}>
+                        <div className="ai-operation-step-heading">
+                          {path && step.source_id ? (
+                            <Link
+                              href={path + encodeURIComponent(step.source_id)}
+                              onClick={onOpen}
+                            >
+                              {label}
+                            </Link>
+                          ) : (
+                            <strong>{label}</strong>
+                          )}
+                          <span>{tr(status)}</span>
+                        </div>
+                        {step.error && (
+                          <p className="error-text">{tr(step.error)}</p>
+                        )}
+                        {step.state === "failed" && !step.results.length && (
+                          <p className="muted">
+                            {tr("未收到保存结果，可到原页面核对。")}
+                          </p>
+                        )}
+                        {!!step.results.length && (
+                          <div className="ai-operation-results">
+                            <span>
+                              {tr("已保存 {count} 条", {
+                                count: step.results.length,
+                              })}
+                            </span>
+                            {step.results.map((id, i) => (
+                              <Link
+                                key={id}
+                                href={
+                                  "/context/?context=" + encodeURIComponent(id)
+                                }
+                                onClick={onOpen}
+                              >
+                                {tr("Context {index}", { index: i + 1 })}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </div>
+            {v.reply && (
+              <details>
+                <summary>{tr("处理说明")}</summary>
+                <p className="ai-operation-reply">{v.reply}</p>
+              </details>
+            )}
+            <div className="ai-operation-actions">
+              {operationActive(v) && (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => ai.retryOperation(v.id)}
+                  disabled={v.status === "stopping"}
+                  onClick={() => ai.stopOperation(v.id)}
                 >
-                  {tr("继续未完成部分")}
+                  {tr("停止")}
                 </Button>
               )}
-            <Link href={v.origin} onClick={onOpen}>
-              {tr("返回原页面")}
-            </Link>
-            {v.status === "unconfirmed" && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => ai.setManager("history")}
-              >
-                {tr("查看历史对话")}
-              </Button>
-            )}
-            {v.conversations.map((id, i) => (
-              <Button
-                key={id}
-                size="sm"
-                variant="ghost"
-                disabled={ai.busy}
-                onClick={() => {
-                  void ai.openConversation(id).then(onOpen);
-                }}
-              >
-                {tr("助手记录 {index}", { index: i + 1 })}
-              </Button>
-            ))}
-          </div>
-          {!!v.results.length && (
-            <details>
-              <summary>
-                {tr("查看已保存内容（{count}）", { count: v.saved })}
-              </summary>
-              <div className="ai-operation-results">
-                {v.results.map((id, i) => (
-                  <Link
-                    key={id}
-                    href={"/context/?context=" + encodeURIComponent(id)}
-                    onClick={onOpen}
+              {["failed", "stopped"].includes(v.status) &&
+                ai.canRetryOperation(v.id) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => ai.retryOperation(v.id)}
                   >
-                    {tr("Context {index}", { index: i + 1 })}
-                  </Link>
-                ))}
-              </div>
-            </details>
-          )}
-        </article>
+                    {tr("继续未完成部分")}
+                  </Button>
+                )}
+              <Link href={v.origin} onClick={onOpen}>
+                {tr("返回原页面")}
+              </Link>
+              {v.status === "unconfirmed" && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => ai.setManager("history")}
+                >
+                  {tr("查看历史对话")}
+                </Button>
+              )}
+              {v.conversations.map((id, i) => (
+                <Button
+                  key={id}
+                  size="sm"
+                  variant="ghost"
+                  disabled={ai.busy}
+                  onClick={() => {
+                    void ai.openConversation(id).then(onOpen);
+                  }}
+                >
+                  {tr("助手记录 {index}", { index: i + 1 })}
+                </Button>
+              ))}
+            </div>
+            {!!v.results.length && (
+              <details>
+                <summary>
+                  {tr("查看已保存内容（{count}）", { count: v.saved })}
+                </summary>
+                <div className="ai-operation-results">
+                  {v.results.map((id, i) => (
+                    <Link
+                      key={id}
+                      href={"/context/?context=" + encodeURIComponent(id)}
+                      onClick={onOpen}
+                    >
+                      {tr("Context {index}", { index: i + 1 })}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        </details>
       ))}
     </section>
   );

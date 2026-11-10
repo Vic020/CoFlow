@@ -1,6 +1,6 @@
 # CoFlow 版本工作计划
 
-更新：2026-11-10（Asia/Shanghai）。当前版本为 **0.5.1**，包含 Timeline、Todo、Calendar、公共工作范围与 AI 助手首版；Context 首版已实现，其余模型协议、外部写工具及 0.6 范围继续规划。0.4.1 补齐增量接续、Todo 验收与模型列表；真实账号及容量专项仍需独立验收。后续开发变化记录到 CHANGELOG 的 Unreleased。
+更新：2026-11-11（Asia/Shanghai）。当前版本为 **0.5.2**，包含 Timeline、Todo、Calendar、公共工作范围与 AI 助手首版；Context 首版已实现，其余模型协议、外部写工具及 0.6 范围继续规划。0.4.1 补齐增量接续、Todo 验收与模型列表；真实账号及容量专项仍需独立验收。后续开发变化记录到 CHANGELOG 的 Unreleased。
 
 [GitHub Projects 产品路线图](https://github.com/users/Vic020/projects/1)
 

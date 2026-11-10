@@ -182,11 +182,19 @@ function ConfigForm({
     [protocol, setProtocol] = useState(config?.protocol || "chat-completions"),
     [base, setBase] = useState(config?.base_url || aiProviders[0].base),
     [model, setModel] = useState(config?.model || ""),
-    [name, setName] = useState(config?.name || ""),
+    [name, setName] = useState<string | null>(config?.name || null),
     [key, setKey] = useState(""),
     [defaultValue, setDefault] = useState(config?.is_default ?? true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  let generatedName = [
+    aiProviders.find((p) => p.id === provider)?.name || provider,
+    model.trim(),
+  ].filter(Boolean).join(" · ");
+  // The API name limit is 100 UTF-8 bytes; never split a Unicode character.
+  while (new TextEncoder().encode(generatedName).length > 100)
+    generatedName = [...generatedName].slice(0, -1).join("");
+  const configName = name?.trim() || generatedName;
   const connection = JSON.stringify([
     provider,
     protocol,
@@ -235,7 +243,7 @@ function ConfigForm({
         body: JSON.stringify({
           id: config?.id,
           scope,
-          name,
+          name: configName,
           provider,
           protocol,
           base_url: base,
@@ -330,7 +338,7 @@ function ConfigForm({
               body: JSON.stringify({
                 verification_token: verification?.token || undefined,
                 scope,
-                name,
+                name: configName,
                 provider,
                 protocol,
                 base_url: base,
@@ -387,12 +395,12 @@ function ConfigForm({
             </select>
           </label>
           <label>
-            {tr("名称")}
+            {tr("配置名称（可选）")}
             <input
-              required
               maxLength={100}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={name ?? generatedName}
+              onChange={(e) => setName(e.target.value.trim() ? e.target.value : null)}
+              autoComplete="off"
             />
           </label>
         </div>

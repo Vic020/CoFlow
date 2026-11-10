@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -378,10 +379,17 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 	messages = append(messages, map[string]any{"role": "user", "content": in.Message})
 	usage := &Usage{}
 	ctx = context.WithValue(ctx, usageContext{}, usage)
+	if in.ContextAuto != nil {
+		ctx = context.WithValue(ctx, contextOutputBudget{}, true)
+	}
 	turn := Turn{WebEnabled: in.WebEnabled, WebConfigID: in.WebConfigID, WebProvider: network.Provider, WebConfigRevision: network.Revision, RequestID: in.RequestID, User: in.Message, Actions: []Action{}, Links: []Link{}}
 	seenLinks := map[string]bool{}
 	callsUsed := 0
-	for step := 0; step < 5; step++ {
+	roundLimit := 5
+	if in.ContextAuto != nil {
+		roundLimit = 8
+	}
+	for step := 0; step < roundLimit; step++ {
 		text, calls, cont, e := s.call(ctx, config, key, messages, selectedTools)
 		if e != nil {
 			return out, e
@@ -477,6 +485,17 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 					}
 				}
 			}
+			// Metadata only: never log arguments, replies, source bodies or credentials.
+			if in.ContextAuto != nil && allowedTools[call.Name] {
+				state := "read"
+				if action != nil {
+					state = "prepared"
+				}
+				if e != nil {
+					state = "failed"
+				}
+				log.Printf("Context auto round=%d tool=%s state=%s", step+1, call.Name, state)
+			}
 			body, _ := json.Marshal(result)
 			if len(body) > 60000 {
 				return out, invalid("查询结果过大，请缩小项目或时间范围")
@@ -486,6 +505,16 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 			} else {
 				messages = append(messages, map[string]any{"role": "tool", "tool_call_id": call.ID, "content": string(body)})
 			}
+		}
+		// A valid Context proposal is the deliverable for this bounded source.
+		// AutoContext saves it after this transaction commits; an extra model
+		// narration round must not discard prepared work at the round limit.
+		if in.ContextAuto != nil && len(turn.Actions) > 0 {
+			turn.Reply = fmt.Sprintf("Prepared %d Context changes. Check running tasks for saved results.", len(turn.Actions))
+			if in.Locale == "zh-CN" {
+				turn.Reply = fmt.Sprintf("已准备 %d 项 Context 变更，保存结果见运行任务。", len(turn.Actions))
+			}
+			break
 		}
 	}
 	if web != nil {

@@ -131,6 +131,9 @@ func endpoint(raw string) (string, error) {
 	return strings.TrimRight(u.String(), "/"), nil
 }
 
+var errAIEndpointNotPublic = errors.New("private AI endpoint refused")
+var errAIDNSLookup = errors.New("AI DNS lookup failed")
+
 // Resolve and pin a public IP at dial time. No redirects, env proxies or DNS rebinding into internal services.
 func secureClient() *http.Client {
 	return &http.Client{Timeout: 22 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("redirect refused") }, Transport: &http.Transport{TLSHandshakeTimeout: 8 * time.Second, ResponseHeaderTimeout: 20 * time.Second, DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -140,11 +143,11 @@ func secureClient() *http.Client {
 		}
 		ips, e := net.DefaultResolver.LookupIPAddr(ctx, host)
 		if e != nil || len(ips) == 0 {
-			return nil, errors.New("AI DNS lookup failed")
+			return nil, errAIDNSLookup
 		}
 		for _, ip := range ips {
 			if !publicIP(ip.IP) {
-				return nil, errors.New("private AI endpoint refused")
+				return nil, errAIEndpointNotPublic
 			}
 		}
 		return (&net.Dialer{Timeout: 8 * time.Second}).DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))

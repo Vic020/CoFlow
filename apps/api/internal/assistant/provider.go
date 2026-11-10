@@ -4,10 +4,25 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 )
+
+// Context drafts include source citations and structured tool arguments. Keep their
+// bounded output allowance separate from ordinary chat; never retry paid calls automatically.
+type contextOutputBudget struct{}
+
+func outputTokenBudget(ctx context.Context) int {
+	if enabled, _ := ctx.Value(contextOutputBudget{}).(bool); enabled {
+		return 8192
+	}
+	return 2048
+}
+
+const outputLimitMessage = "模型输出达到长度上限，请减少单次内容后重试"
 
 type toolCall struct{ ID, Name, Arguments string }
 type tool struct {
@@ -41,7 +56,7 @@ func tools() []tool {
 }
 func (s *Service) call(ctx context.Context, c Config, key string, messages []map[string]any, ts []tool) (string, []toolCall, []map[string]any, error) {
 	endpointPath := "/chat/completions"
-	payload := map[string]any{"model": c.Model, "messages": messages, "max_tokens": 2048, "stream": false}
+	payload := map[string]any{"model": c.Model, "messages": messages, "max_tokens": outputTokenBudget(ctx), "stream": false}
 	schemas := []any{}
 	for _, t := range ts {
 		required := t.Required
@@ -62,7 +77,7 @@ func (s *Service) call(ctx context.Context, c Config, key string, messages []map
 		endpointPath = "/responses"
 		delete(payload, "messages")
 		delete(payload, "max_tokens")
-		payload["max_output_tokens"] = 2048
+		payload["max_output_tokens"] = outputTokenBudget(ctx)
 		payload["input"] = messages
 		payload["store"] = false
 		payload["include"] = []string{"reasoning.encrypted_content"}
@@ -87,6 +102,16 @@ func (s *Service) call(ctx context.Context, c Config, key string, messages []map
 	if e != nil {
 		if ctx.Err() != nil {
 			return "", nil, nil, ctx.Err()
+		}
+		if errors.Is(e, errAIEndpointNotPublic) {
+			return "", nil, nil, invalid("模型域名解析到非公网地址，请检查服务器或本地代理的 Fake-IP／DNS 设置")
+		}
+		if errors.Is(e, errAIDNSLookup) {
+			return "", nil, nil, invalid("模型域名解析失败，请检查服务器 DNS 设置")
+		}
+		var networkError net.Error
+		if errors.As(e, &networkError) && networkError.Timeout() {
+			return "", nil, nil, invalid("模型连接超时，请检查服务器网络或稍后重试")
 		}
 		return "", nil, nil, invalid("模型连接失败，请检查服务地址或稍后重试")
 	}
@@ -128,7 +153,11 @@ func (s *Service) call(ctx context.Context, c Config, key string, messages []map
 	continuation := []map[string]any{}
 	if c.Protocol == "responses" {
 		if status, _ := v["status"].(string); status == "failed" || status == "incomplete" {
-			return "", nil, nil, invalid("模型回复未完成，请缩小请求范围后重试")
+			details, _ := v["incomplete_details"].(map[string]any)
+			if str(details, "reason") == "max_output_tokens" {
+				return "", nil, nil, invalid(outputLimitMessage)
+			}
+			return "", nil, nil, invalid("模型未完成请求，请查看模型配置或稍后重试")
 		}
 		items, _ := v["output"].([]any)
 		for _, item := range items {
@@ -159,7 +188,7 @@ func (s *Service) call(ctx context.Context, c Config, key string, messages []map
 		}
 		choice, _ := choices[0].(map[string]any)
 		if str(choice, "finish_reason") == "length" {
-			return "", nil, nil, invalid("模型回复未完成，请缩小请求范围后重试")
+			return "", nil, nil, invalid(outputLimitMessage)
 		}
 		m, _ := choice["message"].(map[string]any)
 		if m == nil {

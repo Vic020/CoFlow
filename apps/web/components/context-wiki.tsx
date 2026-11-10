@@ -159,6 +159,9 @@ export function ContextDirectory({
                 <span title={g.name}>{g.name}</span>
                 <span className="context-directory-actions">
                   <ContextAIAction
+                    contextTitles={Object.fromEntries(
+                      g.items.map((n) => [n.id, n.title]),
+                    )}
                     contextIDs={g.items
                       .filter((n) => n.state !== "archived")
                       .map((n) => n.id)}
@@ -229,6 +232,7 @@ export function ContextDocument({
         </Button>
         <div>
           <ContextAIAction
+            contextTitles={{ [value.id]: value.title }}
             label="AI 整理"
             variant="outline"
             size="sm"

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AIOperationStore } from "../apps/web/lib/ai-operations.ts";
+import {
+  AIOperationStore,
+  planContextSources,
+} from "../apps/web/lib/ai-operations.ts";
 const input = {
   scope: { mode: "organize" },
   contextIDs: ["one", "two"],
@@ -189,4 +192,121 @@ test("scope disposal stops follow-up writes; refresh restores unknown state with
     { ...snapshot[0], origin: "/\\outside.invalid" },
   ]);
   assert.equal(fresh.records.length, 0);
+});
+
+test("item details retain partial saves, isolate failures and resume remaining items", async () => {
+  const gate = deferred();
+  let calls = 0;
+  const s = new AIOperationStore(
+    async (_path, opts) => {
+      const body = JSON.parse(opts.body);
+      calls++;
+      if (calls === 1) return gate.promise;
+      if (calls === 2)
+        return response("two", { errors: ["synthetic private failure"] });
+      return response(body.source_id);
+    },
+    () => {},
+    () => {},
+  );
+  const id = s.start({ ...input, contextIDs: ["one", "two", "three"] });
+  assert.deepEqual(
+    s.records[0].steps.map((v) => v.state),
+    ["running", "pending", "pending"],
+  );
+  gate.resolve(response("one"));
+  await settle(s, id);
+  let v = s.records[0];
+  assert.deepEqual(
+    v.steps.map((x) => x.state),
+    ["completed", "failed", "pending"],
+  );
+  assert.equal(v.completed, 1);
+  assert.equal(v.saved, 2);
+  assert.deepEqual(v.steps[1].results, ["two"]);
+  assert.equal(v.steps[1].error, "synthetic private failure");
+  assert(!JSON.stringify(s.snapshot()).includes("synthetic private failure"));
+  s.retry(id);
+  await settle(s, id);
+  v = s.records[0];
+  assert.equal(calls, 4);
+  assert.equal(v.saved, 3);
+  assert.deepEqual(
+    v.steps.map((x) => x.state),
+    ["completed", "completed", "completed"],
+  );
+  assert.deepEqual(v.steps[1].results, ["two"]);
+});
+test("refresh strips item titles and errors and marks in-flight items unconfirmed", async () => {
+  const gate = deferred();
+  const s = new AIOperationStore(
+    async (path) =>
+      path.startsWith("/context-tree")
+        ? { items: [{ id: "one", title: "private subject", state: "active" }] }
+        : gate.promise,
+    () => {},
+    () => {},
+  );
+  const id = s.start({ ...input, contextIDs: undefined });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(s.records[0].steps[0].title, "private subject");
+  const snapshot = s.snapshot();
+  assert(!JSON.stringify(snapshot).includes("private subject"));
+  const fresh = new AIOperationStore(
+    async () => {
+      throw Error("must not restart");
+    },
+    () => {},
+    () => {},
+  );
+  fresh.restore(snapshot);
+  assert.equal(fresh.records[0].steps[0].state, "unconfirmed");
+  assert.equal(fresh.records[0].steps[0].title, "");
+  assert.equal(fresh.runtimes.size, 0);
+  s.dispose();
+  gate.resolve(response("one"));
+  await settle(s, id);
+});
+
+test("planning is read-only and confirmed execution keeps its original source list", async () => {
+  const reads = [],
+    writes = [];
+  const client = async (path, options) => {
+    if (path.startsWith("/context-tree")) {
+      reads.push(path);
+      return {
+        items: [
+          { id: "one", title: "First", state: "active" },
+          { id: "old", state: "archived" },
+        ],
+      };
+    }
+    writes.push(JSON.parse(options.body));
+    return response("one");
+  };
+  const plan = await planContextSources(client, {
+    scope: { project: "project", mode: "extract" },
+  });
+  assert.equal(writes.length, 0);
+  assert.equal(plan.sources.length, 1);
+  assert.equal(plan.titles.one, "First");
+  const s = new AIOperationStore(
+    client,
+    () => {},
+    () => {},
+  );
+  const id = s.start({
+    ...input,
+    contextIDs: undefined,
+    plannedSources: plan.sources,
+    contextTitles: plan.titles,
+  });
+  plan.sources.push({ source_kind: "context", source_id: "added-later" });
+  await settle(s, id);
+  assert.equal(reads.length, 1);
+  assert.deepEqual(
+    writes.map((v) => v.source_id),
+    ["one"],
+  );
+  assert.equal(s.records[0].steps[0].title, "First");
 });

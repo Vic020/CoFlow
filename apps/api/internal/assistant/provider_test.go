@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -115,5 +116,67 @@ func TestModelEchoAndNetworkGuards(t *testing.T) {
 	if conn, e := tr.DialContext(context.Background(), "tcp", "127.0.0.1:443"); e == nil {
 		conn.Close()
 		t.Fatal("private address dial was accepted")
+	}
+}
+
+func TestContextOutputBudgetAndTruncation(t *testing.T) {
+	for _, protocol := range []string{"chat-completions", "responses"} {
+		for _, auto := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/auto=%t", protocol, auto), func(t *testing.T) {
+				requests := 0
+				s := &Service{Client: &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+					requests++
+					var b map[string]any
+					if e := json.NewDecoder(r.Body).Decode(&b); e != nil {
+						t.Fatal(e)
+					}
+					field := "max_tokens"
+					if protocol == "responses" {
+						field = "max_output_tokens"
+					}
+					want := float64(2048)
+					if auto {
+						want = 8192
+					}
+					if b[field] != want {
+						t.Fatalf("budget %v, want %v", b[field], want)
+					}
+					if protocol == "responses" {
+						return response(`{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[{"type":"function_call","call_id":"partial","name":"propose_context","arguments":"{}"}]}`), nil
+					}
+					return response(`{"choices":[{"finish_reason":"length","message":{"tool_calls":[{"id":"partial","function":{"name":"propose_context","arguments":"{}"}}]}}]}`), nil
+				})}}
+				ctx := context.Background()
+				if auto {
+					ctx = context.WithValue(ctx, contextOutputBudget{}, true)
+				}
+				_, calls, continuation, e := s.call(ctx, Config{Protocol: protocol, Model: "synthetic", BaseURL: "https://models.example.com"}, "synthetic-key", nil, tools())
+				if e == nil || e.Error() != outputLimitMessage || len(calls) != 0 || len(continuation) != 0 {
+					t.Fatalf("truncated output escaped: %v %v", e, calls)
+				}
+				if requests != 1 {
+					t.Fatal("must not silently retry a paid request")
+				}
+			})
+		}
+	}
+}
+
+func TestProviderNetworkDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		cause error
+		want  string
+	}{
+		{errAIEndpointNotPublic, "模型域名解析到非公网地址，请检查服务器或本地代理的 Fake-IP／DNS 设置"},
+		{errAIDNSLookup, "模型域名解析失败，请检查服务器 DNS 设置"},
+		{&net.DNSError{IsTimeout: true}, "模型连接超时，请检查服务器网络或稍后重试"},
+	} {
+		s := &Service{Client: &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
+			return nil, tc.cause
+		})}}
+		_, calls, _, err := s.call(context.Background(), Config{BaseURL: "https://models.example.com", Model: "synthetic"}, "synthetic-secret", nil, nil)
+		if err == nil || err.Error() != tc.want || len(calls) != 0 || strings.Contains(err.Error(), "synthetic-secret") {
+			t.Fatalf("incorrect sanitized diagnosis: %v", err)
+		}
 	}
 }

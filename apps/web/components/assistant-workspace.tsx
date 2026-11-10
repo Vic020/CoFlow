@@ -285,7 +285,7 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
           <Button
             size="sm"
             variant="ghost"
-            className={compact ? undefined : "ai-history-mobile"}
+            className={`ai-operations-toggle${compact ? "" : " ai-history-mobile"}`}
             onClick={() => ai.setManager("operations")}
           >
             <Activity size={15} />

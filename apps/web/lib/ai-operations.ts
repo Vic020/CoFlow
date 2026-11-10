@@ -9,6 +9,14 @@ export type ContextAIScope = {
 };
 export type OperationStatus =
   "running" | "stopping" | "completed" | "failed" | "stopped" | "unconfirmed";
+export type AIOperationStep = {
+  source_kind: string;
+  source_id: string;
+  title: string;
+  state: "pending" | "running" | "completed" | "failed" | "unconfirmed";
+  results: string[];
+  error: string;
+};
 export type AIOperation = {
   id: string;
   fingerprint: string;
@@ -23,6 +31,7 @@ export type AIOperation = {
   review: number;
   results: string[];
   conversations: string[];
+  steps: AIOperationStep[];
   error: string;
   reply: string;
   demo: boolean;
@@ -30,6 +39,8 @@ export type AIOperation = {
 export type ContextOperationInput = {
   scope: ContextAIScope;
   contextIDs?: string[];
+  contextTitles?: Record<string, string>;
+  plannedSources?: ContextAIScope[];
   configID: string;
   locale: string;
   origin: string;
@@ -39,6 +50,39 @@ type Client = <T>(
   path: string,
   options?: { method?: string; body?: string },
 ) => Promise<T>;
+export async function planContextSources(
+  client: Client,
+  input: Pick<ContextOperationInput, "scope" | "contextIDs" | "contextTitles">,
+) {
+  const { scope, contextIDs } = input;
+  let titles = { ...input.contextTitles };
+  let sources: ContextAIScope[] = [scope];
+  if (contextIDs)
+    sources = contextIDs.map((source_id) => ({
+      ...scope,
+      source_kind: "context",
+      source_id,
+    }));
+  else if (!scope.source_id) {
+    const params = new URLSearchParams({
+      project: scope.project || "",
+      domain: scope.domain || "",
+      member: scope.member || "",
+    });
+    const tree = await client<{ items: ContextNode[] }>(
+      "/context-tree?" + params,
+    );
+    const nodes = tree.items.filter((n) => n.state !== "archived");
+    titles = Object.fromEntries(nodes.map((n) => [n.id, n.title]));
+    if (nodes.length)
+      sources = nodes.map((n) => ({
+        ...scope,
+        source_kind: "context",
+        source_id: n.id,
+      }));
+  }
+  return { sources: sources.map((s) => ({ ...s })), titles };
+}
 type Runtime = {
   input: ContextOperationInput;
   queue: ContextAIScope[] | null;
@@ -128,11 +172,24 @@ export class AIOperationStore {
     );
     this.changed();
   }
+  private step(id: string, index: number, patch: Partial<AIOperationStep>) {
+    const current = this.records.find((v) => v.id === id);
+    if (current)
+      this.publish(id, {
+        steps: current.steps.map((v, i) =>
+          i === index ? { ...v, ...patch } : v,
+        ),
+      });
+  }
   start(input: ContextOperationInput) {
     if (!this.alive) return "";
     input = {
       ...input,
       scope: { ...input.scope },
+      plannedSources: input.plannedSources?.map((s) => ({ ...s })),
+      contextTitles: input.contextTitles
+        ? { ...input.contextTitles }
+        : undefined,
       contextIDs: input.contextIDs ? [...input.contextIDs] : undefined,
     };
     const fingerprint = contextOperationKey(input);
@@ -157,6 +214,7 @@ export class AIOperationStore {
         review: 0,
         results: [],
         conversations: [],
+        steps: [],
         error: "",
         reply: "",
         demo: this.demo,
@@ -214,34 +272,40 @@ export class AIOperationStore {
     const { scope, contextIDs, configID, locale } = r.input;
     try {
       if (!r.queue) {
-        let queue = [scope];
-        if (contextIDs)
-          queue = contextIDs.map((source_id) => ({
-            ...scope,
-            source_kind: "context",
-            source_id,
-          }));
-        else if (!scope.source_id) {
-          const params = new URLSearchParams({
-            project: scope.project || "",
-            domain: scope.domain || "",
-            member: scope.member || "",
-          });
-          const tree = await this.client<{ items: ContextNode[] }>(
-            "/context-tree?" + params,
-          );
-          const nodes = tree.items.filter((n) => n.state !== "archived");
-          if (nodes.length)
-            queue = nodes.map((n) => ({
-              ...scope,
-              source_kind: "context",
-              source_id: n.id,
-            }));
-        }
+        const plan = r.input.plannedSources
+          ? {
+              sources: r.input.plannedSources,
+              titles: r.input.contextTitles || {},
+            }
+          : contextIDs
+            ? {
+                sources: contextIDs.map((source_id) => ({
+                  ...scope,
+                  source_kind: "context",
+                  source_id,
+                })),
+                titles: r.input.contextTitles || {},
+              }
+            : scope.source_id
+              ? { sources: [scope], titles: r.input.contextTitles || {} }
+              : await planContextSources(this.client, r.input);
+        const queue = plan.sources,
+          titles = plan.titles;
         r.queue = queue;
-        this.publish(id, { total: queue.length });
+        this.publish(id, {
+          total: queue.length,
+          steps: queue.map((v) => ({
+            source_kind: v.source_kind || "scope",
+            source_id: v.source_id || "",
+            title: titles[v.source_id || ""] || "",
+            state: "pending",
+            results: [],
+            error: "",
+          })),
+        });
       }
       while (this.alive && !r.stop && r.index < r.queue.length) {
+        this.step(id, r.index, { state: "running", error: "" });
         const result = await this.client<{
           items: ContextEntry[];
           errors: string[];
@@ -273,16 +337,29 @@ export class AIOperationStore {
             : v.conversations,
           reply: result.reply.slice(0, 2000),
         });
+        this.step(id, r.index, {
+          results: [
+            ...new Set([
+              ...(v.steps[r.index]?.results || []),
+              ...result.items.map((item) => item.id),
+            ]),
+          ],
+        });
         this.notify();
         if (result.errors.length) {
           r.attempts[r.index] = (r.attempts[r.index] || 0) + 1;
           throw Error(result.errors.join(" · "));
         }
+        this.step(id, r.index, { state: "completed" });
         r.index++;
         this.publish(id, { completed: r.index });
       }
       this.publish(id, { status: r.stop ? "stopped" : "completed" });
     } catch (e) {
+      this.step(id, r.index, {
+        state: "failed",
+        error: e instanceof Error ? e.message : "AI 操作失败",
+      });
       this.publish(id, {
         status: "failed",
         error: e instanceof Error ? e.message : "AI 操作失败",
@@ -295,7 +372,10 @@ export class AIOperationStore {
   }
   // Persist only scoped identifiers/counts; never bodies, replies, errors, keys or executable callbacks.
   snapshot() {
-    return this.records.map(({ error, reply, ...v }) => v);
+    return this.records.map(({ error, reply, steps, ...v }) => ({
+      ...v,
+      steps: steps.map(({ title, error, ...step }) => step),
+    }));
   }
   restore(value: unknown) {
     if (!Array.isArray(value)) return;
@@ -353,6 +433,38 @@ export class AIOperationStore {
           review: count(v.review),
           results: ids(v.results),
           conversations: ids(v.conversations),
+          steps: Array.isArray(v.steps)
+            ? v.steps.slice(0, 5000).flatMap((step: unknown) => {
+                if (!step || typeof step !== "object") return [];
+                const x = step as Record<string, unknown>;
+                if (
+                  typeof x.source_kind !== "string" ||
+                  !["scope", "context", "todo", "report", "calendar"].includes(
+                    x.source_kind,
+                  ) ||
+                  typeof x.source_id !== "string" ||
+                  (x.source_id !== "" && !/^[\w-]{1,160}$/.test(x.source_id)) ||
+                  ![
+                    "pending",
+                    "running",
+                    "completed",
+                    "failed",
+                    "unconfirmed",
+                  ].includes(String(x.state))
+                )
+                  return [];
+                return [
+                  {
+                    source_kind: x.source_kind,
+                    source_id: x.source_id,
+                    title: "",
+                    state: x.state === "running" ? "unconfirmed" : x.state,
+                    results: ids(x.results),
+                    error: "",
+                  } as AIOperationStep,
+                ];
+              })
+            : [],
           error: "",
           reply: "",
           demo: !!v.demo,

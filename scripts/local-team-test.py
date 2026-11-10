@@ -75,6 +75,24 @@ class LocalTeamSafetyTests(unittest.TestCase):
             self.assertNotIn('-v', args)
             self.assertNotIn('COFLOW_LOCAL_AI_KEY', run.call_args.kwargs['env'])
 
+    def test_private_network_override_requires_regular_restricted_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            team = module.LocalTeam(directory)
+            team.directory.mkdir(parents=True)
+            override = team.directory / 'network.compose.yaml'
+            module.private_write(override, '{"services":{}}')
+            with patch.object(module.subprocess, 'run') as run:
+                team.compose('stop')
+                self.assertIn(str(override), run.call_args.args[0])
+                override.chmod(0o644)
+                with self.assertRaises(RuntimeError):
+                    team.compose('stop')
+                override.unlink()
+                override.symlink_to(team.env_file)
+                with self.assertRaises(RuntimeError):
+                    team.compose('stop')
+                self.assertEqual(run.call_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()
