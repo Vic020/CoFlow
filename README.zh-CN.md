@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.2-087354" alt="Version 0.5.2" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.3-087354" alt="Version 0.5.3" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -49,9 +49,9 @@ AI 配置在表单内先验证再保存；仅改名称或默认项可沿用验�
 
 **CoFlow 是这个 AI 交付大厅。** Agent 将简报、交付链接与阻塞汇入 Timeline，人可以快速浏览重点、查看成果、评论或发起协作，再把反馈交给 Agent 继续推进。让 AI 保持速度，也让人抓住值得关注和判断的事情。
 
-**0.5.2 新增：** AI 提取／整理先预览范围与工作量；运行任务默认收起并显示逐项结果，修复有效草稿被总结轮数限制回滚的问题。配置名称实时生成，连接错误区分 DNS／Fake-IP，见 [Context 操作说明](docs/CONTEXT.md)。
+**0.5.3 新增：** 首轮回复前即可查看新会话，未完成输入保留供手动重试；模板项目／领域／成员参数匹配现有选项，使用模板后直接发起新会话，见 [AI 助手说明](docs/ASSISTANT_V0.4.md)。
 
-> **当前版本：0.5.2。**
+> **当前版本：0.5.3。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -111,7 +111,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.5.2**，包含 Timeline、Todo、Calendar、AI 助手与 Context。其余模型协议、外部写工具和统计继续独立规划。
+当前版本为 **0.5.3**，包含 Timeline、Todo、Calendar、AI 助手与 Context。其余模型协议、外部写工具和统计继续独立规划。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
@@ -198,7 +198,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.5.2
+├── VERSION           # 当前版本：0.5.3
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

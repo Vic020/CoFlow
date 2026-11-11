@@ -28,6 +28,8 @@ import type {
   AIRun,
   AIMCP,
 } from "@/lib/assistant";
+import { TemplateParameters } from "./template-parameters";
+import { operationActive } from "@/lib/ai-operations";
 import { AssistantOperations } from "./assistant-operations";
 import { Plus, Search } from "lucide-react";
 
@@ -211,6 +213,28 @@ export function AssistantHistory({
     const t = setTimeout(() => void op.run(() => load()), 250);
     return () => clearTimeout(t);
   }, [load, ai.conversations]);
+  useEffect(() => {
+    if (q || state !== "active") return;
+    setItems((xs) => {
+      const map = new Map(
+        xs.filter((c) => !c.archived_at && !c.deleted_at).map((c) => [c.id, c]),
+      );
+      ai.conversations.forEach((c) => map.set(c.id, c));
+      return [...map.values()].sort(
+        (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at),
+      );
+    });
+  }, [ai.conversations, q, state]);
+  const running = ai.busy || ai.operations.some(operationActive);
+  useEffect(() => {
+    if (!running) return;
+    const first = setTimeout(() => void load().catch(() => {}), 350);
+    const timer = setInterval(() => void load().catch(() => {}), 3000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [running, load]);
   function group(c: AIConversation) {
     const day = civilDay(c.updated_at, timeZone),
       today = civilDay(new Date(), timeZone);
@@ -477,19 +501,11 @@ function TemplateManager({ onClose }: { onClose: () => void }) {
             {templateTitle(selected, tr)} · v{selected.version}
           </h3>
           <p className="ai-template-preview">{selected.instructions}</p>
-          {selected.parameters.map((p) => (
-            <label key={p.name}>
-              {templateParameterLabel(selected, p, tr)}
-              {p.required ? " *" : ""}
-              <input
-                value={parameters[p.name] || ""}
-                maxLength={1000}
-                onChange={(e) =>
-                  setParameters({ ...parameters, [p.name]: e.target.value })
-                }
-              />
-            </label>
-          ))}
+          <TemplateParameters
+            template={selected}
+            values={parameters}
+            onChange={setParameters}
+          />
           <small>
             {tr("工具范围")}: {selected.tools.join(", ")}
           </small>
@@ -503,14 +519,11 @@ function TemplateManager({ onClose }: { onClose: () => void }) {
                 )
               }
               onClick={() => {
-                ai.setTemplate(selected, parameters);
-                ai.setInput(
-                  tr("按所选模板执行，先读取真实数据，准备结果供我确认。"),
-                );
                 onClose();
+                void ai.startTemplate(selected, parameters);
               }}
             >
-              {tr("使用此版本")}
+              {tr("使用并开始会话")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
               {tr("返回")}
@@ -899,26 +912,11 @@ function JobsManager({ onClose }: { onClose: () => void }) {
               if (t) setEdit({ ...edit, template: t, parameters: {} });
             }}
           />
-          {edit.template.parameters.map((p) => (
-            <label key={p.name}>
-              {templateParameterLabel(edit.template, p, tr)}
-              {p.required ? " *" : ""}
-              <input
-                required={p.required}
-                maxLength={1000}
-                value={edit.parameters?.[p.name] || ""}
-                onChange={(e) =>
-                  setEdit({
-                    ...edit,
-                    parameters: {
-                      ...edit.parameters,
-                      [p.name]: e.target.value,
-                    },
-                  })
-                }
-              />
-            </label>
-          ))}
+          <TemplateParameters
+            template={edit.template}
+            values={edit.parameters || {}}
+            onChange={(parameters) => setEdit({ ...edit, parameters })}
+          />
           <label>
             {tr("请求")}
             <textarea

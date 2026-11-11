@@ -124,7 +124,7 @@
   "请先恢复归档事件": "Restore this archived event first",
   "请提供有效 operation_id": "Provide a valid operation_id",
   "请设置排期": "Set a schedule",
-  "请选择": "Choose an option",
+  "请选择": "Select an option",
   "调整结束日期": "Resize end date",
   "调整计划时间，任务进度保持独立。": "Change planned dates independently of task progress.",
   "部分来源无读取权限，未计入日历。": "Some sources are not readable and are excluded.",
@@ -1524,5 +1524,9 @@
   "开始提取": "Start extraction",
   "AI 任务状态": "AI task status",
   "本次会话 · 点击任务查看详情": "This session · Select a task for details",
-  "待复核 {count} 条": "{count} need review"
+  "待复核 {count} 条": "{count} need review",
+  "所有会话": "All conversations",
+  "使用并开始会话": "Use and start conversation",
+  "此会话尚未收到回复，可手动重试。": "This conversation has no reply yet. You can retry manually.",
+  "按模板「{title}」执行，先读取真实数据，准备结果供我确认。": "Run the \"{title}\" template: read actual data first and prepare results for my confirmation."
 }

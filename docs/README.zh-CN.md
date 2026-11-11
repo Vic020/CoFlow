@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-CoFlow **0.5.2** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
+CoFlow **0.5.3** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
 
 **让团队看见每一次 Agent 推进。** 汇集多个 Agent 的进展、交付与反馈，让团队抓住需要关注的重点。
 

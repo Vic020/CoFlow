@@ -58,21 +58,24 @@ type Turn struct {
 	Links             []Link   `json:"links"`
 }
 type Document struct {
-	Template   *Template         `json:"template,omitempty"`
-	Parameters map[string]string `json:"parameters,omitempty"`
-	Turns      []Turn            `json:"turns"`
+	InitialRequest *ChatInput        `json:"initial_request,omitempty"`
+	Template       *Template         `json:"template,omitempty"`
+	Parameters     map[string]string `json:"parameters,omitempty"`
+	Turns          []Turn            `json:"turns"`
 }
 type Conversation struct {
-	Revision       int             `json:"revision"`
-	ArchivedAt     *time.Time      `json:"archived_at"`
-	DeletedAt      *time.Time      `json:"deleted_at"`
-	ConfigSnapshot json.RawMessage `json:"config_snapshot"`
-	ID             string          `json:"id"`
-	Title          string          `json:"title"`
-	ConfigID       string          `json:"config_id"`
-	UpdatedAt      time.Time       `json:"updated_at"`
-	Template       *Template       `json:"template,omitempty"`
-	Turns          []Turn          `json:"turns,omitempty"`
+	Unanswered     *ChatInput        `json:"unanswered,omitempty"`
+	Parameters     map[string]string `json:"parameters,omitempty"`
+	Revision       int               `json:"revision"`
+	ArchivedAt     *time.Time        `json:"archived_at"`
+	DeletedAt      *time.Time        `json:"deleted_at"`
+	ConfigSnapshot json.RawMessage   `json:"config_snapshot"`
+	ID             string            `json:"id"`
+	Title          string            `json:"title"`
+	ConfigID       string            `json:"config_id"`
+	UpdatedAt      time.Time         `json:"updated_at"`
+	Template       *Template         `json:"template,omitempty"`
+	Turns          []Turn            `json:"turns,omitempty"`
 }
 type ChatResult struct {
 	ConversationID string `json:"conversation_id"`
@@ -95,6 +98,8 @@ func (s *Service) Conversation(ctx context.Context, p identity.Principal, id str
 	}
 	c.Turns = d.Turns
 	c.Template = d.Template
+	c.Parameters = d.Parameters
+	c.Unanswered = d.InitialRequest
 	// Pending cards reflect durable confirmation/cancellation results after a refresh.
 	rows, e := s.Pool.Query(ctx, `SELECT id,kind,title,payload,state,result,decided_at FROM assistant_actions WHERE conversation_id=$1 AND team_id=$2 AND owner_id=$3`, id, p.TeamID, p.UserID)
 	if e != nil {
@@ -183,6 +188,11 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 	if e != nil {
 		return out, e
 	}
+	if in.ConversationID == "" {
+		if _, e = s.BeginConversation(ctx, p, in); e != nil {
+			return out, e
+		}
+	}
 	tx, e := s.Pool.Begin(ctx)
 	if e != nil {
 		return out, e
@@ -207,17 +217,7 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 	e = tx.QueryRow(ctx, `SELECT document,config_id,config_snapshot FROM assistant_conversations WHERE id=$1 AND team_id=$2 AND owner_id=$3 AND deleted_at IS NULL AND archived_at IS NULL FOR UPDATE`, id, p.TeamID, p.UserID).Scan(&raw, &configID, &savedConfig)
 	d := Document{Turns: []Turn{}}
 	if errors.Is(e, pgx.ErrNoRows) {
-		if in.ConversationID != "" {
-			return out, &identity.Error{Status: 404, Message: "会话不可用"}
-		}
-		title := []rune(in.Message)
-		if len(title) > 45 {
-			title = title[:45]
-		}
-		_, e = tx.Exec(ctx, `INSERT INTO assistant_conversations(id,team_id,owner_id,config_id,title,config_snapshot) VALUES($1,$2,$3,$4,$5,$6)`, id, p.TeamID, p.UserID, config.ID, string(title), mustJSON(config))
-		if e != nil {
-			return out, e
-		}
+		return out, &identity.Error{Status: 404, Message: "会话不可用"}
 	} else if e != nil {
 		return out, e
 	} else {
@@ -228,7 +228,7 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 			return out, e
 		}
 	}
-	if len(d.Turns) > 0 {
+	if len(savedConfig) > 0 {
 		var original Config
 		if json.Unmarshal(savedConfig, &original) != nil || original.Revision != config.Revision {
 			return out, invalid("AI 配置已变化，请开始新对话")
@@ -548,6 +548,7 @@ func (s *Service) Chat(ctx context.Context, p identity.Principal, in ChatInput) 
 	}
 	turn.Usage = usage
 	d.Turns = append(d.Turns, turn)
+	d.InitialRequest = nil
 	body, _ := json.Marshal(d)
 	if _, e = tx.Exec(ctx, `UPDATE assistant_conversations SET document=$1,updated_at=now(),revision=revision+1 WHERE id=$2`, body, id); e != nil {
 		return out, e

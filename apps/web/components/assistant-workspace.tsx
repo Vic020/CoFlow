@@ -94,7 +94,7 @@ export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
           ))}
         </nav>
         <div className="ai-history-sidebar-header">
-          <strong>{tr("历史对话")}</strong>
+          <strong>{tr("所有会话")}</strong>
         </div>
         <AssistantHistory
           inline

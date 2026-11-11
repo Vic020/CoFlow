@@ -6930,3 +6930,5 @@ input[type="checkbox"] {
 @media(max-width:600px) { .ai-operation-heading { gap:6px; } .ai-operation-body { padding-left:24px; } }
 
 .ai-operation:not([open]) > .ai-operation-body { display:none; }
+
+.ai-manager-body label > .choice-trigger { width:100%; min-width:0; }

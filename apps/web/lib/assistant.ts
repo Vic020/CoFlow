@@ -69,7 +69,23 @@ export type AITurn = {
   actions: AIAction[];
   links: { title: string; url: string }[];
 };
+export type AIPendingRequest = {
+  message: string;
+  request_id: string;
+  config_id: string;
+  conversation_id: string;
+  web_enabled?: boolean;
+  web_config_id?: string;
+  locale?: string;
+  context?: Record<string, string>;
+  template_id?: string;
+  template_version?: number;
+  parameters?: Record<string, string>;
+  mcp_ids?: string[];
+};
 export type AIConversation = {
+  unanswered?: AIPendingRequest;
+  parameters?: Record<string, string>;
   revision: number;
   updated_at: string;
   archived_at?: string | null;

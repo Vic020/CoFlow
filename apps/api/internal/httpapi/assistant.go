@@ -260,6 +260,18 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 		}
 		c.JSON(200, v)
 	})
+	g.POST("/conversations", aiLimit, func(c *gin.Context) {
+		var in assistant.ChatInput
+		if !decode(c, &in) {
+			return
+		}
+		v, e := s.BeginConversation(c.Request.Context(), principal(c), in)
+		if e != nil {
+			fail(c, e)
+			return
+		}
+		c.JSON(200, v)
+	})
 	g.GET("/conversations", func(c *gin.Context) {
 		limit, _ := strconv.Atoi(c.Query("limit"))
 		v, e := s.History(c.Request.Context(), principal(c), assistant.HistoryQuery{Q: c.Query("q"), State: c.Query("state"), Cursor: c.Query("cursor"), Limit: limit})

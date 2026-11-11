@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.5.2
+  version: 0.5.3
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -697,6 +697,34 @@ paths:
         '200': {description: Saved this member's choice within the current team, after validating access.}
         '404': {$ref: '#/components/responses/Error'}
   /assistant/conversations:
+    post:
+      operationId: beginAssistantConversation
+      security: [{sessionCookie: []}]
+      description: Persist a private conversation header before its first model request. Does not call a model or execute actions. Same member/team/request_id reuses its conversation; inaccessible configurations and invalid templates fail before creation. Unanswered first input and parameters can be read by its owner for manual retry, never automatically resumed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config_id, request_id, message]
+              properties:
+                config_id: {type: string}
+                request_id: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 6000}
+                template_id: {type: string}
+                template_version: {type: integer}
+                parameters: {type: object, additionalProperties: {type: string}}
+                context: {type: object, additionalProperties: {type: string}}
+                web_enabled: {type: boolean}
+                web_config_id: {type: string}
+                mcp_ids: {type: array, items: {type: string}}
+      responses:
+        '200': {description: Conversation metadata with empty turns and the owner's unanswered first input until a reply commits; no secrets.}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
     get:
       operationId: assistantConversations
       security: [{sessionCookie: []}]

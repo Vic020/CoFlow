@@ -16,6 +16,7 @@ import { consumeAssistantStream } from "@/lib/assistant-stream";
 import { publicDemo } from "@/lib/runtime";
 import {
   defaultAIConfig,
+  templateTitle,
   defaultWebConfig,
   type WebConfig,
   type AIConfig,
@@ -23,6 +24,7 @@ import {
   type AIAction,
   type AIConversation,
   type AITemplate,
+  type AIPendingRequest,
 } from "@/lib/assistant";
 import { PersonalAISettings } from "./personal-ai-settings";
 import { PersonalProfile } from "./personal-profile";
@@ -50,6 +52,7 @@ type State = ReturnType<typeof useAIOperations> & {
   template: AITemplate | null;
   parameters: Record<string, string>;
   setTemplate: (t: AITemplate | null, p?: Record<string, string>) => void;
+  startTemplate: (t: AITemplate, p: Record<string, string>) => Promise<void>;
   mcpIDs: string[];
   setMCPIDs: (ids: string[]) => void;
   manager: "history" | "templates" | "jobs" | "mcp" | "operations" | null;
@@ -93,7 +96,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   );
 }
 function AssistantScope({ children }: { children: ReactNode }) {
-  const { locale, timeZone } = useI18n();
+  const { locale, timeZone, t: tr } = useI18n();
   const auth = useAuth();
   const operations = useAIOperations(
     `${auth.mode}:${auth.me?.user.id}:${auth.me?.current_team}`,
@@ -158,16 +161,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
   const alive = useRef(true);
   const sending = useRef(false);
   const acting = useRef(false);
-  const retry = useRef<{
-    web_enabled?: boolean;
-    web_config_id?: string;
-    message: string;
-    request_id: string;
-    config_id: string;
-    conversation_id: string;
-    locale?: string;
-    context?: Record<string, string>;
-  } | null>(null);
+  const retry = useRef<AIPendingRequest | null>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -276,19 +270,32 @@ function AssistantScope({ children }: { children: ReactNode }) {
       drafts.current[id.current] = input;
       setInput(drafts.current[c.id] || "");
       setCurrent(c);
-      setWebEnabled(false);
+      setWebEnabled(c.unanswered?.web_enabled || false);
+      if (c.unanswered?.web_config_id) {
+        selectedWeb.current = c.unanswered.web_config_id;
+        updateWebConfig(c.unanswered.web_config_id);
+      }
+      setPending(c.unanswered?.message || "");
+      setError(c.unanswered ? "此会话尚未收到回复，可手动重试。" : "");
       updateTemplate(c.template || null);
+      setParameters(c.parameters || {});
+      setMCPIDs(c.unanswered?.mcp_ids || []);
       if (pathname.replace(/\/$/, "") !== "/assistant") setPanel(true);
       id.current = c.id;
       selected.current = c.config_id;
       updateConfig(c.config_id);
       setTurns(c.turns || []);
-      retry.current = null;
+      retry.current = c.unanswered
+        ? { ...c.unanswered, conversation_id: c.id }
+        : null;
     } catch (e) {
       setError((e as Error).message);
     }
   }
-  async function send(message: string) {
+  async function send(
+    message: string,
+    useTemplate?: { template: AITemplate; parameters: Record<string, string> },
+  ) {
     if (sending.current || !message.trim()) return;
     const chosen = configs.find((c) => c.id === selected.current);
     if (!chosen?.verified_at) {
@@ -305,7 +312,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
     const current =
       prior &&
       prior.message === message &&
-      prior.web_enabled === (webEnabled && !publicDemo) &&
+      prior.web_enabled === (!useTemplate && webEnabled && !publicDemo) &&
       prior.web_config_id === (webEnabled ? selectedWeb.current : "") &&
       prior.config_id === selected.current &&
       prior.conversation_id === id.current
@@ -316,16 +323,21 @@ function AssistantScope({ children }: { children: ReactNode }) {
             config_id: selected.current,
             conversation_id: id.current,
             locale,
-            template_id: template?.id,
-            template_version: template?.version,
-            parameters,
-            mcp_ids: mcpIDs,
-            web_enabled: webEnabled && !publicDemo,
-            web_config_id: webEnabled ? selectedWeb.current : "",
+            template_id: (useTemplate?.template || template)?.id,
+            template_version: (useTemplate?.template || template)?.version,
+            parameters: useTemplate?.parameters || parameters,
+            mcp_ids: useTemplate ? [] : mcpIDs,
+            web_enabled: !useTemplate && webEnabled && !publicDemo,
+            web_config_id:
+              !useTemplate && webEnabled ? selectedWeb.current : "",
             context: {
               page: pathname,
               knowledge: params.get("context") || "",
-              project: params.get("project") || "",
+              project:
+                useTemplate?.parameters.project ||
+                useTemplate?.parameters.project_id ||
+                params.get("project") ||
+                "",
               domain: params.get("domain") || "",
               member: params.get("member") || "",
               todo: params.get("todo") || "",
@@ -337,6 +349,24 @@ function AssistantScope({ children }: { children: ReactNode }) {
     retry.current = current;
     let success = false;
     try {
+      if (!current.conversation_id && !publicDemo) {
+        const conversation = await request<AIConversation>(
+          "/assistant/conversations",
+          {
+            method: "POST",
+            signal: controller.current.signal,
+            body: JSON.stringify(current),
+          },
+        );
+        if (!alive.current) return;
+        current.conversation_id = conversation.id;
+        id.current = conversation.id;
+        setCurrent(conversation);
+        setConversations((xs) => [
+          conversation,
+          ...xs.filter((c) => c.id !== conversation.id),
+        ]);
+      }
       let v: { conversation_id: string; turn: AITurn };
       if (streaming && !publicDemo) {
         const response = await fetch("/api/v1/assistant/chat", {
@@ -444,6 +474,25 @@ function AssistantScope({ children }: { children: ReactNode }) {
       acting.current = false;
     }
   }
+  async function startTemplate(t: AITemplate, p: Record<string, string>) {
+    if (sending.current) return;
+    if (!configs.some((c) => c.id === selected.current && c.verified_at)) {
+      openSettings("personal");
+      return;
+    }
+    newConversation();
+    updateTemplate(t);
+    setParameters(p);
+    setMCPIDs([]);
+    setInput("");
+    if (pathname.replace(/\/$/, "") !== "/assistant") setPanel(true);
+    await send(
+      tr("按模板「{title}」执行，先读取真实数据，准备结果供我确认。", {
+        title: templateTitle(t, tr),
+      }),
+      { template: t, parameters: p },
+    );
+  }
   const value: State = {
     ...operations,
     streamed,
@@ -465,6 +514,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
     template,
     parameters,
     setTemplate,
+    startTemplate,
     mcpIDs,
     setMCPIDs,
     manager,
