@@ -39,6 +39,8 @@ Release automation is available through `npm run release -- --help`; it plans by
 
 **New in 0.5.0:** Task blockers and expiring, revocable delegations; a Context knowledge space with project/domain documents, a directory tree, progressive topic exploration, a cross-module knowledge graph, source review and one-click AI Wiki extraction/organization. See [Context and collaboration](docs/CONTEXT.md).
 
+**In development (Unreleased):** Statistics links reports, task transitions and plans through shared filters, source drill-down and read-only AI queries. See [definitions and limits](docs/STATISTICS.md).
+
 **New in 0.5.3:** Conversations appear before the first model reply and retain unanswered input for manual retry. Template parameters match existing projects/domains/members; using a template starts its new conversation directly. See [AI Assistant](docs/ASSISTANT_V0.4.md).
 
 ## Why CoFlow
@@ -107,7 +109,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.5.3**, including Timeline, Todo, Calendar, AI Assistant and Context. Further model adapters, external write tools and analytics remain separate roadmap work.
+The current version is **0.5.3**, including Timeline, Todo, Calendar, AI Assistant and Context. Statistics is implemented locally under Unreleased; further model adapters and external write tools remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |
@@ -116,7 +118,7 @@ The current version is **0.5.3**, including Timeline, Todo, Calendar, AI Assista
 | **0.3 · Calendar** | Available (0.4.0) | Default report calendar linked to Timeline/Todo, scheduling, Gantt, Big Days and version milestones; [implementation plan](docs/CALENDAR_V0.3.md) |
 | **0.4 · AI Assistant** | Available (0.4.0, first release) | Three common tasks, shared/personal settings, Chat Completions and Responses adapters; [usage and limits](docs/ASSISTANT_V0.4.md) |
 | **0.5 · Context** | Available (0.5.0) | Capture important cross-module knowledge for teams and AI |
-| **0.6 · Analytics** | Planned | Progress, task flow, and delivery trends with filters and source drill-down |
+| **0.6 · Statistics** | Local implementation (Unreleased) | Progress, task flow, and delivery trends with filters and source drill-down |
 
 See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria, and the [0.2 Todo implementation plan](docs/TODO_V0.2.md) for execution details.
 

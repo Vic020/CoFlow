@@ -45,7 +45,7 @@ Download copies at `/agent/coflow/SKILL.md` and `/agent/openapi.yaml` are genera
 
 ## Boundaries
 
-Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub Pages use separate synthetic data; Pages has no backend. Version 0.5.0 includes Timeline, Todo, Calendar, AI Assistant and Context. Real provider compatibility, remaining model adapters and analytics require separate acceptance. External Agents use the unified CoFlow Skill and HTTP API; the assistant also supports approved read-only remote MCP Client connections. CLI and a public CoFlow MCP Server remain future integrations.
+Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub Pages use separate synthetic data; Pages has no backend. Version 0.5.0 includes Timeline, Todo, Calendar, AI Assistant and Context. Statistics is implemented locally under Unreleased; see [definitions and limits](STATISTICS.md). Real provider compatibility and remaining model adapters require separate acceptance. External Agents use the unified CoFlow Skill and HTTP API; the assistant also supports approved read-only remote MCP Client connections. CLI and a public CoFlow MCP Server remain future integrations.
 
 - [Collaboration loop](COLLABORATION_LOOP.md): Agent changes since 0.4.1, handoff facts and confirmed task progress.
 
@@ -54,3 +54,5 @@ Self-hosted team mode uses PostgreSQL and real accounts. Local demo and GitHub P
 - [Web service configuration](WEB_SERVICES.md): independent search/fetch providers, personal/team settings and usage boundaries.
 
 [Context, blockers and delegation](CONTEXT.md) — implementation and acceptance boundaries.
+
+[Statistics / 数据统计（Unreleased）](STATISTICS.md) — definitions, source drill-down, scope isolation and AI queries.

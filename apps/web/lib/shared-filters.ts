@@ -14,9 +14,14 @@ export function restoreSharedFilters(
   return !previous || previous === identity ? incoming || stored : stored;
 }
 export function sharedFilterPage(path: string) {
-  return ["/", "/todo", "/calendar", "/assistant", "/context"].includes(
-    path.replace(/\/$/, "") || "/",
-  );
+  return [
+    "/",
+    "/todo",
+    "/calendar",
+    "/assistant",
+    "/context",
+    "/statistics",
+  ].includes(path.replace(/\/$/, "") || "/");
 }
 export function readSharedFilters(
   params: URLSearchParams,
@@ -32,6 +37,15 @@ export function readSharedFilters(
 }
 export function sharedFilterURL(href: string, filters: SharedFilters) {
   const url = new URL(href, "https://coflow.invalid");
+  if (
+    url.pathname.replace(/\/$/, "") === "/statistics" &&
+    sharedFilterKeys.some(
+      (key) => (url.searchParams.get(key) || "") !== filters[key],
+    )
+  ) {
+    for (const key of ["offset", "revision", "group"])
+      url.searchParams.delete(key);
+  }
   url.searchParams.set("filters", "1"); // Explicitly distinguishes reset from inheriting context.
   for (const key of sharedFilterKeys)
     filters[key]

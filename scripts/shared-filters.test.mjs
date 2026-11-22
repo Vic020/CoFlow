@@ -104,3 +104,20 @@ test("team/account changes restore only their own remembered scope", () => {
     old,
   );
 });
+
+test("statistics keeps paging within a scope and resets it when global scope changes", () => {
+  const href =
+    "/statistics?project=one&metric=todos_completed&offset=50&revision=stamp&group=alice";
+  const same = new URL(
+    sharedFilterURL(href, { project: "one", domain: "", member: "" }),
+    "https://coflow.example.test",
+  );
+  assert.equal(same.searchParams.get("offset"), "50");
+  const changed = new URL(
+    sharedFilterURL(href, { project: "two", domain: "", member: "" }),
+    "https://coflow.example.test",
+  );
+  for (const key of ["offset", "revision", "group"])
+    assert.equal(changed.searchParams.has(key), false);
+  assert.equal(changed.searchParams.get("metric"), "todos_completed");
+});

@@ -143,6 +143,31 @@ export function defaultAIConfig(configs: AIConfig[]) {
 }
 // Only Go-generated object links are navigable; model text stays plain text.
 export function safeAssistantLink(url: string) {
+  if (url.startsWith("/statistics?") && url.length < 3000) {
+    const parsed = new URL(url, "https://coflow.invalid");
+    const allowed = [
+      "from",
+      "to",
+      "timezone",
+      "filters",
+      "project",
+      "domain",
+      "member",
+      "metric",
+      "group_by",
+      "group",
+      "agent",
+      "model",
+    ];
+    return (
+      parsed.pathname === "/statistics" &&
+      !parsed.hash &&
+      [...parsed.searchParams.keys()].every((k) => allowed.includes(k)) &&
+      ["from", "to"].every((k) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(parsed.searchParams.get(k) || ""),
+      )
+    );
+  }
   return /^\/(?:\?(?:report)=[a-zA-Z0-9_-]+|todo\?todo=[a-zA-Z0-9_-]+|context\?context=[a-zA-Z0-9_-]+|calendar\?(?:mode=schedule&date=\d{4}-\d{2}-\d{2}|event=[a-zA-Z0-9_-]+))$/.test(
     url,
   );

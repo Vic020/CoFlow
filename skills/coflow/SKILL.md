@@ -17,6 +17,7 @@ Use this one Skill for CoFlow operations. Read only the reference needed for the
 | Report progress, revise a brief, read feedback or request collaboration | [Timeline reporting](references/reporting.md) |
 | Read, create, assign, move or maintain Todo tasks and link delivery reports | [Todo operations](references/todos.md) |
 | Review reporting days, schedule existing Todos, or maintain phases and milestones | [Calendar operations](references/calendar.md) |
+| Read exact progress/task/schedule metrics and trace their originals | [Reporting and statistics](references/reporting.md) |
 | Read or preserve knowledge, browse project/domain documents, or organize the internal AI Wiki | [Context knowledge](references/context.md) |
 
 Reporting concrete work also needs the task-reconciliation section of [Todo operations](references/todos.md): identify what is being done, planned or already finished, reuse or create the corresponding tasks, and link the report to them. This is part of a reporting request under this Skill, not a mandate to execute future work or coordinate indefinitely. Respect an explicit report-only instruction and the available Todo scopes.

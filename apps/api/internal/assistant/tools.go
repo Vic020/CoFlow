@@ -28,6 +28,11 @@ type Action struct {
 	Result    any             `json:"result,omitempty"`
 }
 type ToolArgs struct {
+	Agent                string                  `json:"agent"`
+	Model                string                  `json:"model"`
+	Metric               string                  `json:"metric"`
+	GroupBy              string                  `json:"group_by"`
+	Group                string                  `json:"group"`
 	EventID              string                  `json:"event_id"`
 	ContextState         string                  `json:"state"`
 	ContextID            string                  `json:"context_id"`
@@ -65,6 +70,10 @@ type ToolArgs struct {
 func (s *Service) tool(ctx context.Context, p identity.Principal, name string, a ToolArgs) (any, *Action, []Link, error) {
 	links := []Link{}
 	switch name {
+	case "read_statistics":
+		v, e := s.Workspace.Statistics(ctx, p, workspace.StatisticsQuery{CalendarQuery: workspace.CalendarQuery{From: a.From, To: a.To, Timezone: a.Timezone, Project: a.ProjectID, Domain: a.Domain, Member: a.MemberID, Agent: a.Agent, Model: a.Model}, Metric: a.Metric, GroupBy: a.GroupBy, Group: a.Group, Offset: a.Offset, Revision: a.Revision})
+		q := url.Values{"from": {a.From}, "to": {a.To}, "timezone": {a.Timezone}, "filters": {"1"}, "project": {a.ProjectID}, "domain": {a.Domain}, "member": {a.MemberID}, "metric": {a.Metric}, "group_by": {a.GroupBy}, "group": {a.Group}, "agent": {a.Agent}, "model": {a.Model}}
+		return v, nil, []Link{{"Statistics", "/statistics?" + q.Encode()}}, e
 	case "read_context_tree":
 		xs, e := s.Workspace.ContextTree(ctx, p, workspace.ContextFilter{Project: a.ProjectID, Domain: a.Domain, Member: a.MemberID})
 		if e != nil {

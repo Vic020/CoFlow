@@ -314,3 +314,6 @@ export function calendarDemo(
   });
   return structuredClone(event);
 }
+
+// Shared synthetic source for the offline statistics projection only.
+export function statisticsCalendarEvents() { return structuredClone(events); }

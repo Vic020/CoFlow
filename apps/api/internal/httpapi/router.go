@@ -63,6 +63,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 	}
 	registerCalendar(protected, ws, repo)
 	registerKnowledge(protected, ws, repo)
+	registerStatistics(protected, ws)
 	protected.GET("/api/v1/meta", func(c *gin.Context) {
 		if !principal(c).Can("reports:read") && !principal(c).Can("todos:read") && !principal(c).Can("calendar:read") && !principal(c).Can("context:read") {
 			fail(c, identity.Denied("需要读取权限"))

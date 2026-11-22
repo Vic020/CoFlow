@@ -1,5 +1,7 @@
 import { knowledgeDemo } from "./knowledge-demo.ts";
 import { assistantDemo } from "./assistant-demo.ts";
+import { statisticsDemo } from "./statistics-demo.ts";
+import { statisticsCalendarEvents } from "./calendar-demo.ts";
 import { calendarDemo } from "./calendar-demo.ts";
 import { validSchedule, civilDay } from "./calendar.ts";
 import type { Todo, TodoBoardData, TodoReview } from "./todo";
@@ -347,6 +349,7 @@ export async function publicDemoRequest(
   init?: RequestInit,
 ): Promise<unknown> {
   const method = init?.method?.toUpperCase() || "GET";
+  if(path.split("?")[0]==="/statistics") { if(method!=="GET")throw Error("统计只支持读取");return statisticsDemo(path,reports,todoBoard.tasks,statisticsCalendarEvents()); }
   if (path.startsWith("/context") || path.startsWith("/delegations"))
     return knowledgeDemo(
       path,

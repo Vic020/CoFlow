@@ -30,6 +30,7 @@ jobs:
       - run: npm run test:calendar
       - run: npm run test:assistant
       - run: npm run test:ai-operations
+      - run: npm run test:statistics
       - run: npm run test:knowledge
       - run: npm run test:todo-review
       - run: npm run test:demo

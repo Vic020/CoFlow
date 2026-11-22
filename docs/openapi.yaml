@@ -8,6 +8,156 @@ info:
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /statistics:
+    get:
+      operationId: readStatistics
+      summary: Read scoped source-linked statistics
+      description: >-
+        Read-only Unreleased capability. Existing reports:read, todos:read and calendar:read scopes independently control modules; at least one is required. Unreadable modules, groups and details are omitted. Uses a PostgreSQL repeatable-read read-only snapshot; never initializes boards or changes business data. Current snapshots differ from period events. Report-period metrics use current classification/status, not historical delivery dates. Task completion/reopen counts deduplicate IDs and use event snapshots; missing cycle starts are reported separately. Legacy creation attribution may be current. Collaboration completion has no attribution snapshot: only team-wide totals, omitted with project/domain/member filters. Groups overlap; do not sum domain groups or infer quality/work hours. Excess 100000 source rows/tasks or 1000 groups returns an explicit error.
+      parameters:
+      - name: from
+        in: query
+        required: true
+        description: 'Inclusive civil date, YYYY-MM-DD.'
+        schema: {type: string}
+      - name: to
+        in: query
+        required: true
+        description: 'Exclusive civil date, 1–93 days after from.'
+        schema: {type: string}
+      - name: timezone
+        in: query
+        required: false
+        description: 'IANA timezone; defaults to UTC; Local is rejected.'
+        schema: {type: string}
+      - name: project
+        in: query
+        required: false
+        description: 'Verified project ID.'
+        schema: {type: string}
+      - name: domain
+        in: query
+        required: false
+        description: 'Exact domain name.'
+        schema: {type: string}
+      - name: member
+        in: query
+        required: false
+        description: 'Report author or task assignee; task events use historical assignees.'
+        schema: {type: string}
+      - name: agent
+        in: query
+        required: false
+        description: 'Exact attribution; un-attributed records do not match.'
+        schema: {type: string}
+      - name: model
+        in: query
+        required: false
+        description: 'Exact model attribution.'
+        schema: {type: string}
+      - name: include_sources
+        in: query
+        description: Return recorded Agent and model options within the date and workspace scope, independent of selected Agent and model.
+        schema: {type: boolean, default: false}
+      - name: group_by
+        in: query
+        required: false
+        description: 'project (default), domain, member, agent or model.'
+        schema: {type: string}
+      - name: metric
+        in: query
+        required: false
+        description: 'Metric key for paginated source details.'
+        schema: {type: string}
+      - name: group
+        in: query
+        required: false
+        description: 'Optional group key; __unassigned__ means absent attribution.'
+        schema: {type: string}
+      - name: offset
+        in: query
+        required: false
+        description: 'Detail offset; 0–100000; pages contain at most 50 sources.'
+        schema: {type: integer}
+      - name: revision
+        in: query
+        required: false
+        description: 'Returned snapshot revision; stale data/query/identity returns 409.'
+        schema: {type: string}
+      responses:
+        '200':
+          description: Counts, basis, daily event trends, groups, coverage and optional paginated source references.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, timezone, generated_at, revision, capabilities, metrics, trend, groups, duration, coverage, details, detail_total, next_offset, has_more]
+                properties:
+                  from: {type: string, format: date}
+                  to: {type: string, format: date}
+                  timezone: {type: string}
+                  generated_at: {type: string, format: date-time}
+                  revision: {type: string}
+                  sources:
+                    type: object
+                    properties:
+                      agents: {type: array, items: {type: string}}
+                      models: {type: array, items: {type: string}}
+                  capabilities: {type: object, additionalProperties: {type: boolean}}
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: {type: string}
+                        basis: {type: string, enum: [current, period, period_event, period_current_status, period_current_links, overlapping_plan, overlapping_plan_current_status]}
+                        count: {type: integer, minimum: 0}
+                  trend:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        day: {type: string, format: date}
+                        values: {type: object, additionalProperties: {type: integer}}
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: {type: string}
+                        values: {type: object, additionalProperties: {type: integer}}
+                  duration:
+                    type: object
+                    description: Unique tasks; first matching completion cycle in range. Missing starts excluded from durations.
+                    properties:
+                      under_day: {type: integer}
+                      one_to_seven_days: {type: integer}
+                      over_seven_days: {type: integer}
+                      missing: {type: integer}
+                  coverage: {type: array, items: {type: string}}
+                  details:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string}
+                        title: {type: string}
+                        url: {type: string}
+                        at: {type: string, format: date-time}
+                        project: {type: string}
+                        domains: {type: array, items: {type: string}}
+                        member: {type: string}
+                        agent: {type: string}
+                        model: {type: string}
+                        hours: {type: number, minimum: 0}
+                  detail_total: {type: integer}
+                  next_offset: {type: integer}
+                  has_more: {type: boolean}
+        '400': {description: Invalid dates/filter/pagination or scope too large; no partial counts.}
+        '401': {description: Authentication required.}
+        '403': {description: No source-module read scope.}
+        '409': {description: Snapshot changed; refresh before paging.}
   /context-graph:
     get:
       operationId: readContextGraph

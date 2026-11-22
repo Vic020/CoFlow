@@ -13,6 +13,7 @@ import {
 } from "react";
 import {
   CalendarDays,
+  ChartNoAxesCombined,
   BookOpen,
   Copy,
   Trash2,
@@ -48,6 +49,7 @@ import {
 import { GlobalFilters, useSharedFilters } from "./shared-filters";
 import { Avatar, Agent, Status, Markdown, ReportDetail } from "./report-detail";
 import { CalendarWorkspace } from "@/components/calendar-workspace";
+import { StatisticsWorkspace } from "./statistics-workspace";
 import { ContextWorkspace } from "./context-workspace";
 import { TodoBoard } from "@/components/todo-board";
 import { ReportHub, type ReportTab } from "@/components/report-hub";
@@ -134,6 +136,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const pathname = usePathname().replace(/\/$/, "") || "/";
   const assistantPage = pathname === "/assistant";
   const contextPage = pathname === "/context";
+  const statisticsPage = pathname === "/statistics";
   const todoPage = pathname === "/todo";
   const calendarPage = pathname === "/calendar";
   const credentialsPage = pathname === "/credentials";
@@ -143,6 +146,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   timelinePage.current =
     !assistantPage &&
     !contextPage &&
+    !statisticsPage &&
     !todoPage &&
     !calendarPage &&
     !credentialsPage &&
@@ -336,6 +340,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       loading ||
       !timelineReady.current ||
       !meta ||
+      statisticsPage ||
       contextPage ||
       todoPage ||
       calendarPage ||
@@ -355,6 +360,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     loading,
     meta,
     reports,
+    statisticsPage,
     contextPage,
     todoPage,
     calendarPage,
@@ -646,6 +652,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           className={
             !assistantPage &&
             !contextPage &&
+            !statisticsPage &&
             !todoPage &&
             !calendarPage &&
             !credentialsPage &&
@@ -656,6 +663,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           aria-current={
             !assistantPage &&
             !contextPage &&
+            !statisticsPage &&
             !todoPage &&
             !calendarPage &&
             !credentialsPage &&
@@ -702,6 +710,17 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         >
           <BookOpen size={18} />
           <span className="nav-label">Context</span>
+        </Link>
+        <Link
+          href={shared.href("/statistics")}
+          className={statisticsPage ? "nav-active" : ""}
+          aria-current={statisticsPage ? "page" : undefined}
+          title={tr("Data")}
+          aria-label={tr("Data")}
+          onClick={() => setNav(false)}
+        >
+          <ChartNoAxesCombined size={18} />
+          <span className="nav-label">{tr("Data")}</span>
         </Link>
         <Link
           href={shared.href("/assistant")}
@@ -837,19 +856,22 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 <h1>
                   {assistantPage
                     ? tr("AI 助手")
-                    : contextPage
-                      ? "Context"
-                      : todoPage
-                        ? "Todo"
-                        : calendarPage
-                          ? "Calendar"
-                          : credentialsPage
-                            ? tr("Agent 凭证")
-                            : settingsPage
-                              ? tr("团队设置")
-                              : tr("团队动态")}
+                    : statisticsPage
+                      ? tr("数据统计")
+                      : contextPage
+                        ? "Context"
+                        : todoPage
+                          ? "Todo"
+                          : calendarPage
+                            ? "Calendar"
+                            : credentialsPage
+                              ? tr("Agent 凭证")
+                              : settingsPage
+                                ? tr("团队设置")
+                                : tr("团队动态")}
                   {!assistantPage &&
                     !contextPage &&
+                    !statisticsPage &&
                     !todoPage &&
                     !calendarPage &&
                     !credentialsPage &&
@@ -862,6 +884,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 )}
                 {!assistantPage &&
                   !contextPage &&
+                  !statisticsPage &&
                   !todoPage &&
                   !calendarPage &&
                   !credentialsPage &&
@@ -888,6 +911,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             )}
             {!assistantPage &&
               !contextPage &&
+              !statisticsPage &&
               !todoPage &&
               !calendarPage &&
               !credentialsPage &&
@@ -959,6 +983,15 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               </Suspense>
             ) : (
               <PageLoading variant="calendar" />
+            )
+          ) : statisticsPage ? (
+            meta ? (
+              <StatisticsWorkspace
+                key={`${meta.team.id}:${meta.current_user}:${meta.role}`}
+                meta={meta}
+              />
+            ) : (
+              <PageLoading variant="workspace" />
             )
           ) : contextPage ? (
             meta ? (

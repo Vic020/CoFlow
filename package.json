@@ -24,7 +24,8 @@
     "test:release": "node --test scripts/release.test.mjs",
     "test:ai-operations": "node --test scripts/ai-operations.test.mjs",
     "local:team": "python3 scripts/local-team.py",
-    "test:local-team": "python3 -B scripts/local-team-test.py"
+    "test:local-team": "python3 -B scripts/local-team-test.py",
+    "test:statistics": "node --test scripts/statistics.test.mjs"
   },
   "workspaces": [
     "apps/web",

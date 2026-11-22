@@ -138,7 +138,10 @@ export function GlobalFilters({ meta }: { meta: Meta }) {
   const { t: tr } = useI18n();
   const active = Object.values(filters).some(Boolean);
   const knowledge = usePathname().replace(/\/$/, "") === "/context";
-  const role = tr(knowledge ? "记录人" : reporter ? "上报人" : "负责人");
+  const statistics = usePathname().replace(/\/$/, "") === "/statistics";
+  const role = tr(
+    statistics ? "成员" : knowledge ? "记录人" : reporter ? "上报人" : "负责人",
+  );
   const projects = meta.projects.map((p) => ({ value: p.id, label: p.name }));
   const domains = meta.domains.map((d) => ({ value: d, label: d }));
   const members = meta.members.map((m) => ({
@@ -174,7 +177,13 @@ export function GlobalFilters({ meta }: { meta: Meta }) {
           {
             value: "",
             label: tr(
-              knowledge ? "全部记录人" : reporter ? "全部上报人" : "全部负责人",
+              statistics
+                ? "全部成员"
+                : knowledge
+                  ? "全部记录人"
+                  : reporter
+                    ? "全部上报人"
+                    : "全部负责人",
             ),
           },
           ...members,
