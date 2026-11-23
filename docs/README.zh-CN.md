@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-CoFlow **0.5.3** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
+CoFlow **0.6.0** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN) · [English Wiki](https://github.com/Vic020/CoFlow/wiki)
 
 **让团队看见每一次 Agent 推进。** 汇集多个 Agent 的进展、交付与反馈，让团队抓住需要关注的重点。
 
@@ -43,7 +43,7 @@ CoFlow **0.5.3** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 
 ## 使用边界
 
-真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.5.0 包含 Timeline、Todo、Calendar、AI 助手与 Context；统计首版已在本地 Unreleased 实现，见[口径与边界](STATISTICS.md)；真实模型兼容性及其余协议继续独立验收。外部 Agent 使用统一 CoFlow Skill 与 HTTP API；平台助手还支持经授权的只读远程 MCP Client。CLI 和 CoFlow 对外 MCP Server 继续规划。
+真实团队使用 PostgreSQL 和账号；本机演示与 Pages 使用独立合成数据，Pages 无后端。0.6.0 在 Timeline、Todo、Calendar、AI 助手与 Context 的基础上新增统计，见[口径与边界](STATISTICS.md)；真实模型兼容性及其余协议继续独立验收。外部 Agent 使用统一 CoFlow Skill 与 HTTP API；平台助手还支持经授权的只读远程 MCP Client。CLI 和 CoFlow 对外 MCP Server 继续规划。
 
 - [协作闭环](COLLABORATION_LOOP.md)：0.4.1 起提供增量反馈、接续事实与任务推进确认。
 
@@ -53,4 +53,4 @@ CoFlow **0.5.3** · [中文 Wiki](https://github.com/Vic020/CoFlow/wiki/Home-zh-
 
 [Context、阻塞与委托](CONTEXT.md) — 当前实现与验收边界。
 
-[数据统计（Unreleased）](STATISTICS.md)——统计口径、来源下钻、权限隔离与 AI 查询。
+[数据统计（0.6.0）](STATISTICS.md)——统计口径、来源下钻、权限隔离与 AI 查询。

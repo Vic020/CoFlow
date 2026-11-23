@@ -2,7 +2,7 @@
 name: coflow
 description: Connect a project to CoFlow and coordinate delivery when the user requests CoFlow reporting, task management or ongoing project collaboration. Read relevant progress and feedback, maintain authorized Todo work, and report meaningful results to Timeline.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # CoFlow

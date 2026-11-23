@@ -1,6 +1,6 @@
 # Statistics / 数据统计
 
-Status: local implementation under **Unreleased**; application version stays **0.5.3** until a release is explicitly requested. No new SQL migration, warehouse, schedule or export is introduced.
+Statistics is available in CoFlow **0.6.0**. The upgrade uses the existing 16 SQL migrations.
 
 ## Read the numbers
 
@@ -42,7 +42,7 @@ The existing reports/todos/calendar read scopes apply separately. An unreadable 
 - 简报期间指标使用当前分类；旧任务创建缺少快照时标明按当前归属。协作完成缺少分类／负责人快照，只提供团队总数，带项目／领域／成员筛选时不提供该指标。缺少任务周期起点不推算用时。
 - 活动量不等于质量、生产率或工时。多领域分组不可直接相加；简报、链接和完成任务分别展示。
 - “AI 解读”直接发起新会话查询同一范围；只读，不改业务。浏览器复用 10 秒身份隔离缓存，手动刷新失效；没有新增服务器共享缓存。
-- 当前为本地 Unreleased 实现；尚未发布、部署或扩大外部厂商／MCP／Coding Agent 的验收声明。
+- 统计首版纳入 0.6.0。外部厂商、MCP 与 Coding Agent 的验收范围见验证记录。
 
 ## Real-provider acceptance / 真实模型验收
 

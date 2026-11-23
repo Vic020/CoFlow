@@ -116,7 +116,7 @@ On each run:
 - If there is new progress, changed deliverables, a new/resolved blocker or another material change, follow the reporting-day rule: new later-day progress gets a new report source_id and retains the same task links; corrections/retries reuse the original report. Preserve still relevant content and links.
 - Keep only a minimal local checkpoint/fingerprint with the work-unit mapping in the private binding; no source snapshots, chats or secrets. Advance the reported fingerprint only after a successful response. A failed write must remain eligible for the next check. Report an actionable authentication/configuration failure instead of silently treating it as no change; do not substitute another credential or recreate the schedule.
 
-## Read statistics (Unreleased service capability)
+## Read statistics (CoFlow 0.6.0+)
 
 When the target service OpenAPI actually exposes GET /statistics, use it for exact counts instead of inventing totals from a bounded report sample. Supply inclusive from/exclusive to civil dates (1–93 days), timezone and verified project/domain/member filters. Optional exact agent/model filters apply only to attributed records. Existing reports:read, todos:read and calendar:read independently determine returned modules; installation or task permission never grants report/statistics access. Inspect capabilities, coverage, generated_at and metric basis. Current snapshots are distinct from period events; report delivery is current status, not a historical delivery day. Old attribution/cycle gaps remain explicit.
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.5.3
+  version: 0.6.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -13,7 +13,7 @@ paths:
       operationId: readStatistics
       summary: Read scoped source-linked statistics
       description: >-
-        Read-only Unreleased capability. Existing reports:read, todos:read and calendar:read scopes independently control modules; at least one is required. Unreadable modules, groups and details are omitted. Uses a PostgreSQL repeatable-read read-only snapshot; never initializes boards or changes business data. Current snapshots differ from period events. Report-period metrics use current classification/status, not historical delivery dates. Task completion/reopen counts deduplicate IDs and use event snapshots; missing cycle starts are reported separately. Legacy creation attribution may be current. Collaboration completion has no attribution snapshot: only team-wide totals, omitted with project/domain/member filters. Groups overlap; do not sum domain groups or infer quality/work hours. Excess 100000 source rows/tasks or 1000 groups returns an explicit error.
+        Read-only statistics, available starting in 0.6.0. Existing reports:read, todos:read and calendar:read scopes independently control modules; at least one is required. Unreadable modules, groups and details are omitted. Uses a PostgreSQL repeatable-read read-only snapshot; never initializes boards or changes business data. Current snapshots differ from period events. Report-period metrics use current classification/status, not historical delivery dates. Task completion/reopen counts deduplicate IDs and use event snapshots; missing cycle starts are reported separately. Legacy creation attribution may be current. Collaboration completion has no attribution snapshot: only team-wide totals, omitted with project/domain/member filters. Groups overlap; do not sum domain groups or infer quality/work hours. Excess 100000 source rows/tasks or 1000 groups returns an explicit error.
       parameters:
       - name: from
         in: query

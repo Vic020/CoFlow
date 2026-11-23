@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.5.3-087354" alt="Version 0.5.3" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.6.0-087354" alt="Version 0.6.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -39,9 +39,9 @@ Release automation is available through `npm run release -- --help`; it plans by
 
 **New in 0.5.0:** Task blockers and expiring, revocable delegations; a Context knowledge space with project/domain documents, a directory tree, progressive topic exploration, a cross-module knowledge graph, source review and one-click AI Wiki extraction/organization. See [Context and collaboration](docs/CONTEXT.md).
 
-**In development (Unreleased):** Statistics links reports, task transitions and plans through shared filters, source drill-down and read-only AI queries. See [definitions and limits](docs/STATISTICS.md).
+**New in 0.6.0:** Statistics links reports, task transitions and plans through shared filters, source drill-down and read-only AI queries. See [definitions and limits](docs/STATISTICS.md).
 
-**New in 0.5.3:** Conversations appear before the first model reply and retain unanswered input for manual retry. Template parameters match existing projects/domains/members; using a template starts its new conversation directly. See [AI Assistant](docs/ASSISTANT_V0.4.md).
+**Since 0.5.3:** Conversations appear before the first model reply and retain unanswered input for manual retry. Template parameters match existing projects/domains/members; using a template starts its new conversation directly. See [AI Assistant](docs/ASSISTANT_V0.4.md).
 
 ## Why CoFlow
 
@@ -51,7 +51,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.5.3.**
+> **Current version: 0.6.0.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -109,7 +109,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.5.3**, including Timeline, Todo, Calendar, AI Assistant and Context. Statistics is implemented locally under Unreleased; further model adapters and external write tools remain separate roadmap work.
+The current version is **0.6.0**, including Timeline, Todo, Calendar, AI Assistant and Context. Data statistics are available in 0.6.0. Further model adapters and external write tools remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |
@@ -118,7 +118,7 @@ The current version is **0.5.3**, including Timeline, Todo, Calendar, AI Assista
 | **0.3 · Calendar** | Available (0.4.0) | Default report calendar linked to Timeline/Todo, scheduling, Gantt, Big Days and version milestones; [implementation plan](docs/CALENDAR_V0.3.md) |
 | **0.4 · AI Assistant** | Available (0.4.0, first release) | Three common tasks, shared/personal settings, Chat Completions and Responses adapters; [usage and limits](docs/ASSISTANT_V0.4.md) |
 | **0.5 · Context** | Available (0.5.0) | Capture important cross-module knowledge for teams and AI |
-| **0.6 · Statistics** | Local implementation (Unreleased) | Progress, task flow, and delivery trends with filters and source drill-down |
+| **0.6 · Statistics** | Available (0.6.0) | Progress, task flow, and delivery trends with filters and source drill-down |
 
 See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria, and the [0.2 Todo implementation plan](docs/TODO_V0.2.md) for execution details.
 
@@ -159,7 +159,7 @@ Install one CoFlow Skill for reporting, Todo and available Calendar operations; 
 
 Reporting concrete work through the enhanced Skill also reconciles its Todo records: reuse or create tasks for work in progress, confirmed future work and finished work, then link the report. Repeated progress updates reuse the same tasks; delivery awaiting acceptance stays under review. This is a client workflow, with explicit report-only and missing-access handling; the API does not create tasks automatically.
 
-The unified Skill is **v1.5.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
+The unified Skill is **v1.6.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
 
 [Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
 
