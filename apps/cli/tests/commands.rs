@@ -7,7 +7,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const TOKEN: &str = "cf_cli_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+const TOKEN: &str = "coflow-test-token";
 const DEVICE: &str = "cd_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 
 fn command(home: &TempDir) -> Command {
