@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -19,6 +19,7 @@ import { DialogTitle, DialogDescription } from "./ui/dialog";
 import { DeleteAction, TrashList } from "./content-actions";
 import { RememberContext } from "./context-workspace";
 import { ReportTodos } from "./report-todos";
+import { ReportStar } from "./report-star";
 import { ReportCompose } from "./report-compose";
 import { ClassificationEditor } from "./catalog-manager";
 import { CollaborationPanel, ReportHistory } from "./collaboration-panel";
@@ -115,11 +116,19 @@ export function ReportDetail({
   const [body, setBody] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [replyTo, setReplyTo] = useState<string>("");
   const [mentions, setMentions] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const canEdit =
     r.author_id === meta.current_user ||
     (meta.mode !== "local-demo" && meta.role === "admin");
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("comment");
+    if (id)
+      document
+        .getElementById(`comment-${id}`)
+        ?.scrollIntoView({ block: "nearest" });
+  }, [r.id]);
   const author = meta.members.find((m) => m.id === r.author_id);
   async function comment(e: React.FormEvent) {
     e.preventDefault();
@@ -132,10 +141,12 @@ export function ReportDetail({
         body: JSON.stringify({
           body,
           mentions,
+          parent_id: replyTo || undefined,
         }),
       });
       setBody("");
       setMentions([]);
+      setReplyTo("");
       onChange();
       onSaved("评论已发布");
     } catch (e) {
@@ -197,8 +208,9 @@ export function ReportDetail({
             tr("未归属")}{" "}
           / {reportDomains(r).join(" · ") || tr("未分类")} ·{" "}
           {dateKey(r.created_at, timeZone)}
+          <Status value={r.status} />
         </DialogDescription>
-        <div className="detail-status">
+        <div className="report-detail-actions">
           <RememberContext
             meta={meta}
             kind="report"
@@ -209,19 +221,12 @@ export function ReportDetail({
             domains={r.domains}
             revision={r.updated_at}
           />
-          {canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil />
-              {tr("编辑")}
-            </Button>
-          )}
+          {meta.mode !== "local-demo" && <ReportStar key={`${meta.team.id}:${meta.current_user}:${r.id}`} id={r.id} />}
           <Button
             variant="ghost"
             size="sm"
+            aria-label={tr("复制链接")}
+            title={tr("复制链接")}
             onClick={async () => {
               try {
                 const url = new URL(window.location.href);
@@ -237,11 +242,13 @@ export function ReportDetail({
             }}
           >
             <Link2 size={14} />
-            {tr("复制链接")}
+            <span className="report-secondary-action-label">{tr("复制链接")}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={tr("复制 source_id")}
+            title={tr("复制 source_id")}
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(r.source_id);
@@ -252,8 +259,18 @@ export function ReportDetail({
             }}
           >
             <Copy size={14} />
-            {tr("复制 source_id")}
+            <span className="report-secondary-action-label">{tr("复制 source_id")}</span>
           </Button>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil />
+              {tr("编辑")}
+            </Button>
+          )}
           {meta.mode !== "local-demo" && canEdit && (
             <DeleteAction
               path={`/reports/${r.id}`}
@@ -261,7 +278,6 @@ export function ReportDetail({
               onDeleted={onDeleted}
             />
           )}
-          <Status value={r.status} />
           {(r.author_id === meta.current_user ||
             (meta.mode !== "local-demo" && meta.role === "admin")) &&
             ["blocked", "review"].includes(r.status) && (
@@ -325,7 +341,7 @@ export function ReportDetail({
           r.comments.map((c) => {
             const m = meta.members.find((m) => m.id === c.author_id);
             return (
-              <div className="comment" key={c.id}>
+              <div className="comment" id={`comment-${c.id}`} key={c.id}>
                 <Avatar member={m} small />
                 <div>
                   <div className="comment-source">
@@ -343,7 +359,26 @@ export function ReportDetail({
                         />
                       )}
                   </div>
+                  {c.parent_id &&
+                    r.comments.some((parent) => parent.id === c.parent_id) && (
+                      <a
+                        href={`#comment-${c.parent_id}`}
+                        className="report-text-link"
+                      >
+                        {tr("查看被回复的评论")}
+                      </a>
+                    )}
                   <Markdown>{c.body}</Markdown>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setReplyTo(c.id);
+                      document.getElementById("comment-body")?.focus();
+                    }}
+                  >
+                    {tr("回复评论")}
+                  </Button>
                 </div>
               </div>
             );
@@ -368,6 +403,14 @@ export function ReportDetail({
         </details>
       )}
       <form className="comment-form" onSubmit={comment}>
+        {replyTo && (
+          <div className="ai-manager-row">
+            <span>{tr("正在回复评论")}</span>
+            <Button size="sm" variant="ghost" onClick={() => setReplyTo("")}>
+              {tr("取消")}
+            </Button>
+          </div>
+        )}
         <label htmlFor="comment-body">
           {tr("以")}
           {meta.members.find((m) => m.id === meta.current_user)?.name ||

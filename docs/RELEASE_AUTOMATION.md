@@ -18,7 +18,7 @@
 
 ## 使用
 
-前提是 Node.js、Git、GitHub CLI 可用。实际操作 GitHub 前，先由维护者完成 `gh auth login` 并用 `gh auth status` 检查；不从浏览器提取 Cookie、复用 CoFlow Token 或自动申请额外权限。服务器／上报适配需要本机已有的独立凭证。
+前提是 Node.js、Git、GitHub CLI 可用。新源码执行 `--checks` 还需要 Cargo。实际操作 GitHub 前，先由维护者完成 `gh auth login` 并用 `gh auth status` 检查；不从浏览器提取 Cookie、复用 CoFlow Token 或自动申请额外权限。服务器／上报适配需要本机已有的独立凭证。
 
 先完成实现、验证及版本记录；明确发布新版本后按 [VERSIONING](VERSIONING.md) 更新版本和对应的 `docs/releases/vX.Y.Z.md`，审查并提交。**当前 VERSION 对应的标签若已存在，入口不会覆盖它来发布另一份源码。**
 
@@ -40,11 +40,13 @@ npm run release -- --images --pages --server --report --execute --source <完整
 
 GitHub 镜像／Pages 工作流从 main 触发；新触发时 main 必须精确等于所选源码，避免 Pages 发布了另一份代码。`--source` 固定恢复对象；本地 `--checks` 只检查 HEAD，旧源码依赖它自己的精确 CI。已有远端标签和正式 Release 必须指向固定源码，不移动标签、不重写历史、不强推。
 
+CLI 附件按 [CLI 发布说明](CLI_RELEASE.md) 单独构建和上传。`--release` 创建源码 Release。`--images` 构建 API／Web 镜像。
+
 ## 阶段与证据
 
 | 开关 | 实际执行与边界 |
 | --- | --- |
-| `--checks` | 本地版本、文档、类型及仓库 JS 测试。Go race／生产构建以精确源码 CI 为准，不假称本地已重跑 |
+| `--checks` | 本地版本、文档、类型、仓库 JS 和 Rust CLI 测试。Go race／生产构建以精确源码 CI 为准，不假称本地已重跑 |
 | `--push` | 仅推送所选已提交源码到 main，不自动暂存／提交，不强推 |
 | `--ci` | 等待同源码、main、push 事件、指定 CI 工作流成功；失败即停 |
 | `--release` | 校验或新建固定标签及正式 Release，正文读取该提交中的版本发布说明 |

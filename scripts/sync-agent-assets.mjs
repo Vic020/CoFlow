@@ -1,8 +1,10 @@
 import { copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { syncCLIReference } from "./sync-cli-reference.mjs";
 
 // Canonical source is one Skill directory; keep its relative references intact.
 const root = new URL("../", import.meta.url);
+await syncCLIReference(fileURLToPath(root), { check: true });
 const skill = await readFile(new URL("skills/coflow/SKILL.md", root), "utf8");
 const version = skill.match(/^  version: "(\d+\.\d+\.\d+)"$/m)?.[1];
 if (!version)
@@ -20,6 +22,10 @@ console.log(
 await copyFile(
   new URL("docs/openapi.yaml", root),
   new URL("../openapi.yaml", destination),
+);
+await copyFile(
+  new URL("scripts/install-cli.sh", root),
+  new URL("../install-cli.sh", destination),
 );
 // Existing installed prompts can discover the new entry without a second Skill.
 for (const legacy of ["coflow-report", "coflow-todo"]) {

@@ -38,3 +38,6 @@ apps/web/out/
 
 # Independent hot-reload output for the persistent local team environment.
 apps/web/.next-team/
+
+# Rust CLI build output.
+/apps/cli/target/

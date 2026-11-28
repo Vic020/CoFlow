@@ -60,6 +60,7 @@ type CollaborationUpdate struct {
 }
 
 type Comment struct {
+	ParentID  string             `json:"parent_id"`
 	ID        string             `json:"id"`
 	ReportID  string             `json:"report_id"`
 	AuthorID  string             `json:"author_id"`

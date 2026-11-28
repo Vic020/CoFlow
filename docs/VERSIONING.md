@@ -1,6 +1,6 @@
 # 版本管理
 
-当前版本：**0.6.0**。
+当前版本：**0.7.0**。
 
 ## 规则
 
@@ -18,7 +18,7 @@
 | `VERSION`                              | 当前项目版本                  |
 | 根目录 `package.json`                  | 项目版本                      |
 | `apps/web/package.json`                | Web 版本                      |
-| `apps/cli/package.json`                | CLI 版本，`--version` 的来源  |
+| `apps/cli/Cargo.toml`、`Cargo.lock`     | CLI 版本和锁定记录，`--version` 读取 Cargo 包版本  |
 | `package-lock.json`                    | 根项目与 workspace 的锁定记录 |
 | `apps/api/internal/version/version.go` | Go API 版本，健康检查响应使用 |
 | `docs/openapi.yaml`                    | API 协议版本                  |
@@ -39,9 +39,10 @@ npm run version:check
 2. 维护者明确要求版本变更后，同步上述记录、生产 Compose 镜像标签及适用版本文档，将 Unreleased 整理为对应版本；在 `docs/releases/` 编写发布说明。
 3. 再次执行版本检查，提交并推送经过审查的源码。只有明确要求发布时，才为目标提交创建标签和 GitHub Release；不要把本机未提交状态当成发布源码。
 4. Release 只附公开源码或经检查的公开产物；不附私密镜像配置、数据库、凭证、会话或本机 QA 输出。
-5. 需要更新运行实例时，单独按[部署指南](DEPLOYMENT.md)备份、升级和验收；需要更新公开演示时，单独手动运行 [Pages 工作流](GITHUB_PAGES.md)。
+5. 需要发布 CLI 附件时，按 [CLI 打包与发布](CLI_RELEASE.md) 构建同一标签的二进制并核对校验文件。
+6. 需要更新运行实例时，单独按[部署指南](DEPLOYMENT.md)备份、升级和验收；需要更新公开演示时，单独手动运行 [Pages 工作流](GITHUB_PAGES.md)。
 
-0.6.0 的实际变化与验证范围见[发布说明](releases/v0.6.0.md)。历史发布说明保留当时的版本与事实，不随当前版本批量替换。
+0.7.0 的实际变化与验证范围见[发布说明](releases/v0.7.0.md)。历史发布说明保留当时的版本与事实，不随当前版本批量替换。
 
 README、Wiki、Projects 与发布说明的同步职责、页面映射和交付状态见[文档与 GitHub 维护流程](MAINTENANCE.md)。
 

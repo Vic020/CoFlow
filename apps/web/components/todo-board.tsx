@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { ReportCompose } from "./report-compose";
+import { TodoFollow } from "./todo-follow";
 import { NotificationCenter } from "./notification-center";
 import { loadTodoPages } from "@/lib/todo-loader";
 import { ApiError, Meta, Report, request, dateKey } from "@/lib/types";
@@ -849,6 +850,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                     ["agent", "Agent"],
                     ["skill", "Skill"],
                     ["api", "API"],
+                    ["cli", "CLI"],
                   ].map(([value, label]) => (
                     <TabsTrigger key={value} value={value}>
                       {tr(label)}
@@ -870,6 +872,7 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                           : "—"}
                       </span>
                       {selected.archived && <span>{tr("已归档")}</span>}
+                    {meta.mode !== "local-demo" && <TodoFollow key={selected.id} id={selected.id} />}
                     </div>
                     <TodoDetailFields
                       task={selected}
@@ -1404,6 +1407,17 @@ export function TodoBoard({ meta }: { meta: Meta }) {
                     {creationTab === "skill" && (
                       <AgentAccess
                         method="skill"
+                        meta={meta}
+                        onSelect={() => {}}
+                        onClose={() => setDraft(null)}
+                      />
+                    )}
+                  </TabsContent>
+                  <TabsContent value="cli">
+                    {creationTab === "cli" && (
+                      <AgentAccess
+                        method="cli"
+                        cliAction="todo"
                         meta={meta}
                         onSelect={() => {}}
                         onClose={() => setDraft(null)}

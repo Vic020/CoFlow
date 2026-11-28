@@ -76,7 +76,7 @@ CLI 与 MCP 标记为未来支持，接入方式排序靠后，后续复用相�
 
 ## 技术栈
 
-Next.js + TypeScript + Tailwind CSS + shadcn/ui + Lucide；Go + Gin；PostgreSQL + sqlc + pgx；REST + OpenAPI；Node.js CLI；Docker Compose。
+Next.js + TypeScript + Tailwind CSS + shadcn/ui + Lucide；Go + Gin；PostgreSQL + sqlc + pgx；REST + OpenAPI；Rust CLI；Docker Compose。
 
 业务逻辑与身份权限统一在 Go 中。Next.js 只负责前端与同源 API 转发。以本地验收为开发入口，以团队部署为最终目标。实例部署清单、域名、服务器、凭证和备份位置私下维护，不写入公开仓库。
 

@@ -10,7 +10,12 @@ export function DeleteAction({ path, updatedAt, onDeleted }: { path: string; upd
   const { t } = useI18n();
   const [confirm, setConfirm] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   return <span className="delete-action">
-    {!confirm ? <Button variant="ghost" size="sm" onClick={() => setConfirm(true)}><Trash2 size={14}/>{t("删除")}</Button> : <>
+    {!confirm ? (
+      <Button variant="ghost" size="sm" aria-label={t("删除")} title={t("删除")} onClick={() => setConfirm(true)}>
+        <Trash2 size={14} />
+        <span className="delete-action-label">{t("删除")}</span>
+      </Button>
+    ) : <>
       <span className="muted">{t("移至回收站？")}</span>
       <Button variant="ghost" size="sm" disabled={busy} onClick={async () => {
         setBusy(true); setError("");

@@ -51,7 +51,7 @@ func (p *Postgres) List(ctx context.Context, team string) ([]Report, error) {
 		v := FromDB(r)
 		for _, c := range cs {
 			if c.ReportID == v.ID {
-				v.Comments = append(v.Comments, Comment{ID: c.ID, ReportID: c.ReportID, AuthorID: c.AuthorID, Body: c.Body, CreatedAt: c.CreatedAt.Time})
+				v.Comments = append(v.Comments, Comment{ParentID: c.ParentID, ID: c.ID, ReportID: c.ReportID, AuthorID: c.AuthorID, Body: c.Body, CreatedAt: c.CreatedAt.Time})
 			}
 		}
 		out = append(out, v)

@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { syncCLIReference } from "./sync-cli-reference.mjs";
 
 // Read-only and offline: a successful check says nothing about remote Wiki content.
 export async function checkDocs(root) {
@@ -21,6 +22,9 @@ export async function checkDocs(root) {
     }
   }
   await walk(path.join(root, "docs"));
+  await walk(path.join(root, "skills/coflow"));
+  try { await syncCLIReference(root, { check: true }); }
+  catch (error) { errors.push(error.message); }
   for (const entry of await readdir(root)) {
     if (entry.endsWith(".md") && await exists(path.join(root, entry))) markdown.push(path.join(root, entry));
   }

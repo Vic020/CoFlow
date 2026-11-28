@@ -32,6 +32,7 @@ func conflict(message string) error { return &Error{409, message} }
 func notFound(message string) error { return &Error{404, message} }
 
 type Principal struct {
+	GrantID, GrantProject, GrantTodo string `json:"-"`
 	// SourceAgent is set only by trusted in-process execution, never from a request body.
 	SourceAgent string   `json:"-"`
 	UserID      string   `json:"user_id"`
@@ -51,6 +52,14 @@ func (p Principal) Can(scope string) bool {
 		}
 	}
 	return false
+}
+
+func (p Principal) LimitedGrant() bool {
+	return p.GrantProject != "" || p.GrantTodo != ""
+}
+
+func (p Principal) AllowsTodo(id, project string) bool {
+	return (p.GrantTodo == "" || p.GrantTodo == id) && (p.GrantProject == "" || p.GrantProject == project)
 }
 
 type Service struct {
@@ -201,7 +210,14 @@ func (s *Service) Authenticate(ctx context.Context, raw string, agent bool) (Pri
 		if err = s.Q.TouchAgentToken(ctx, v.ID); err != nil {
 			return Principal{}, err
 		}
-		return Principal{UserID: v.UserID, TeamID: v.TeamID, Role: v.Role, Kind: "token", Scopes: v.Scopes}, nil
+		p := Principal{UserID: v.UserID, TeamID: v.TeamID, Role: v.Role, Kind: "token", Scopes: v.Scopes}
+		if strings.HasPrefix(raw, "cf_cli_") {
+			p.GrantID = v.ID
+			if err = s.Pool.QueryRow(ctx, "SELECT cli_project_id,cli_todo_id FROM agent_tokens WHERE id=$1", v.ID).Scan(&p.GrantProject, &p.GrantTodo); err != nil {
+				return Principal{}, err
+			}
+		}
+		return p, nil
 	}
 	v, err := s.Q.SessionIdentity(ctx, Hash(raw))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -454,6 +470,14 @@ func (s *Service) CreateToken(ctx context.Context, p Principal, name string, sco
 	if len(scopes) == 0 {
 		scopes = []string{"reports:read", "reports:write"}
 	}
+	clean, err := validateTokenScopes(scopes)
+	if err != nil {
+		return nil, err
+	}
+	return s.issueToken(ctx, s.Q, p, name, clean, days, "cf_")
+}
+
+func validateTokenScopes(scopes []string) ([]string, error) {
 	seen := map[string]bool{}
 	clean := []string{}
 	for _, scope := range scopes {
@@ -477,8 +501,12 @@ func (s *Service) CreateToken(ctx context.Context, p Principal, name string, sco
 	if seen["context:write"] && !seen["context:read"] {
 		return nil, Invalid("Context 写入需要读取权限")
 	}
-	raw := secret("cf_")
-	row, err := s.Q.CreateAgentToken(ctx, db.CreateAgentTokenParams{ID: store.ID(), TeamID: p.TeamID, UserID: p.UserID, Name: name, TokenHash: Hash(raw), Prefix: raw[:11], Scopes: clean, ExpiresAt: stamp(time.Now().Add(time.Duration(days) * 24 * time.Hour))})
+	return clean, nil
+}
+
+func (s *Service) issueToken(ctx context.Context, q *db.Queries, p Principal, name string, clean []string, days int, prefix string) (map[string]any, error) {
+	raw := secret(prefix)
+	row, err := q.CreateAgentToken(ctx, db.CreateAgentTokenParams{ID: store.ID(), TeamID: p.TeamID, UserID: p.UserID, Name: name, TokenHash: Hash(raw), Prefix: raw[:11], Scopes: clean, ExpiresAt: stamp(time.Now().Add(time.Duration(days) * 24 * time.Hour))})
 	if err != nil {
 		return nil, err
 	}

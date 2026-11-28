@@ -110,7 +110,7 @@ func (q *Queries) GetReportIncludingDeleted(ctx context.Context, arg GetReportIn
 }
 
 const listComments = `-- name: ListComments :many
-SELECT comments.id, comments.report_id, comments.author_id, comments.body, comments.created_at, comments.deleted_at FROM comments JOIN reports ON reports.id=comments.report_id WHERE reports.team_id=$1 AND reports.deleted_at IS NULL AND comments.deleted_at IS NULL ORDER BY comments.created_at
+SELECT comments.id, comments.report_id, comments.author_id, comments.body, comments.created_at, comments.deleted_at, comments.parent_id FROM comments JOIN reports ON reports.id=comments.report_id WHERE reports.team_id=$1 AND reports.deleted_at IS NULL AND comments.deleted_at IS NULL ORDER BY comments.created_at
 `
 
 func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, error) {
@@ -129,6 +129,7 @@ func (q *Queries) ListComments(ctx context.Context, teamID string) ([]Comment, e
 			&i.Body,
 			&i.CreatedAt,
 			&i.DeletedAt,
+			&i.ParentID,
 		); err != nil {
 			return nil, err
 		}

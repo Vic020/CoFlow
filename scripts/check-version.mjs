@@ -23,13 +23,14 @@ const records = [];
 for (const path of [
   "package.json",
   "apps/web/package.json",
-  "apps/cli/package.json",
 ]) {
   records.push([path, JSON.parse(await text(path)).version]);
 }
+records.push(["Rust CLI", (await text("apps/cli/Cargo.toml")).match(/^version = "([^"]+)"/m)?.[1]]);
+records.push(["Cargo.lock", (await text("apps/cli/Cargo.lock")).match(/^name = "coflow"\nversion = "([^"]+)"/m)?.[1]]);
 const lock = JSON.parse(await text("package-lock.json"));
 records.push(["package-lock.json", lock.version]);
-for (const key of ["", "apps/web", "apps/cli"])
+for (const key of ["", "apps/web"])
   records.push([
     `package-lock.json:${key || "root"}`,
     lock.packages[key].version,

@@ -3,7 +3,8 @@
 import { useAssistant } from "./assistant-provider";
 import { useI18n } from "@/components/i18n-provider";
 import { useEffect, useRef, useState } from "react";
-import { ChevronUp, Loader2, LogOut, UserRound, Settings2 } from "lucide-react";
+import { ChevronUp, Loader2, LogOut, UserRound, Settings2, Terminal } from "lucide-react";
+import Link from "next/link";
 import { AccountLanguage } from "@/components/account-language";
 import { useAuth } from "@/components/auth-gate";
 import appPackage from "@/package.json";
@@ -94,6 +95,10 @@ export function AccountMenu({
             <Settings2 size={15} />
             {tr("个人 AI 设定")}
           </button>
+          <Link href={auth.mode === "team" ? "/credentials" : "/cli"} onClick={() => setOpen(false)}>
+            <Terminal size={15} />
+            {tr("CLI 接入")}
+          </Link>
           <AccountLanguage />
           {auth.mode !== "local-demo" && (
             <button

@@ -129,6 +129,18 @@ func registerTodos(r *gin.RouterGroup, s *workspace.Service) {
 		}
 		c.JSON(200, v)
 	})
+	r.POST("/api/v1/todo-schedules/batch", sessionOnly, func(c *gin.Context) {
+		var in workspace.TodoScheduleBatch
+		if !decode(c, &in) {
+			return
+		}
+		out, err := s.ChangeTodoSchedules(c.Request.Context(), principal(c), in)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"items": out})
+	})
 	change := func(c *gin.Context) {
 		var in workspace.TodoInput
 		if !decode(c, &in) {

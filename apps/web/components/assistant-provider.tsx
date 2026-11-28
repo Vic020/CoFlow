@@ -22,6 +22,7 @@ import {
   type AIConfig,
   type AITurn,
   type AIAction,
+  type AIActionDecision,
   type AIConversation,
   type AITemplate,
   type AIPendingRequest,
@@ -74,7 +75,7 @@ type State = ReturnType<typeof useAIOperations> & {
   cancel: () => void;
   refresh: () => Promise<void>;
   saveDraft: (action: AIAction, title: string, body: string) => Promise<void>;
-  act: (action: AIAction, decision: "confirm" | "cancel") => Promise<void>;
+  act: (action: AIAction, decision: AIActionDecision) => Promise<void>;
   conversations: AIConversation[];
   openConversation: (id: string) => Promise<void>;
   newConversation: () => void;
@@ -284,7 +285,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
       id.current = c.id;
       selected.current = c.config_id;
       updateConfig(c.config_id);
-      setTurns(c.turns || []);
+      setTurns((c.turns ?? []).map((turn) => ({ ...turn, actions: turn.actions ?? [] })));
       retry.current = c.unanswered
         ? { ...c.unanswered, conversation_id: c.id }
         : null;
@@ -403,6 +404,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
         );
       }
       if (!alive.current) return;
+      const turn = { ...v.turn, actions: v.turn.actions ?? [] };
       id.current = v.conversation_id;
       void request<AIConversation>(
         `/assistant/conversations/${encodeURIComponent(v.conversation_id)}`,
@@ -412,10 +414,12 @@ function AssistantScope({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
       setTurns((xs) =>
-        xs.some((t) => t.request_id === v.turn.request_id)
-          ? xs
-          : [...xs, v.turn],
+        xs.some((t) => t.request_id === turn.request_id)
+          ? xs.map((t) => t.request_id === turn.request_id ? turn : t)
+          : [...xs, turn],
       );
+      if (turn.actions.some((action) => action.state === "done"))
+        window.dispatchEvent(new Event("coflow:assistant-change"));
       retry.current = null;
       success = true;
       void loadConversations().catch(() => {});
@@ -450,7 +454,7 @@ function AssistantScope({ children }: { children: ReactNode }) {
         })),
       );
   }
-  async function act(action: AIAction, decision: "confirm" | "cancel") {
+  async function act(action: AIAction, decision: AIActionDecision) {
     if (acting.current) return;
     acting.current = true;
     setError("");

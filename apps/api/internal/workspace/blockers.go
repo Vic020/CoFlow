@@ -314,6 +314,9 @@ func delegatedWrite(ctx context.Context, tx pgx.Tx, p identity.Principal, b *Tod
 func allowedTodoActions(ctx context.Context, tx pgx.Tx, p identity.Principal, b *TodoBoard, t Todo) []string {
 	out := []string{}
 	for _, action := range []string{"edit", "move", "schedule"} {
+		if p.LimitedGrant() && action == "move" {
+			continue
+		}
 		in := TodoInput{Action: action}
 		if action == "schedule" {
 			in.Action = "edit"

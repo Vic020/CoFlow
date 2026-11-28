@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Context drafts include source citations and structured tool arguments. Keep their
-// bounded output allowance separate from ordinary chat; never retry paid calls automatically.
+// bounded output allowance separate from ordinary chat.
 type contextOutputBudget struct{}
 
 func outputTokenBudget(ctx context.Context) int {
@@ -55,6 +57,44 @@ func tools() []tool {
 		{"propose_report", "Prepare an editable delivery brief for confirmation, linked to verified Todo IDs. Read source evidence first; do not mark unverified work delivered.", map[string]any{"title": prop("string"), "body": prop("string"), "project_id": prop("string"), "todo_ids": map[string]any{"type": "array", "items": prop("string"), "maxItems": 20}}, []string{"title", "body"}},
 	}
 }
+
+// Retry only explicit transient HTTP responses before decoding or emitting any output.
+type transientProviderError struct {
+	error
+	delay time.Duration
+}
+
+func (e *transientProviderError) Unwrap() error { return e.error }
+
+func (s *Service) callWithRetry(ctx context.Context, c Config, key string, messages []map[string]any, tools []tool, remaining, retried *int) (string, []toolCall, []map[string]any, error) {
+	for {
+		text, calls, continuation, err := s.call(ctx, c, key, messages, tools)
+		var transient *transientProviderError
+		if !errors.As(err, &transient) {
+			return text, calls, continuation, err
+		}
+		if *remaining == 0 {
+			return text, calls, continuation, transient.error
+		}
+		delay := transient.delay
+		if delay == 0 {
+			delay = time.Duration(1<<min(*retried, 2)) * 500 * time.Millisecond
+		}
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= delay+time.Second {
+			return text, calls, continuation, transient.error
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return "", nil, nil, ctx.Err()
+		}
+		*remaining--
+		*retried++
+	}
+}
+
 func (s *Service) call(ctx context.Context, c Config, key string, messages []map[string]any, ts []tool) (string, []toolCall, []map[string]any, error) {
 	endpointPath := "/chat/completions"
 	payload := map[string]any{"model": c.Model, "messages": messages, "max_tokens": outputTokenBudget(ctx), "stream": false}
@@ -118,7 +158,26 @@ func (s *Service) call(ctx context.Context, c Config, key string, messages []map
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", nil, nil, invalid(fmt.Sprintf("模型服务返回 HTTP %d，请检查配置、余额或限流", resp.StatusCode))
+		failure := invalid(fmt.Sprintf("模型服务返回 HTTP %d，请检查配置、余额或限流", resp.StatusCode))
+		switch resp.StatusCode {
+		case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+			var delay time.Duration
+			if raw := resp.Header.Get("Retry-After"); raw != "" {
+				if seconds, err := strconv.Atoi(raw); err == nil && seconds >= 0 {
+					if seconds > 10 {
+						return "", nil, nil, failure
+					}
+					delay = time.Duration(seconds) * time.Second
+				} else if date, err := http.ParseTime(raw); err == nil {
+					delay = max(time.Until(date), 0)
+					if delay > 10*time.Second {
+						return "", nil, nil, failure
+					}
+				}
+			}
+			failure = &transientProviderError{error: failure, delay: delay}
+		}
+		return "", nil, nil, failure
 	}
 	var raw []byte
 	if emit, ok := ctx.Value(streamContext{}).(func(string)); ok && strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {

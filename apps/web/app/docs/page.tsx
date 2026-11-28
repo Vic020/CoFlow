@@ -16,6 +16,8 @@ export default async function DocsPage() {
     "references/todos.md",
     "references/calendar.md",
     "references/context.md",
+    "references/cli.md",
+    "references/cli-commands.md",
   ];
   const skillFiles = await Promise.all(
     files.map(async (name) => ({

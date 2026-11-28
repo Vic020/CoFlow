@@ -100,6 +100,24 @@ func (s *Service) ChangeConversation(ctx context.Context, p identity.Principal, 
 		args = append(args, title)
 		sql += ` AND deleted_at IS NULL`
 	}
+	if action == "delete" {
+		tx, err := s.Pool.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(ctx)
+		tag, err := tx.Exec(ctx, sql, args...)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() != 1 {
+			return conflict()
+		}
+		if _, err = tx.Exec(ctx, `DELETE FROM assistant_conversation_shares WHERE conversation_id=$1`, id); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
 	tag, e := s.Pool.Exec(ctx, sql, args...)
 	if e == nil && tag.RowsAffected() != 1 {
 		return conflict()

@@ -72,11 +72,13 @@ export function AgentAccess({
   meta,
   onSelect,
   onClose,
+  cliAction = "report",
 }: {
   method: Exclude<ReportTab, "manual">;
   meta: Meta;
   onSelect: (tab: ReportTab) => void;
   onClose: () => void;
+  cliAction?: "report" | "todo";
 }) {
   const { t: tr } = useI18n();
   const {
@@ -114,13 +116,36 @@ export function AgentAccess({
     2,
   );
   const apiCommand = `export COFLOW_URL=${shellQuote(service)}\ncurl --fail-with-body "$COFLOW_URL/api/v1/reports" \\\n  -H 'Content-Type: application/json' \\\n${demo ? "" : '  -H "Authorization: Bearer $COFLOW_TOKEN" \\\n'}  --data-binary @report.json`;
+  if (method === "cli") {
+    const command = cliAction === "todo" ? "todo create" : "report upsert";
+    return (
+      <section className="report-method">
+        <h3>CoFlow CLI</h3>
+        <p className="report-method-note">
+          {cliAction === "todo"
+            ? tr("在终端创建任务。先查看示例和权限要求。")
+            : tr("在终端提交进展。先查看示例和权限要求。")}
+        </p>
+        <CopyBlock label="CLI" rows={2} value={`coflow help ${command}`} />
+        {publicDemo && (
+          <p className="muted">
+            {tr("公开演示仅供浏览。请在自己的 CoFlow 实例中登录。")}
+          </p>
+        )}
+        <Button asChild size="sm" variant="outline">
+          <Link href="/cli" onClick={onClose}>
+            <Download size={15} />
+            {tr("CLI 下载与接入")}
+          </Link>
+        </Button>
+      </section>
+    );
+  }
   if (publicDemo && method !== "skill")
     return (
       <section className="report-method">
         <h3>
-          {method === "cli" || method === "mcp"
-            ? tr("未来支持")
-            : tr("在自有实例中接入 Agent")}
+          {method === "mcp" ? tr("未来支持") : tr("在自有实例中接入 Agent")}
         </h3>
         <p className="muted">{tr("公开演示没有上报接口，也不接收凭证。")}</p>
         <Button variant="outline" asChild>
@@ -220,11 +245,11 @@ export function AgentAccess({
         </div>
       </section>
     );
-  if (method === "mcp" || method === "cli")
+  if (method === "mcp")
     return (
       <section className="report-method report-mcp-state">
         <h3>
-          {method === "mcp" ? "MCP" : "CLI"}
+          MCP
           {tr("暂未提供")}
         </h3>
         <p className="report-method-note">

@@ -33,7 +33,7 @@ export function ReportHub({
     <>
       <DialogTitle className="modal-title">{tr("上报进展")}</DialogTitle>
       <DialogDescription className="sr-only">
-        {tr("选择手动填写或通过 Agent、Skill、API 上报。CLI 与 MCP 未来支持。")}
+        {tr("选择手动填写或通过 Agent、Skill、API、CLI 上报。")}
       </DialogDescription>
       <Tabs
         value={tab}

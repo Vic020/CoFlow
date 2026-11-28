@@ -215,7 +215,9 @@ test("full pipeline and resume use only simulated GitHub/registry/hooks; plan pe
     );
   for (const [file, text] of Object.entries({
     VERSION: "0.4.1\n",
+    "apps/cli/Cargo.toml": "[package]\nname = \"coflow\"\nversion = \"0.4.1\"\n",
     ".gitignore": ".local/\n",
+    "scripts/synthetic.test.mjs": "import { test } from \"node:test\"; test(\"source check\", () => {});\n",
     "docs/releases/v0.4.1.md": "# Synthetic release\n",
     "docs/openapi.yaml": "openapi: 3.1.0\n",
     "skills/coflow/SKILL.md": "# Synthetic skill\n",
@@ -262,7 +264,8 @@ if(name==='git'){
  if(args[0]==='push'){if(args.at(-1).includes('tags')){c.tag=true;save();}}
  else if(args[0]==='ls-remote'){if(args.includes('refs/heads/main')||c.tag)console.log(sha+'\\t'+args.at(-1));}
  else process.stdout.write(execFileSync(process.env.QA_GIT,args,{encoding:'utf8'}));
-}else if(args[0]==='workflow'){const n=args[2].replace('.yml','');c.runs[n]=run(n);save();}
+}else if(name==='cargo'||name==='npm'){}
+else if(args[0]==='workflow'){const n=args[2].replace('.yml','');c.runs[n]=run(n);save();}
 else if(args[0]==='release'){if(args[1]!=='create')throw Error('unexpected release operation');c.release=true;save();}
 else if(args[0]==='api'){
  const u=args[1];let result;
@@ -274,7 +277,7 @@ else if(args[0]==='api'){
  else throw Error('unexpected API request');
  console.log(JSON.stringify(result));
 }else throw Error('unexpected command');`;
-  for (const name of ["git", "gh"])
+  for (const name of ["git", "gh", "npm", "cargo"])
     writeFileSync(path.join(bin, name), shim, { mode: 0o700 });
   const loader = path.join(root, ".local/release/network.mjs");
   writeFileSync(
@@ -329,6 +332,7 @@ else if(args[0]==='api'){
     false,
   );
   const flags = [
+    "--checks",
     "--push",
     "--release",
     "--images",
@@ -347,6 +351,9 @@ else if(args[0]==='api'){
   assert.equal(Object.keys(s.images).length, 2);
   assert.match(invoke(flags), /server: previously verified/);
   const calls = JSON.parse(readFileSync(cloud)).calls;
+  assert.deepEqual(calls.filter(([command]) => command === "cargo"), [
+    ["cargo", "test", "--locked", "--manifest-path", "apps/cli/Cargo.toml"],
+  ]);
   assert.equal(
     calls.filter((c) => c[0] === "gh" && c[1] === "workflow").length,
     2,

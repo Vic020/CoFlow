@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.6.0-087354" alt="Version 0.6.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.0-087354" alt="Version 0.7.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -15,6 +15,7 @@
   <a href="#agent-接入">Agent 接入</a> ·
   <a href="#路线图">产品路线图</a> ·
   <a href="https://github.com/Vic020/CoFlow/wiki">使用指南</a> ·
+  <a href="#coflow-cli">CLI</a> ·
   <a href="https://github.com/Vic020/CoFlow/releases">Releases</a> ·
   <a href="CHANGELOG.md">更新日志</a> ·
   <a href="docs/DEVELOPMENT.md">开发指南</a>
@@ -53,7 +54,7 @@ AI 配置在表单内先验证再保存；仅改名称或默认项可沿用验�
 
 **自 0.5.3 起：** 首轮回复前即可查看新会话，未完成输入保留供手动重试；模板项目／领域／成员参数匹配现有选项，使用模板后直接发起新会话，见 [AI 助手说明](docs/ASSISTANT_V0.4.md)。
 
-> **当前版本：0.6.0。**
+> **当前版本：0.7.0。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -113,7 +114,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 
 **Timeline 管进展，Todo 管行动，Calendar 管时间，AI 助手串联操作，Context 沉淀知识，数据统计回顾推进与交付。**
 
-当前版本为 **0.6.0**，包含 Timeline、Todo、Calendar、AI 助手与 Context。0.6.0 提供统计首版；其余模型协议与外部写工具继续独立规划。
+**0.7.0** 新增 Rust CLI、个人动态、助手会话分享与动作授权。详见[发布说明](docs/releases/v0.7.0.md)。
 
 | 版本 | 状态 | 目标 |
 | --- | --- | --- |
@@ -123,6 +124,7 @@ Timeline、Todo、Calendar 现共用顶栏的项目、领域和成员筛选。�
 | **0.4 · AI 助手** | 首版可用（0.4.0） | 三个常见任务、团队／个人配置、Chat Completions 与 Responses 适配；[使用与边界](docs/ASSISTANT_V0.4.md) |
 | **0.5 · Context** | 已实现（0.5.0） | 沉淀跨模块重点，作为团队与 AI 的长期知识库 |
 | **0.6 · 数据统计** | 已实现（0.6.0） | 进展、任务流转与交付趋势，支持筛选与原始记录回溯 |
+| **0.7 · CLI 与 Activity** | 已实现（0.7.0） | Rust CLI、设备授权、个人动态及助手会话分享 |
 
 详细范围与验收标准见[版本工作计划](docs/ROADMAP.md)；0.2 的具体实施见[Todo 功能与实施计划](docs/TODO_V0.2.md)。
 
@@ -145,13 +147,29 @@ npm run dev
 
 需要持久化本地团队、真实登录及 AI 配置时，执行 `npm run local:team -- up`，打开 [127.0.0.1:3103](http://127.0.0.1:3103)。与原有离线演示分开，登录信息只保存在忽略的 `.local/local-team/`；启动、停止、备份与热更新见[本地部署模拟](docs/LOCAL_TEAM.md)，不会自动导入或调用厂商 Key。
 
+## CoFlow CLI
+
+仓库尚未发布的源码已包含 Rust CLI。在仓库根目录使用 Rust 1.83 或更新版本安装，再连接你的 CoFlow 团队站点。
+
+```sh
+cargo install --path apps/cli --locked --root "$HOME/.coflow"
+export PATH="$HOME/.coflow/bin:$PATH"
+coflow auth login --server https://coflow.example.com
+coflow whoami --server https://coflow.example.com
+coflow help --json
+```
+
+打开终端给出的网页，在网页核对账号、空间和权限。安装后的 `coflow` 可独立运行。预编译包以具体版本的 Release 附件为准。[CLI 使用指南](skills/coflow/references/cli.md) · [CLI 打包与发布](docs/CLI_RELEASE.md)
+
+如果 Release 已提供 CLI 安装包，可使用[安装脚本](scripts/install-cli.sh)。脚本会校验下载内容并安装到 `~/.coflow/bin`。
+
 ## Agent 接入
 
 Todo 卡片按优先级显示左边框：无色、蓝（低）、黄（中）、红（高）。
 
 0.2.1 加载优化：团队上下文与列表复用按身份隔离的 10 秒内存缓存，并合并进行中请求；写入、会话变化等会清理。Todo 仅加载所需数据，跨列查询并完整分页；私有 API 继续 `no-store`。详见[加载与缓存](docs/TROUBLESHOOTING.md#页面加载与缓存)。
 
-0.2.1 可从侧栏「协作指南」或 Skill 接入中的「阅读协作指南」直接打开平台 Docs。公开 `/docs` 页面由仓库指南静态生成，不加载团队数据。其中「CoFlow Skill」展示能力、随实例提供的版本与接入入口，可切换阅读入口和四份参考文件（含 Calendar 说明）、复制和下载。
+0.2.1 可从侧栏「协作指南」或 Skill 接入中的「阅读协作指南」直接打开平台 Docs。公开 `/docs` 页面由仓库指南静态生成，不加载团队数据。其中「CoFlow Skill」展示能力、随实例提供的版本与接入入口，可切换阅读入口及参考文件（含 CLI 使用指南和命令表）、复制和下载。
 
 协作理念、按工具接入、页面操作与日常工作方案见 [CoFlow 协作指南](docs/COLLABORATION_GUIDE.md)，覆盖 Codex、Claude Code、Cursor 与 Gemini CLI，附官方依据及相应 Skill 版本要求。
 
@@ -161,9 +179,9 @@ Todo 卡片按优先级显示左边框：无色、蓝（低）、黄（中）、
 
 增强后的 Skill 上报具体工作时，也会复用或补齐进行中、已确认待办与已结束工作的 Todo，并关联简报。多次上报复用同一任务，已交付但待验收的保留待确认。这是客户端流程，保留用户明确仅上报及权限缺失时的处理；API 不会自动创建任务。
 
-统一 Skill 当前为 **v1.6.0**（从 1.0.0 开始独立计版），不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
+统一 Skill 当前为 **v1.7.0**（从 1.0.0 开始独立计版），不带 `dev`，与应用版本分开维护。`metadata.version` 覆盖入口及全部参考文件：修正递增补丁号，兼容能力增加递增次版本号，不兼容的流程或配置变化递增主版本号。只有明确执行版本更新时才调整，应用发布本身不改变 Skill 版本。更新时替换整套文件，保留原项目关联与凭证。
 
-[Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
+[Agent Skill](skills/coflow/SKILL.md) · [CLI 使用指南](skills/coflow/references/cli.md) · [OpenAPI](docs/openapi.yaml) · [简报示例](docs/example-report.json) · [使用指南](https://github.com/Vic020/CoFlow/wiki/Home-zh-CN)
 
 ## 部署与备份
 
@@ -186,7 +204,7 @@ Pages 使用独立构建标记静态导出；普通构建仍为 Next.js standalo
 | 界面 | Tailwind CSS、shadcn/ui 组件模式、Radix、Lucide   |
 | 后端 | Go、Gin                                           |
 | 数据 | PostgreSQL、pgx、sqlc；本地演示可使用 JSON 持久化 |
-| 接入 | HTTP API、OpenAPI、Agent Skill；助手支持只读 MCP Client，CLI／对外 MCP Server 继续规划       |
+| 接入 | HTTP API、OpenAPI、Agent Skill、待发布的 Rust CLI；助手支持只读 MCP Client       |
 
 ## 项目结构
 
@@ -195,12 +213,12 @@ CoFlow/
 ├── apps/
 │   ├── web/          # Next.js 响应式界面
 │   ├── api/          # Go API、存储实现、SQL 与测试
-│   └── cli/          # CLI 原型，未来支持
+│   └── cli/          # Rust CLI
 ├── skills/           # Agent 上报规范
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.6.0
+├── VERSION           # 当前版本：0.7.0
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 

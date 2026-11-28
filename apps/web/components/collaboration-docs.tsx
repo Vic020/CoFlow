@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Copy, Download } from "lucide-react";
+import { ArrowRight, Check, Copy, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { CoFlowLogo } from "@/components/coflow-logo";
+import { DocsHeader } from "./docs-header";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { publicBasePath, repositoryURL, publicDemo } from "@/lib/runtime";
@@ -109,6 +109,8 @@ const skillLabels = [
   "Todo 管理",
   "Calendar",
   "Context",
+  "CLI 使用指南",
+  "CLI 命令表",
 ];
 
 function SkillShowcase({ files }: { files: SkillFile[] }) {
@@ -155,7 +157,7 @@ function SkillShowcase({ files }: { files: SkillFile[] }) {
       </ul>
       <p className="docs-skill-note">
         {t(
-          "一个 Skill，四份文件。以下展示本实例随构建提供的完整内容；更新时需同步入口与全部参考文件。",
+          "以下展示本实例提供的 Skill 入口与参考文件。更新时请一并替换。",
         )}
       </p>
       <p className="docs-skill-note">
@@ -284,19 +286,7 @@ export function CollaborationDocs({
   );
   return (
     <div className="collaboration-docs">
-      <header className="docs-header">
-        <Link href="/" className="docs-brand">
-          <CoFlowLogo />
-          <strong>CoFlow</strong>
-          <span>Docs</span>
-        </Link>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/todo">
-            <ArrowLeft size={14} />
-            {t("返回工作空间")}
-          </Link>
-        </Button>
-      </header>
+      <DocsHeader page="docs" />
       <div className="docs-layout">
         <aside className="docs-toc">
           <p>{t("本页目录")}</p>

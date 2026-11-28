@@ -22,3 +22,5 @@ playwright-report
 **/.next-pages
 **/.next-team
 apps/web/out
+
+apps/cli/target

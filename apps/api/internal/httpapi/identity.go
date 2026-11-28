@@ -55,6 +55,25 @@ func requirePrincipal(cfg Config) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		if user, team := c.GetHeader("X-CoFlow-CLI-User"), c.GetHeader("X-CoFlow-CLI-Team"); user != "" || team != "" {
+			if p.Kind != "session" || user != p.UserID || team != p.TeamID {
+				fail(c, &identity.Error{Status: 409, Message: "账号或空间已切换，请重新查看请求"})
+				c.Abort()
+				return
+			}
+		}
+		if p.LimitedGrant() {
+			route := c.FullPath()
+			method := c.Request.Method
+			allowed := method == http.MethodGet && (route == "/api/v1/meta" || route == "/api/v1/todo-board" || route == "/api/v1/todos" || route == "/api/v1/todos/:id") ||
+				method == http.MethodPatch && route == "/api/v1/todos/:id" ||
+				method == http.MethodPost && route == "/api/v1/cli/revoke"
+			if !allowed {
+				fail(c, identity.Denied("此授权仅限指定范围的 Todo"))
+				c.Abort()
+				return
+			}
+		}
 		c.Set("principal", p)
 		c.Next()
 	}

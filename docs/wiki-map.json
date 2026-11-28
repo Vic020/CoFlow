@@ -15,7 +15,8 @@
       "zh-CN": "Quick-Start-zh-CN",
       "sources": [
         "docs/USAGE.md",
-        "docs/DEPLOYMENT.md"
+        "docs/DEPLOYMENT.md",
+        "docs/CLI_PLAN.md"
       ]
     },
     {

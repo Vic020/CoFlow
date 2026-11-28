@@ -132,7 +132,7 @@ git diff --cached --stat
 
 ## 7. 检查与 CI：避免把等待变成对话循环
 
-CI、镜像和 Pages 统一使用 `ubuntu-24.04`，避免 `ubuntu-latest` 自动迁移改变构建环境。第三方 Action 固定完整提交 SHA，并注释已核验的发布版本；升级时核对官方运行时、输入和权限要求。当前 JavaScript Action 使用原生 Node.js 24，Pages 上传的组合 Action 所引用的上传工具也必须检查。项目的 `node-version: 24` 只控制构建环境，不能替代 Action 自身运行时升级。镜像流程不安装 npm 依赖，显式关闭 setup-node 自动缓存；CI／Pages 保留 npm 缓存。
+Web／Go CI、镜像和 Pages 使用 `ubuntu-24.04`，避免 `ubuntu-latest` 自动迁移改变构建环境。第三方 Action 固定完整提交 SHA，并注释已核验的发布版本；升级时核对官方运行时、输入和权限要求。当前 JavaScript Action 使用原生 Node.js 24，Pages 上传的组合 Action 所引用的上传工具也必须检查。项目的 `node-version: 24` 只控制构建环境，不能替代 Action 自身运行时升级。镜像流程不安装 npm 依赖，显式关闭 setup-node 自动缓存；CI／Pages 保留 npm 缓存。Rust CLI 在 `ubuntu-24.04` 和 `macos-15` 上执行测试；发布归档也使用这两个平台。
 
 按变化选择检查，记录一次结果，不让所有 Agent 重跑同一套：
 
@@ -144,7 +144,7 @@ CI、镜像和 Pages 统一使用 `ubuntu-24.04`，避免 `ubuntu-latest` 自动
 | 协议／Skill | 规范、生成副本、相关 Agent／演示测试 |
 | 新发布源码 | 相称本地检查，加该精确源码的完整远端 main push CI |
 
-**当前事实：** `.github/workflows/ci.yml` 仍会在 main push／PR 上执行 Web 和 Go 全套检查。纯文档按路径裁剪 CI **尚未实现**；本手册不修改工作流。若要优化，另行审查 required checks、分支保护和发布门槛，不能只加跳过条件导致检查永远 pending 或错误放行。
+**当前事实：** `.github/workflows/ci.yml` 仍会在 main push／PR 上执行 Web、Go 和 Rust CLI 检查。纯文档按路径裁剪 CI **尚未实现**；本手册不修改工作流。若要优化，另行审查 required checks、分支保护和发布门槛，不能只加跳过条件导致检查永远 pending 或错误放行。
 
 执行规则：
 

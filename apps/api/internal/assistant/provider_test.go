@@ -180,3 +180,20 @@ func TestProviderNetworkDiagnostics(t *testing.T) {
 		}
 	}
 }
+
+func TestModelRetrySkipsPermanentErrorsAndDisabledBudget(t *testing.T) {
+	for _, item := range []struct{ status, budget int }{{401, 5}, {503, 0}, {429, 0}} {
+		count := 0
+		s := &Service{Client: &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
+			count++
+			r := response("{}")
+			r.StatusCode = item.status
+			return r, nil
+		})}}
+		budget, retried := item.budget, 0
+		_, _, _, err := s.callWithRetry(context.Background(), Config{BaseURL: "https://models.example.com"}, "synthetic-key", nil, nil, &budget, &retried)
+		if err == nil || count != 1 || retried != 0 || budget != item.budget {
+			t.Fatalf("status %d budget %d: calls=%d retries=%d error=%v", item.status, item.budget, count, retried, err)
+		}
+	}
+}

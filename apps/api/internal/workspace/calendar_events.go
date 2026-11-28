@@ -356,6 +356,11 @@ func (s *Service) ChangeCalendarEvent(ctx context.Context, p identity.Principal,
 					b.CalendarEvents = append(b.CalendarEvents, v)
 				}
 			}
+			if tx != nil {
+				if err := notifyCalendar(ctx, tx, p, v); err != nil {
+					return err
+				}
+			}
 			out = v
 		}
 		raw, _ := json.Marshal(out)

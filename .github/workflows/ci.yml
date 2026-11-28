@@ -22,6 +22,7 @@ jobs:
       - run: npm run docs:check
       - run: npm run test:release
       - run: npm run test:images
+      - run: node --test scripts/install-cli.test.mjs
       - run: npm run test:local-team
       - run: npm run test:i18n
       - run: npm run test:agent
@@ -38,6 +39,19 @@ jobs:
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+  cli:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: cargo fmt --manifest-path apps/cli/Cargo.toml --check
+      - run: cargo test --locked --manifest-path apps/cli/Cargo.toml
+      - run: cargo clippy --locked --manifest-path apps/cli/Cargo.toml --all-targets -- -D warnings
   api:
     strategy:
       fail-fast: false

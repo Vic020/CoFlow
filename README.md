@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.6.0-087354" alt="Version 0.6.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.0-087354" alt="Version 0.7.0" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -14,6 +14,7 @@
   <a href="#roadmap">Roadmap</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="https://github.com/Vic020/CoFlow/wiki">User guide</a> ·
+  <a href="#coflow-cli">CLI</a> ·
   <a href="https://github.com/Vic020/CoFlow/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -51,7 +52,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.6.0.**
+> **Current version: 0.7.0.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -109,7 +110,7 @@ Current Timeline, Todo, Calendar and AI Assistant views, captured on November 7,
 
 **Timeline tracks progress. Todo tracks action. Calendar tracks time. AI connects the work. Context preserves knowledge. Analytics reviews progress and delivery.**
 
-The current version is **0.6.0**, including Timeline, Todo, Calendar, AI Assistant and Context. Data statistics are available in 0.6.0. Further model adapters and external write tools remain separate roadmap work.
+Version **0.7.0** adds the Rust CLI, a personal activity feed and assistant sharing and approval controls. See the [release notes](docs/releases/v0.7.0.md). Further model adapters and external write tools remain separate roadmap work.
 
 | Version | Status | Focus |
 | --- | --- | --- |
@@ -119,6 +120,7 @@ The current version is **0.6.0**, including Timeline, Todo, Calendar, AI Assista
 | **0.4 · AI Assistant** | Available (0.4.0, first release) | Three common tasks, shared/personal settings, Chat Completions and Responses adapters; [usage and limits](docs/ASSISTANT_V0.4.md) |
 | **0.5 · Context** | Available (0.5.0) | Capture important cross-module knowledge for teams and AI |
 | **0.6 · Statistics** | Available (0.6.0) | Progress, task flow, and delivery trends with filters and source drill-down |
+| **0.7 · CLI and Activity** | Available (0.7.0) | Rust CLI, device login, personal activity feed and assistant conversation sharing |
 
 See the [version plan](docs/ROADMAP.md) for scope and acceptance criteria, and the [0.2 Todo implementation plan](docs/TODO_V0.2.md) for execution details.
 
@@ -143,13 +145,29 @@ Open [127.0.0.1:3000](http://127.0.0.1:3000). For real teams, see the [developme
 
 For a persistent local team with real sign-in, encrypted AI settings and linked practice data, run `npm run local:team -- up` and open [127.0.0.1:3103](http://127.0.0.1:3103). Keep the existing offline demo separate. Local credentials stay in the ignored `.local/local-team/` directory; see [local deployment simulation](docs/LOCAL_TEAM.md) for start, stop, backup and hot reload. No vendor keys are imported or called automatically.
 
+## CoFlow CLI
+
+The Rust CLI is available in the repository's unreleased source. Install it from the checked-out repository with Rust 1.83 or newer, then point it at your CoFlow team site.
+
+```sh
+cargo install --path apps/cli --locked --root "$HOME/.coflow"
+export PATH="$HOME/.coflow/bin:$PATH"
+coflow auth login --server https://coflow.example.com
+coflow whoami --server https://coflow.example.com
+coflow help --json
+```
+
+Open the page shown in the terminal and confirm the account, workspace and permissions. Once installed, `coflow` runs without Rust or Node.js. For prebuilt archives, check the assets of the specific release. [CLI guide](skills/coflow/references/cli.md) · [Release archives](docs/CLI_RELEASE.md)
+
+If a Release includes CLI archives, use the [install script](scripts/install-cli.sh). It verifies the download and installs to `~/.coflow/bin`.
+
 ## Agent integration
 
 Todo task cards use priority borders: none, blue (low), yellow (medium), red (high).
 
 Loading improvements in 0.2.1: team context and lists share a 10-second, identity-scoped in-memory cache with request deduplication; writes and session changes invalidate it. Todo loads only its required data and fetches all columns together with complete pagination. Private APIs remain `no-store`; see [loading and caching](docs/TROUBLESHOOTING.md#页面加载与缓存).
 
-In 0.2.1, open **Collaboration guide** in the sidebar or **Read the collaboration guide** in Skill setup to read Docs directly in the platform. The public `/docs` page is statically generated from the repository guide and does not load team data. Its **CoFlow Skill** section includes capabilities, the bundled version, setup, and a viewer for the entry and four linked references (including Calendar operations), with copy and download actions.
+In 0.2.1, open **Collaboration guide** in the sidebar or **Read the collaboration guide** in Skill setup to read Docs directly in the platform. The public `/docs` page is statically generated from the repository guide and does not load team data. Its **CoFlow Skill** section includes capabilities, the bundled version, setup, and a viewer for the entry and linked references, including the CLI guide and command list, with copy and download actions.
 
 For the collaboration model, tool-specific setup, page instructions and everyday workflows, see the [CoFlow collaboration guide](docs/COLLABORATION_GUIDE.md) (Chinese). It covers Codex, Claude Code, Cursor and Gemini CLI, with official documentation links and the version requirements for collaboration behavior.
 
@@ -159,9 +177,9 @@ Install one CoFlow Skill for reporting, Todo and available Calendar operations; 
 
 Reporting concrete work through the enhanced Skill also reconciles its Todo records: reuse or create tasks for work in progress, confirmed future work and finished work, then link the report. Repeated progress updates reuse the same tasks; delivery awaiting acceptance stays under review. This is a client workflow, with explicit report-only and missing-access handling; the API does not create tasks automatically.
 
-The unified Skill is **v1.6.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
+The unified Skill is **v1.7.0** (first introduced at 1.0.0), without a `dev` suffix, independently of the app version. Its `metadata.version` covers the entry and all linked references: fixes increment the patch version, compatible capabilities increment the minor version, and incompatible workflow or configuration changes increment the major version. Versions change only through an explicit update; an app release alone does not change the Skill version. Update the whole bundle and retain the existing project binding and credentials.
 
-[Agent Skill](skills/coflow/SKILL.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
+[Agent Skill](skills/coflow/SKILL.md) · [CLI guide](skills/coflow/references/cli.md) · [OpenAPI](docs/openapi.yaml) · [Example report](docs/example-report.json) · [User guide](https://github.com/Vic020/CoFlow/wiki)
 
 ## Self-hosting and the public demo
 
@@ -181,7 +199,7 @@ See [deployment and backups](docs/DEPLOYMENT.md) and [Pages configuration](docs/
 | UI | Tailwind CSS, Radix, Lucide, shadcn/ui component patterns |
 | Backend | Go, Gin |
 | Data | PostgreSQL, pgx, sqlc; JSON storage for the local demo |
-| Integration | HTTP API, OpenAPI, Agent Skill; CLI and MCP are planned |
+| Integration | HTTP API, OpenAPI, Agent Skill, Rust CLI in upcoming releases; public MCP server planned |
 
 ## Project structure
 
@@ -190,7 +208,7 @@ CoFlow/
 ├── apps/
 │   ├── web/          # Web interface
 │   ├── api/          # Go API, storage, SQL, and tests
-│   └── cli/          # CLI prototype
+│   └── cli/          # Rust CLI
 ├── skills/           # Agent reporting instructions
 ├── scripts/          # Asset sync and version checks
 ├── docs/             # Plans, guides, API specification, and previews

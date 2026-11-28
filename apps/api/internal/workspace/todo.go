@@ -27,6 +27,7 @@ type TodoColumn struct {
 	Revision  int    `json:"revision"`
 }
 type TodoEvent struct {
+	GrantID   string          `json:"grant_id,omitempty"`
 	ActorKind string          `json:"actor_kind"`
 	ID        string          `json:"id"`
 	ActorID   string          `json:"actor_id"`
@@ -215,12 +216,21 @@ func recordTodo(p identity.Principal, t *Todo, before Todo, action string, sourc
 	t.Revision++
 	t.UpdatedAt = time.Now().UTC()
 	agent, model := p.SourceAgent, ""
-	if p.Kind == "token" && len(source) >= 2 {
+	if p.GrantID != "" {
+		agent = "CoFlow CLI"
+	} else if p.Kind == "token" && len(source) >= 2 {
 		agent = source[0]
 		model = source[1]
 	}
-	t.History = append(t.History, TodoEvent{ID: store.ID(), ActorID: p.UserID, ActorKind: p.Kind, Agent: agent, Model: model, Action: action, CreatedAt: t.UpdatedAt, Before: todoSnapshot(before), After: todoSnapshot(*t)})
+	t.History = append(t.History, TodoEvent{ID: store.ID(), ActorID: p.UserID, ActorKind: p.Kind, GrantID: p.GrantID, Agent: agent, Model: model, Action: action, CreatedAt: t.UpdatedAt, Before: todoSnapshot(before), After: todoSnapshot(*t)})
 }
+func todoOperationOwner(p identity.Principal) string {
+	if p.GrantID != "" {
+		return p.UserID + ":" + p.GrantID
+	}
+	return p.UserID
+}
+
 func replayTodo(b *TodoBoard, p identity.Principal, id string, input any, out any) (bool, error) {
 	if len(id) > 160 {
 		return false, identity.Invalid("操作标识过长")
@@ -230,7 +240,7 @@ func replayTodo(b *TodoBoard, p identity.Principal, id string, input any, out an
 	}
 	raw, _ := json.Marshal(input)
 	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
-	if v, ok := b.Operations[p.UserID+":"+id]; ok {
+	if v, ok := b.Operations[todoOperationOwner(p)+":"+id]; ok {
 		if v.Hash != hash {
 			return false, todoConflict()
 		}
@@ -244,7 +254,7 @@ func saveTodoReplay(b *TodoBoard, p identity.Principal, id string, input, out an
 	}
 	raw, _ := json.Marshal(input)
 	result, _ := json.Marshal(out)
-	b.Operations[p.UserID+":"+id] = TodoReplay{fmt.Sprintf("%x", sha256.Sum256(raw)), result}
+	b.Operations[todoOperationOwner(p)+":"+id] = TodoReplay{fmt.Sprintf("%x", sha256.Sum256(raw)), result}
 }
 func (s *Service) TodoBoard(ctx context.Context, p identity.Principal) (TodoBoard, error) {
 	var out TodoBoard
@@ -256,8 +266,9 @@ func (s *Service) TodoBoard(ctx context.Context, p identity.Principal) (TodoBoar
 		out.CalendarOperations = nil
 		out.Contexts = nil
 		out.Delegations = nil
-		out.Contexts = nil
-		out.Delegations = nil
+		if p.LimitedGrant() {
+			out.History = nil
+		}
 		return nil
 	})
 	return out, err
@@ -266,7 +277,13 @@ func (s *Service) Todos(ctx context.Context, p identity.Principal) ([]Todo, erro
 	out := []Todo{}
 	err := s.todoTransaction(ctx, p, func(tx pgx.Tx, b *TodoBoard) error {
 		for _, t := range b.Tasks {
+			if !p.AllowsTodo(t.ID, t.ProjectID) {
+				continue
+			}
 			t.History = nil
+			if p.LimitedGrant() {
+				t.Blockers = nil
+			}
 			t.Comments = nil
 			t.ReportIDs = []string{}
 			t.Blocked = blocked(b, t)
@@ -281,7 +298,7 @@ func (s *Service) GetTodo(ctx context.Context, p identity.Principal, id string) 
 	var out Todo
 	err := s.todoTransaction(ctx, p, func(tx pgx.Tx, b *TodoBoard) error {
 		t := b.task(id)
-		if t == nil {
+		if t == nil || !p.AllowsTodo(t.ID, t.ProjectID) {
 			return store.ErrNotFound
 		}
 		out = *t
@@ -293,6 +310,10 @@ func (s *Service) GetTodo(ctx context.Context, p identity.Principal, id string) 
 				out.Comments[i].Body = ""
 				out.Comments[i].Mentions = nil
 			}
+		}
+		if p.LimitedGrant() {
+			out.History = nil
+			out.Blockers = nil
 		}
 		out.ReportIDs = []string{}
 		out.UnavailableReports = 0
@@ -477,22 +498,59 @@ func todoNotify(ctx context.Context, tx pgx.Tx, p identity.Principal, t Todo, id
 	if tx == nil {
 		return nil
 	}
-	seen := map[string]bool{p.UserID: true}
-	for _, id := range ids {
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		_, err := tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,report_id,todo_id,kind,title) SELECT $1,$2,$3,NULL,$4,$5,$6 WHERE EXISTS(SELECT 1 FROM memberships WHERE team_id=$2 AND user_id=$3)`, store.ID(), p.TeamID, id, t.ID, kind, t.Title)
-		if err != nil {
-			return err
-		}
+	_, err := tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,actor_id,todo_id,kind,title,read_at)
+		VALUES($1,$2,$3,$3,$4,$5,$6,now())`, store.ID(), p.TeamID, p.UserID, t.ID, "own-"+kind, t.Title)
+	if err != nil {
+		return err
 	}
-	return nil
+	_, err = tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,actor_id,todo_id,kind,title,needs_response)
+		SELECT $1||':'||m.user_id,$2,m.user_id,$3,$4,$5,$6,
+			(m.user_id=$8 OR m.user_id=$9)
+		FROM memberships m WHERE m.team_id=$2 AND m.user_id<>$3 AND
+		(m.user_id=ANY($7::text[]) OR EXISTS (SELECT 1 FROM todo_follows f WHERE f.team_id=$2 AND f.todo_id=$4 AND f.user_id=m.user_id))`,
+		store.ID(), p.TeamID, p.UserID, t.ID, kind, t.Title, ids, todoResponseUser(t, kind), todoReviewer(t, kind))
+	return err
 }
+
+func todoResponseUser(t Todo, kind string) string {
+	if kind == "todo-assigned" {
+		return t.AssigneeID
+	}
+	return ""
+}
+
+func todoReviewer(t Todo, kind string) string {
+	if kind == "todo-review" && t.Review != nil && t.Review.State == "pending" {
+		return t.Review.ReviewerID
+	}
+	return ""
+}
+
 func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id string, in TodoInput) (Todo, error) {
 	var out Todo
 	err := s.todoTransaction(ctx, p, func(tx pgx.Tx, b *TodoBoard) error {
+		if p.LimitedGrant() {
+			task := b.task(id)
+			if task == nil || !p.AllowsTodo(task.ID, task.ProjectID) {
+				return store.ErrNotFound
+			}
+			switch in.Action {
+			case "edit":
+				for field := range in.Fields {
+					switch field {
+					case "action", "expected_revision", "operation_id", "board_revision", "title", "body", "priority", "schedule", "due_date":
+					default:
+						return identity.Denied("受限凭证不能修改此任务字段")
+					}
+				}
+			case "complete", "reopen", "submit-review", "withdraw-review":
+				if in.BeforeID != "" || in.AfterID != "" {
+					return identity.Denied("受限凭证不能引用其他任务")
+				}
+			default:
+				return identity.Denied("受限凭证不能执行此任务操作")
+			}
+		}
 		replay, err := replayTodo(b, p, in.OperationID, struct {
 			ID     string
 			Input  TodoInput
@@ -565,7 +623,11 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			recordTodo(p, v, Todo{}, "created", in.Agent, in.Model)
 			b.Revision++
 			out = *v
-			if err = todoNotify(ctx, tx, p, out, []string{out.AssigneeID}, "todo-assigned"); err != nil {
+			kind := "todo-created"
+			if out.AssigneeID != "" {
+				kind = "todo-assigned"
+			}
+			if err = todoNotify(ctx, tx, p, out, []string{out.AssigneeID}, kind); err != nil {
 				return err
 			}
 		} else {
@@ -742,9 +804,12 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 				}
 			}
 			reviewChanged := !sameReview(before.Review, t.Review)
-			if reviewChanged || before.AssigneeID != t.AssigneeID || before.CompletedAt == nil && t.CompletedAt != nil || before.CompletedAt != nil && t.CompletedAt == nil {
+			if in.Action != "comment" {
 				recipients := []string{t.AssigneeID, t.CreatorID}
 				kind := "todo-updated"
+				if before.AssigneeID != t.AssigneeID {
+					kind = "todo-assigned"
+				}
 				if reviewChanged {
 					kind = "todo-review"
 					if before.Review != nil {
@@ -760,6 +825,11 @@ func (s *Service) ChangeTodo(ctx context.Context, p identity.Principal, id strin
 			}
 		}
 		out.Blocked = blocked(b, out)
+		if p.LimitedGrant() {
+			out.History = nil
+			out.Blockers = nil
+			out.ReportIDs = []string{}
+		}
 		out.AllowedActions = allowedTodoActions(ctx, tx, p, b, out)
 		saveTodoReplay(b, p, in.OperationID, struct {
 			ID     string

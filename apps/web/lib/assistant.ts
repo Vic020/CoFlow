@@ -11,6 +11,8 @@ export type AIConfig = {
   verified_at: string | null;
   editable: boolean;
 };
+export type AIActionDecision = "confirm" | "cancel" | "allow-session" | "always-allow";
+
 export type AIAction = {
   available?: boolean;
   decided_at?: string;
@@ -52,9 +54,10 @@ export type AIAction = {
     };
   };
   state: "pending" | "done" | "failed" | "cancelled";
-  result?: { id?: string; error?: string };
+  result?: { id?: string; error?: string; approval_mode?: "saved" };
 };
 export type AITurn = {
+  model_retries?: number;
   web_enabled?: boolean;
   web_config_id?: string;
   web_provider?: string;

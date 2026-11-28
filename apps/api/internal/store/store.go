@@ -21,6 +21,7 @@ type Link struct {
 	URL   string `json:"url"`
 }
 type Comment struct {
+	ParentID  string     `json:"parent_id,omitempty"`
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	ID        string     `json:"id"`
 	ReportID  string     `json:"report_id"`

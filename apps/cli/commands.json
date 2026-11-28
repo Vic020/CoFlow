@@ -1,0 +1,1838 @@
+{
+  "list": {
+    "path": "/reports",
+    "usage": "coflow list",
+    "description": "Read reports and find the report IDs you need.",
+    "flags": [],
+    "effect": "read",
+    "scopes": [
+      "reports:read"
+    ],
+    "details": "Team mode needs reports:read. The result is JSON."
+  },
+  "report": {
+    "path": "/reports",
+    "method": "POST",
+    "requires": [
+      "source_id"
+    ],
+    "usage": "coflow report --file report.json",
+    "description": "Send a progress report from a JSON file.",
+    "flags": [
+      "--file"
+    ],
+    "effect": "write",
+    "scopes": [
+      "reports:write"
+    ],
+    "details": "Team mode needs reports:write. Use one source_id for one report.\nReuse it to correct or retry that report. Pick a new one for new progress.\n\nExample report.json:\n  {\"source_id\":\"website-review-20261128\",\"title\":\"Reviewed the homepage\",\"body\":\"Checked the links and shared the results.\"}\n\nRun coflow list to read back the saved report."
+  },
+  "comment": {
+    "path": "/reports/{id}/comments",
+    "method": "POST",
+    "usage": "coflow comment --id REPORT_ID --body \"Thanks for the update\"",
+    "description": "Reply to an existing report.",
+    "flags": [
+      "--id",
+      "--body"
+    ],
+    "effect": "write",
+    "scopes": [
+      "comments:write"
+    ],
+    "details": "Team mode needs comments:write. Run coflow list to find the report ID.\nAfter a timeout, check whether your comment was saved before sending it again."
+  },
+  "whoami": {
+    "path": "/meta",
+    "usage": "coflow whoami",
+    "description": "Check which user and space your credential belongs to.",
+    "scopes": [],
+    "flags": [],
+    "required": [],
+    "effect": "read",
+    "details": "Team mode needs one module read permission. This shows the current role and server features. Check the user and space before making changes."
+  },
+  "workspace show": {
+    "path": "/meta",
+    "usage": "coflow workspace show",
+    "description": "Find the project, domain and member values you can use.",
+    "scopes": [],
+    "flags": [],
+    "required": [],
+    "effect": "read",
+    "details": "Team mode needs one module read permission. Copy a project ID from this result for --project."
+  },
+  "todo board": {
+    "path": "/todo-board",
+    "usage": "coflow todo board",
+    "description": "Find column IDs and the latest board revision.",
+    "scopes": [
+      "todos:read"
+    ],
+    "flags": [],
+    "required": [],
+    "effect": "read",
+    "details": ""
+  },
+  "todo list": {
+    "path": "/todos",
+    "usage": "coflow todo list --project PROJECT_ID",
+    "description": "Find tasks in a project.",
+    "scopes": [
+      "todos:read"
+    ],
+    "flags": [
+      "--project",
+      "--domain",
+      "--assignee",
+      "--column",
+      "--q",
+      "--archived",
+      "--scope",
+      "--limit",
+      "--cursor"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": "Use next_cursor from the result with --cursor to read the next page."
+  },
+  "todo show": {
+    "path": "/todos/{id}",
+    "usage": "coflow todo show --id TODO_ID",
+    "description": "Read a task, its current revision and related records.",
+    "scopes": [
+      "todos:read"
+    ],
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "effect": "read",
+    "details": ""
+  },
+  "todo create": {
+    "path": "/todos",
+    "method": "POST",
+    "usage": "coflow todo create --file todo.json",
+    "description": "Create a task using a stable work ID.",
+    "scopes": [
+      "todos:read",
+      "todos:write"
+    ],
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "source_id",
+      "operation_id"
+    ],
+    "recovery": "Run coflow todo list to find the existing task before trying again.",
+    "details": "Run coflow todo board first to find the column. Example file: {\"title\":\"Review homepage\",\"column_id\":\"COLUMN_ID\",\"source_id\":\"homepage-review\",\"operation_id\":\"homepage-create-1\"}"
+  },
+  "todo change": {
+    "path": "/todos/{id}",
+    "method": "PATCH",
+    "usage": "coflow todo change --id TODO_ID --file change.json",
+    "description": "Edit, move, submit or reopen a task using its current revision.",
+    "scopes": [
+      "todos:read",
+      "todos:write"
+    ],
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "operation_id",
+      "expected_revision"
+    ],
+    "recovery": "Run coflow todo show --id ID and coflow todo board before trying another change.",
+    "details": "Put expected_revision from the latest record and a unique operation_id in the JSON file. Keep the same ID and file if the result of a request is unknown. Example file for a move: {\"action\":\"move\",\"column_id\":\"COLUMN_ID\",\"board_revision\":1,\"expected_revision\":1,\"operation_id\":\"homepage-move-1\"}. Use current revisions. The comment action needs comments:write and todos:read in place of todos:write. For scheduling use action edit and a schedule object."
+  },
+  "report list": {
+    "path": "/reports",
+    "usage": "coflow report list --project PROJECT_ID",
+    "description": "Read recent reports and find their IDs.",
+    "scopes": [
+      "reports:read"
+    ],
+    "flags": [
+      "--project",
+      "--domain",
+      "--member",
+      "--agent"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": ""
+  },
+  "report show": {
+    "path": "/reports/{id}",
+    "usage": "coflow report show --id REPORT_ID",
+    "description": "Read a report and its links.",
+    "scopes": [
+      "reports:read"
+    ],
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "effect": "read",
+    "details": ""
+  },
+  "report upsert": {
+    "path": "/reports",
+    "method": "POST",
+    "usage": "coflow report upsert --file report.json",
+    "description": "Send or correct a progress report.",
+    "scopes": [
+      "reports:write"
+    ],
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "source_id"
+    ],
+    "recovery": "Run coflow report list to check whether your report was saved before trying again.",
+    "details": "Use one source_id for one report. Read back the report with coflow report show --id ID. Use todo_ids in the file to link it to existing tasks. Example file: {\"source_id\":\"homepage-check\",\"title\":\"Checked the homepage\",\"body\":\"All links were checked.\",\"todo_ids\":[\"TODO_ID\"]}"
+  },
+  "report comment": {
+    "path": "/reports/{id}/comments",
+    "method": "POST",
+    "usage": "coflow report comment --id REPORT_ID --body TEXT",
+    "description": "Reply to an existing report.",
+    "scopes": [
+      "comments:write"
+    ],
+    "flags": [
+      "--id",
+      "--body"
+    ],
+    "required": [
+      "--id",
+      "--body"
+    ],
+    "effect": "write",
+    "requires": [],
+    "recovery": "Run coflow report show --id ID to check whether the comment was saved.",
+    "details": "Copy the report ID from coflow report list."
+  },
+  "calendar list": {
+    "path": "/calendar/schedule",
+    "usage": "coflow calendar list --from 2026-11-01 --to 2026-11-08",
+    "description": "Read planned work and calendar nodes.",
+    "scopes": [],
+    "flags": [
+      "--from",
+      "--to",
+      "--timezone",
+      "--project",
+      "--domain",
+      "--member",
+      "--kind",
+      "--q",
+      "--task-status",
+      "--unscheduled",
+      "--archived",
+      "--limit",
+      "--cursor",
+      "--revision"
+    ],
+    "required": [
+      "--from",
+      "--to"
+    ],
+    "effect": "read",
+    "details": "The start date is included. The end date is excluded. Use YYYY-MM-DD. The default time zone is UTC. Team mode needs todos:read or calendar:read for the corresponding records. Send the same query, next_cursor and revision for the next page."
+  },
+  "calendar show": {
+    "path": "/calendar/events/{id}",
+    "usage": "coflow calendar show --id EVENT_ID",
+    "description": "Read the details of a calendar node.",
+    "scopes": [
+      "calendar:read"
+    ],
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "effect": "read",
+    "details": ""
+  },
+  "calendar create": {
+    "path": "/calendar/events",
+    "method": "POST",
+    "usage": "coflow calendar create --file event.json",
+    "description": "Create a calendar node.",
+    "scopes": [
+      "calendar:read",
+      "calendar:write"
+    ],
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "source_id",
+      "operation_id"
+    ],
+    "recovery": "Run coflow calendar list for the date range and check whether the node was saved.",
+    "details": "Example file: {\"title\":\"Release day\",\"kind\":\"big_day\",\"schedule\":{\"kind\":\"date-range\",\"start_date\":\"2026-11-08\",\"end_date\":\"2026-11-08\"},\"source_id\":\"release-day\",\"operation_id\":\"release-day-create-1\"}"
+  },
+  "calendar change": {
+    "path": "/calendar/events/{id}",
+    "method": "PATCH",
+    "usage": "coflow calendar change --id EVENT_ID --file change.json",
+    "description": "Edit or archive a calendar node.",
+    "scopes": [
+      "calendar:read",
+      "calendar:write"
+    ],
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "operation_id",
+      "expected_revision"
+    ],
+    "recovery": "Run coflow calendar show --id ID to read the latest node.",
+    "details": "Put expected_revision from the latest record and a unique operation_id in the JSON file. Keep the same ID and file if the result of a request is unknown."
+  },
+  "context search": {
+    "path": "/context",
+    "usage": "coflow context search --project PROJECT_ID",
+    "description": "Find knowledge by project or keyword.",
+    "scopes": [
+      "context:read"
+    ],
+    "flags": [
+      "--project",
+      "--domain",
+      "--member",
+      "--q",
+      "--state",
+      "--kind",
+      "--source",
+      "--offset",
+      "--limit"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": "Use --state active to find confirmed entries. Use next_offset for the next page while it is less than total."
+  },
+  "context show": {
+    "path": "/context/{id}",
+    "usage": "coflow context show --id CONTEXT_ID",
+    "description": "Read a knowledge entry and the records behind it.",
+    "scopes": [
+      "context:read"
+    ],
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "effect": "read",
+    "details": ""
+  },
+  "context tree": {
+    "path": "/context-tree",
+    "usage": "coflow context tree --project PROJECT_ID",
+    "description": "Read the project knowledge directory.",
+    "scopes": [
+      "context:read"
+    ],
+    "flags": [
+      "--project",
+      "--domain",
+      "--member",
+      "--q",
+      "--state",
+      "--kind",
+      "--source"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": ""
+  },
+  "context create": {
+    "path": "/context",
+    "method": "POST",
+    "usage": "coflow context create --file context.json",
+    "description": "Save knowledge for review.",
+    "scopes": [
+      "context:read",
+      "context:write"
+    ],
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "source_id",
+      "operation_id"
+    ],
+    "recovery": "Run coflow context search to check whether the entry was saved.",
+    "details": "Example file: {\"title\":\"Homepage review rule\",\"body\":\"Verify links before delivery.\",\"kind\":\"rule\",\"state\":\"pending\",\"visibility\":\"team\",\"source_id\":\"homepage-rule\",\"operation_id\":\"homepage-rule-create-1\"}"
+  },
+  "context change": {
+    "path": "/context/{id}",
+    "method": "PATCH",
+    "usage": "coflow context change --id CONTEXT_ID --file change.json",
+    "description": "Update knowledge using the latest record.",
+    "scopes": [
+      "context:read",
+      "context:write"
+    ],
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "effect": "write",
+    "requires": [
+      "operation_id",
+      "expected_revision"
+    ],
+    "recovery": "Run coflow context show --id ID and keep any newer edits.",
+    "details": "Put expected_revision from the latest record and a unique operation_id in the JSON file. Keep the same ID and file if the result of a request is unknown. Use the existing entry as the basis for an edit. An Agent token can save entries for human review."
+  },
+  "data summary": {
+    "path": "/statistics",
+    "usage": "coflow data summary --from 2026-11-01 --to 2026-11-08",
+    "description": "Read progress and task counts.",
+    "scopes": [],
+    "flags": [
+      "--from",
+      "--to",
+      "--timezone",
+      "--project",
+      "--domain",
+      "--member",
+      "--agent",
+      "--model",
+      "--group-by"
+    ],
+    "required": [
+      "--from",
+      "--to"
+    ],
+    "effect": "read",
+    "details": "The start date is included. The end date is excluded. Use YYYY-MM-DD. The default time zone is UTC. The server counts modules your credential can read. Current snapshots and events in the period are separate."
+  },
+  "data detail": {
+    "path": "/statistics",
+    "usage": "coflow data detail --metric todos_completed --from 2026-11-01 --to 2026-11-08",
+    "description": "Read the original links behind one count.",
+    "scopes": [],
+    "flags": [
+      "--from",
+      "--to",
+      "--metric",
+      "--timezone",
+      "--project",
+      "--domain",
+      "--member",
+      "--agent",
+      "--model",
+      "--group-by",
+      "--group",
+      "--offset",
+      "--revision"
+    ],
+    "required": [
+      "--from",
+      "--to",
+      "--metric"
+    ],
+    "effect": "read",
+    "details": "The start date is included. The end date is excluded. Use YYYY-MM-DD. The default time zone is UTC. Send next_offset and revision together on the next page with the same filters."
+  },
+  "handoff read": {
+    "path": "/agent/context",
+    "usage": "coflow handoff read --todo TODO_ID",
+    "description": "Read the facts needed to pick up existing work.",
+    "scopes": [],
+    "flags": [
+      "--todo",
+      "--project"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": "Choose one task or project. Check the returned limits, then open the original records. A task lookup needs todos:read."
+  },
+  "handoff changes": {
+    "path": "/agent/changes",
+    "usage": "coflow handoff changes --project PROJECT_ID",
+    "description": "Check for updates after your last read.",
+    "scopes": [],
+    "flags": [
+      "--project",
+      "--cursor",
+      "--limit",
+      "--checkpoint",
+      "--save-cursor"
+    ],
+    "required": [],
+    "effect": "read",
+    "details": "Start without a cursor to make a baseline. Re-read changed records. After processing a page, use --checkpoint NAME --save-cursor NEXT_CURSOR with the same filters. The next read with --checkpoint NAME starts at that cursor."
+  },
+  "todo completions": {
+    "method": "GET",
+    "path": "/todo-completions",
+    "usage": "coflow todo completions",
+    "description": "Read recorded task completions.",
+    "scopes": [
+      "todos:read"
+    ],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": false,
+    "details": ""
+  },
+  "todo column-create": {
+    "method": "POST",
+    "path": "/todo-columns",
+    "usage": "coflow todo column-create --file input.json",
+    "description": "Add a board column.",
+    "scopes": [
+      "todos:read",
+      "todos:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": false,
+    "details": "Read the current board revision first. Use --file - to read the JSON object from stdin. Example JSON: {\"name\":\"Verify\",\"board_revision\":1,\"operation_id\":\"column-create-1\"}"
+  },
+  "todo column-change": {
+    "method": "PATCH",
+    "path": "/todo-columns/{id}",
+    "usage": "coflow todo column-change --id ID --file input.json",
+    "description": "Edit, move or archive a board column.",
+    "scopes": [
+      "todos:read",
+      "todos:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": false,
+    "details": "Read current board and column revisions first. Go checks ownership and role. Use --file - to read the JSON object from stdin."
+  },
+  "report edit": {
+    "method": "PUT",
+    "path": "/reports/{id}",
+    "usage": "coflow report edit --id ID --file input.json",
+    "description": "Edit a report by its record ID.",
+    "scopes": [
+      "reports:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Read the current report and preserve its latest expected_updated_at. Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report status": {
+    "method": "PATCH",
+    "path": "/reports/{id}",
+    "usage": "coflow report status --id ID --file input.json",
+    "description": "Change a report status.",
+    "scopes": [
+      "reports:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": false,
+    "details": "Use --file - to read the JSON object from stdin. Example JSON: {\"status\":\"review\"}"
+  },
+  "report history": {
+    "method": "GET",
+    "path": "/reports/{id}/history",
+    "usage": "coflow report history --id ID",
+    "description": "Read report revisions.",
+    "scopes": [
+      "reports:read"
+    ],
+    "effect": "read",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": false,
+    "details": ""
+  },
+  "report classify": {
+    "method": "PATCH",
+    "path": "/reports/{id}/classification",
+    "usage": "coflow report classify --id ID --file input.json",
+    "description": "Change a report's project and domains.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report trash": {
+    "method": "GET",
+    "path": "/reports/trash",
+    "usage": "coflow report trash",
+    "description": "Find deleted reports.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report delete": {
+    "method": "DELETE",
+    "path": "/reports/{id}",
+    "usage": "coflow report delete --id ID --file input.json",
+    "description": "Move a report to the trash.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report restore": {
+    "method": "POST",
+    "path": "/reports/{id}/restore",
+    "usage": "coflow report restore --id ID",
+    "description": "Restore a deleted report.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report comment-trash": {
+    "method": "GET",
+    "path": "/reports/{id}/comments/trash",
+    "usage": "coflow report comment-trash --id ID",
+    "description": "Find deleted comments for a report.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report comment-delete": {
+    "method": "DELETE",
+    "path": "/reports/{id}/comments/{comment}",
+    "usage": "coflow report comment-delete --id ID --comment COMMENT",
+    "description": "Move a comment to the trash.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--comment"
+    ],
+    "required": [
+      "--id",
+      "--comment"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "report comment-restore": {
+    "method": "POST",
+    "path": "/reports/{id}/comments/{comment}/restore",
+    "usage": "coflow report comment-restore --id ID --comment COMMENT",
+    "description": "Restore a deleted comment.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--comment"
+    ],
+    "required": [
+      "--id",
+      "--comment"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "collaboration list": {
+    "method": "GET",
+    "path": "/collaborations",
+    "usage": "coflow collaboration list",
+    "description": "Read active collaboration requests.",
+    "scopes": [
+      "reports:read"
+    ],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": false,
+    "details": ""
+  },
+  "collaboration create": {
+    "method": "POST",
+    "path": "/collaborations",
+    "usage": "coflow collaboration create --file input.json",
+    "description": "Ask a teammate for help.",
+    "scopes": [
+      "comments:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": false,
+    "details": "Use --file - to read the JSON object from stdin."
+  },
+  "collaboration change": {
+    "method": "PATCH",
+    "path": "/collaborations/{id}",
+    "usage": "coflow collaboration change --id ID --file input.json",
+    "description": "Respond to or close a collaboration request.",
+    "scopes": [
+      "comments:write"
+    ],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": false,
+    "details": "Use --file - to read the JSON object from stdin."
+  },
+  "collaboration convert": {
+    "method": "POST",
+    "path": "/collaborations/{id}/todo",
+    "usage": "coflow collaboration convert --id ID --file input.json",
+    "description": "Turn a collaboration request into a task.",
+    "scopes": [
+      "todos:read",
+      "todos:write",
+      "reports:read"
+    ],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": false,
+    "details": "Use --file - to read the JSON object from stdin."
+  },
+  "delegation list": {
+    "method": "GET",
+    "path": "/delegations",
+    "usage": "coflow delegation list",
+    "description": "Read ongoing work delegations.",
+    "scopes": [
+      "todos:read"
+    ],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": false,
+    "details": ""
+  },
+  "delegation create": {
+    "method": "POST",
+    "path": "/delegations",
+    "usage": "coflow delegation create --file input.json",
+    "description": "Start an ongoing work delegation.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "delegation change": {
+    "method": "PATCH",
+    "path": "/delegations/{id}",
+    "usage": "coflow delegation change --id ID --file input.json",
+    "description": "Respond to or end a work delegation.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "calendar reschedule": {
+    "method": "POST",
+    "path": "/todo-schedules/batch",
+    "usage": "coflow calendar reschedule --file input.json",
+    "description": "Change the planned dates for several tasks together.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Read the current revisions first. Go applies up to 25 rows together. Any conflict leaves all rows unchanged. Use null to clear a schedule. Use --file - to read the JSON object from stdin. Example JSON: {\"operation_id\":\"reschedule-1\",\"changes\":[{\"id\":\"TODO_ID\",\"expected_revision\":1,\"schedule\":null}]} Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "calendar reports": {
+    "method": "GET",
+    "path": "/calendar/reports",
+    "usage": "coflow calendar reports --from FROM --to TO",
+    "description": "Read progress reports by calendar date.",
+    "scopes": [
+      "reports:read"
+    ],
+    "effect": "read",
+    "flags": [
+      "--from",
+      "--to",
+      "--timezone",
+      "--day",
+      "--project",
+      "--domain",
+      "--member",
+      "--agent",
+      "--model",
+      "--status",
+      "--q",
+      "--cursor",
+      "--limit"
+    ],
+    "required": [
+      "--from",
+      "--to"
+    ],
+    "browser": false,
+    "details": "Use YYYY-MM-DD, with an exclusive end date. Reuse the filters when following next_cursor."
+  },
+  "context graph": {
+    "method": "GET",
+    "path": "/context-graph",
+    "usage": "coflow context graph",
+    "description": "Read the links between knowledge and its sources.",
+    "scopes": [
+      "context:read"
+    ],
+    "effect": "read",
+    "flags": [
+      "--project",
+      "--domain",
+      "--member",
+      "--state",
+      "--kind",
+      "--source",
+      "--q"
+    ],
+    "required": [],
+    "browser": false,
+    "details": ""
+  },
+  "catalog list": {
+    "method": "GET",
+    "path": "/catalog",
+    "usage": "coflow catalog list",
+    "description": "List project and domain IDs.",
+    "scopes": [
+      "reports:read"
+    ],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": false,
+    "details": ""
+  },
+  "catalog create": {
+    "method": "POST",
+    "path": "/catalog/{kind}",
+    "usage": "coflow catalog create --kind KIND --file input.json",
+    "description": "Create a project or domain.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--kind",
+      "--file"
+    ],
+    "required": [
+      "--kind",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "catalog change": {
+    "method": "PATCH",
+    "path": "/catalog/{kind}/{id}",
+    "usage": "coflow catalog change --kind KIND --id ID --file input.json",
+    "description": "Rename or archive a project or domain.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--kind",
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--kind",
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "catalog order": {
+    "method": "PUT",
+    "path": "/catalog/{kind}/order",
+    "usage": "coflow catalog order --kind KIND --file input.json",
+    "description": "Reorder projects or domains.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--kind",
+      "--file"
+    ],
+    "required": [
+      "--kind",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "catalog merge": {
+    "method": "POST",
+    "path": "/catalog/{kind}/{id}/merge",
+    "usage": "coflow catalog merge --kind KIND --id ID --file input.json",
+    "description": "Merge a project or domain into another.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--kind",
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--kind",
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "inbox list": {
+    "method": "GET",
+    "path": "/notifications",
+    "usage": "coflow inbox list",
+    "description": "Read your workspace notifications.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "inbox read": {
+    "method": "POST",
+    "path": "/notifications/read",
+    "usage": "coflow inbox read --file input.json",
+    "description": "Mark a notification as read.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "account show": {
+    "method": "GET",
+    "path": "/auth/me",
+    "usage": "coflow account show",
+    "description": "Read your account and workspace memberships.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "account preferences": {
+    "method": "GET",
+    "path": "/auth/preferences",
+    "usage": "coflow account preferences",
+    "description": "Read your language and display preferences.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "account update-preferences": {
+    "method": "PATCH",
+    "path": "/auth/preferences",
+    "usage": "coflow account update-preferences --file input.json",
+    "description": "Change your language or display preferences.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "account update-profile": {
+    "method": "PATCH",
+    "path": "/auth/profile",
+    "usage": "coflow account update-profile --file input.json",
+    "description": "Edit your user profile.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "space create": {
+    "method": "POST",
+    "path": "/teams",
+    "usage": "coflow space create --file input.json",
+    "description": "Create a workspace.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "member role": {
+    "method": "PATCH",
+    "path": "/members/{id}",
+    "usage": "coflow member role --id ID --file input.json",
+    "description": "Change a workspace member's role.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "member remove": {
+    "method": "DELETE",
+    "path": "/members/{id}",
+    "usage": "coflow member remove --id ID",
+    "description": "Remove a member and revoke their access to the space.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "invite list": {
+    "method": "GET",
+    "path": "/invites",
+    "usage": "coflow invite list",
+    "description": "Read pending invitations.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "invite create": {
+    "method": "POST",
+    "path": "/invites",
+    "usage": "coflow invite create --file input.json",
+    "description": "Invite a person to the selected space.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "invite revoke": {
+    "method": "DELETE",
+    "path": "/invites/{id}",
+    "usage": "coflow invite revoke --id ID",
+    "description": "Revoke a pending invitation.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "auth list": {
+    "method": "GET",
+    "path": "/tokens",
+    "usage": "coflow auth list",
+    "description": "List issued credentials in this space.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "auth revoke": {
+    "method": "DELETE",
+    "path": "/tokens/{id}",
+    "usage": "coflow auth revoke --id ID",
+    "description": "Revoke a credential from your account.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai chat": {
+    "method": "POST",
+    "path": "/assistant/chat",
+    "usage": "coflow ai chat --file input.json",
+    "description": "Send a message to the assistant.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai conversation-list": {
+    "method": "GET",
+    "path": "/assistant/conversations",
+    "usage": "coflow ai conversation-list",
+    "description": "Find conversations.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [
+      "--q",
+      "--state",
+      "--cursor",
+      "--limit"
+    ],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai conversation-create": {
+    "method": "POST",
+    "path": "/assistant/conversations",
+    "usage": "coflow ai conversation-create --file input.json",
+    "description": "Start a conversation.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai conversation-show": {
+    "method": "GET",
+    "path": "/assistant/conversations/{id}",
+    "usage": "coflow ai conversation-show --id ID",
+    "description": "Read a conversation.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai conversation-change": {
+    "method": "PATCH",
+    "path": "/assistant/conversations/{id}",
+    "usage": "coflow ai conversation-change --id ID --file input.json",
+    "description": "Edit, archive or restore a conversation.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai template-list": {
+    "method": "GET",
+    "path": "/assistant/templates",
+    "usage": "coflow ai template-list",
+    "description": "List task templates.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai template-create": {
+    "method": "POST",
+    "path": "/assistant/templates",
+    "usage": "coflow ai template-create --file input.json",
+    "description": "Save a task template.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai job-list": {
+    "method": "GET",
+    "path": "/assistant/jobs",
+    "usage": "coflow ai job-list",
+    "description": "Read scheduled jobs.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai job-create": {
+    "method": "POST",
+    "path": "/assistant/jobs",
+    "usage": "coflow ai job-create --file input.json",
+    "description": "Create a scheduled job.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai job-change": {
+    "method": "PATCH",
+    "path": "/assistant/jobs/{id}",
+    "usage": "coflow ai job-change --id ID --file input.json",
+    "description": "Update a scheduled job.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai job-runs": {
+    "method": "GET",
+    "path": "/assistant/jobs/{id}/runs",
+    "usage": "coflow ai job-runs --id ID",
+    "description": "Read scheduled job runs.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-verify": {
+    "method": "POST",
+    "path": "/assistant/configs/verify",
+    "usage": "coflow ai config-verify --file input.json",
+    "description": "Check a draft model configuration before saving.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-verify-saved": {
+    "method": "POST",
+    "path": "/assistant/configs/{id}/verify",
+    "usage": "coflow ai config-verify-saved --id ID",
+    "description": "Check a saved model configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai models": {
+    "method": "POST",
+    "path": "/assistant/models",
+    "usage": "coflow ai models --file input.json",
+    "description": "Read model IDs offered by a provider.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai web-config-verify": {
+    "method": "POST",
+    "path": "/assistant/web-configs/verify",
+    "usage": "coflow ai web-config-verify --file input.json",
+    "description": "Check a draft web search configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai preference": {
+    "method": "PATCH",
+    "path": "/assistant/preference",
+    "usage": "coflow ai preference --file input.json",
+    "description": "Choose your default assistant configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-list": {
+    "method": "GET",
+    "path": "/assistant/configs",
+    "usage": "coflow ai config-list",
+    "description": "List model configurations.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-create": {
+    "method": "POST",
+    "path": "/assistant/configs",
+    "usage": "coflow ai config-create --file input.json",
+    "description": "Save a model configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-change": {
+    "method": "PUT",
+    "path": "/assistant/configs/{id}",
+    "usage": "coflow ai config-change --id ID --file input.json",
+    "description": "Update a model configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai config-delete": {
+    "method": "DELETE",
+    "path": "/assistant/configs/{id}",
+    "usage": "coflow ai config-delete --id ID --file input.json",
+    "description": "Remove a model configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Example JSON: {\"expected_revision\":1} Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai web-config-list": {
+    "method": "GET",
+    "path": "/assistant/web-configs",
+    "usage": "coflow ai web-config-list",
+    "description": "List web search configurations.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai web-config-create": {
+    "method": "POST",
+    "path": "/assistant/web-configs",
+    "usage": "coflow ai web-config-create --file input.json",
+    "description": "Save a web search configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai web-config-change": {
+    "method": "PUT",
+    "path": "/assistant/web-configs/{id}",
+    "usage": "coflow ai web-config-change --id ID --file input.json",
+    "description": "Update a web search configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai web-config-delete": {
+    "method": "DELETE",
+    "path": "/assistant/web-configs/{id}",
+    "usage": "coflow ai web-config-delete --id ID --file input.json",
+    "description": "Remove a web search configuration.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Example JSON: {\"expected_revision\":1} Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai mcp-list": {
+    "method": "GET",
+    "path": "/assistant/mcp",
+    "usage": "coflow ai mcp-list",
+    "description": "List configured MCP connections.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [],
+    "required": [],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai mcp-create": {
+    "method": "POST",
+    "path": "/assistant/mcp",
+    "usage": "coflow ai mcp-create --file input.json",
+    "description": "Add an MCP connection for review.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai mcp-verify": {
+    "method": "POST",
+    "path": "/assistant/mcp/{id}/verify",
+    "usage": "coflow ai mcp-verify --id ID",
+    "description": "Verify an MCP connection.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id"
+    ],
+    "required": [
+      "--id"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai mcp-approve": {
+    "method": "POST",
+    "path": "/assistant/mcp/{id}/approve",
+    "usage": "coflow ai mcp-approve --id ID --file input.json",
+    "description": "Approve reviewed MCP tools.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai action-edit": {
+    "method": "PATCH",
+    "path": "/assistant/actions/{id}",
+    "usage": "coflow ai action-edit --id ID --file input.json",
+    "description": "Edit a pending assistant proposal.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai action-confirm": {
+    "method": "POST",
+    "path": "/assistant/actions/{id}",
+    "usage": "coflow ai action-confirm --id ID --file input.json",
+    "description": "Confirm a reviewed assistant proposal.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--id",
+      "--file"
+    ],
+    "required": [
+      "--id",
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai context-organize": {
+    "method": "POST",
+    "path": "/assistant/context-auto",
+    "usage": "coflow ai context-organize --file input.json",
+    "description": "Run the assistant's Context organization flow.",
+    "scopes": [],
+    "effect": "write",
+    "flags": [
+      "--file"
+    ],
+    "required": [
+      "--file"
+    ],
+    "browser": true,
+    "details": "Use --file - to read the JSON object from stdin. Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "ai job-preview": {
+    "method": "GET",
+    "path": "/assistant/jobs/preview",
+    "usage": "coflow ai job-preview --timezone TIMEZONE --local-time LOCAL-TIME --weekdays WEEKDAYS",
+    "description": "Preview the next scheduled run.",
+    "scopes": [],
+    "effect": "read",
+    "flags": [
+      "--timezone",
+      "--local-time",
+      "--weekdays"
+    ],
+    "required": [
+      "--timezone",
+      "--local-time",
+      "--weekdays"
+    ],
+    "browser": true,
+    "details": "Print a review request with --prepare. Open Agent credentials in CoFlow, paste the request and confirm it with your browser login."
+  },
+  "auth login": {
+    "usage": "coflow auth login [--space TEAM_ID] [--days 7] [--scope SCOPES]",
+    "description": "Sign in to CoFlow from a browser, even when the CLI runs on another machine.",
+    "flags": [
+      "--name",
+      "--days",
+      "--scope"
+    ],
+    "required": [],
+    "effect": "write",
+    "scopes": [],
+    "details": "Use COFLOW_URL for your CoFlow address. Run this from a private terminal. Open the printed page, enter the short code and check the account and space before you allow access. Default access is read-only for seven days. For explicit write access, try --scope \"reports:read reports:write\". Access can last 1 to 30 days."
+  },
+  "space list": {
+    "usage": "coflow space list",
+    "description": "List spaces with a saved CLI login on this server.",
+    "flags": [],
+    "effect": "read",
+    "scopes": [],
+    "details": "Run coflow auth login --space TEAM_ID to add a space, then coflow space use --space TEAM_ID to select it."
+  },
+  "space use": {
+    "usage": "coflow space use --space TEAM_ID",
+    "description": "Select which saved space the CLI should use by default.",
+    "flags": [
+      "--space"
+    ],
+    "effect": "local",
+    "scopes": [],
+    "details": "Checks the login and saves only the selected space ID. Add --space TEAM_ID to any business command to override it."
+  },
+  "auth grant": {
+    "usage": "coflow auth grant --space TEAM_ID --todo TODO_ID [--days 1] [--scope SCOPES]",
+    "description": "Ask a person to allow this CLI to work on one task or one project's tasks.",
+    "flags": [
+      "--space",
+      "--todo",
+      "--project",
+      "--days",
+      "--scope",
+      "--name"
+    ],
+    "required": [
+      "--space"
+    ],
+    "effect": "write",
+    "scopes": [],
+    "details": "Choose --todo TODO_ID or --project PROJECT_ID. Default is read-only for one day. Ask for --scope \"todos:read todos:write\" to edit allowed task fields. Keep this login under the Agent's own OS account."
+  },
+  "auth logout": {
+    "usage": "coflow auth logout",
+    "description": "Revoke this CLI login and remove its local credential.",
+    "flags": [],
+    "effect": "write",
+    "scopes": [],
+    "details": "This affects the saved browser login for COFLOW_URL. You can also revoke it from Agent credentials in CoFlow."
+  },
+  "auth status": {
+    "usage": "coflow auth status",
+    "description": "Check the saved CLI login online and see when it expires.",
+    "flags": [],
+    "effect": "read",
+    "scopes": [],
+    "details": "Use coflow whoami to check your effective identity, including when an Agent Token is supplied."
+  },
+  "workspace bind": {
+    "description": "Remember this server and space for commands run from this directory.",
+    "usage": "coflow workspace bind --server URL --space TEAM_ID",
+    "flags": [
+      "--server",
+      "--space"
+    ],
+    "effect": "local",
+    "scopes": [],
+    "details": "First sign in to the target space. The local binding saves server, team and user IDs. Run coflow whoami here to verify it."
+  },
+  "workspace unbind": {
+    "description": "Clear the server and space selected for this directory.",
+    "usage": "coflow workspace unbind",
+    "flags": [],
+    "effect": "local",
+    "scopes": [],
+    "details": "Saved CLI logins stay available in coflow space list."
+  },
+  "update check": {
+    "usage": "coflow update check [--json]",
+    "description": "Find out if a newer stable CoFlow release is available.",
+    "flags": [],
+    "effect": "read",
+    "scopes": [],
+    "details": "Checks the official GitHub release. Server compatibility is unknown until you read the release notes."
+  }
+}

@@ -60,6 +60,7 @@ import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { TokenManager } from "@/components/token-manager";
 import { TeamSettings } from "@/components/team-settings";
 import { AgentConnectCard } from "@/components/agent-connect-card";
+import { InboxWorkspace } from "./inbox-workspace";
 import { NotificationCenter } from "@/components/notification-center";
 import { AccountMenu } from "@/components/account-menu";
 import { CatalogManager } from "@/components/catalog-manager";
@@ -134,6 +135,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const { t: tr, locale, timeZone, date: formatDate } = useI18n();
   const router = useRouter();
   const pathname = usePathname().replace(/\/$/, "") || "/";
+  const inboxPage = pathname === "/inbox";
   const assistantPage = pathname === "/assistant";
   const contextPage = pathname === "/context";
   const statisticsPage = pathname === "/statistics";
@@ -144,7 +146,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const newTeamPage = pathname === "/teams/new";
   const timelinePage = useRef(false);
   timelinePage.current =
-    !assistantPage &&
+    !inboxPage && !assistantPage &&
     !contextPage &&
     !statisticsPage &&
     !todoPage &&
@@ -340,6 +342,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       loading ||
       !timelineReady.current ||
       !meta ||
+      inboxPage ||
       statisticsPage ||
       contextPage ||
       todoPage ||
@@ -360,6 +363,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
     loading,
     meta,
     reports,
+    inboxPage,
     statisticsPage,
     contextPage,
     todoPage,
@@ -647,10 +651,16 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         onNavigate={() => setNav(false)}
       />
       <nav>
+        <Link href="/inbox" className={inboxPage ? "nav-active" : ""}
+          aria-current={inboxPage ? "page" : undefined} aria-label="Activity"
+          title="Activity" onClick={() => setNav(false)}>
+          <Bell size={18} />
+          <span className="nav-label">Activity</span>
+        </Link>
         <Link
           href={shared.href("/")}
           className={
-            !assistantPage &&
+            !inboxPage && !assistantPage &&
             !contextPage &&
             !statisticsPage &&
             !todoPage &&
@@ -661,7 +671,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               : ""
           }
           aria-current={
-            !assistantPage &&
+            !inboxPage && !assistantPage &&
             !contextPage &&
             !statisticsPage &&
             !todoPage &&
@@ -826,9 +836,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           </div>
         )}
         <div
-          className={`workspace-content${contextPage ? " knowledge-content" : ""}${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
+          className={`workspace-content${inboxPage ? " activity-workspace" : contextPage ? " knowledge-content" : ""}${credentialsPage || settingsPage ? " credentials-workspace" : ""}`}
         >
-          {!credentialsPage &&
+          {!inboxPage && !credentialsPage &&
             !settingsPage &&
             !newTeamPage &&
             (meta ? (
@@ -840,7 +850,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               />
             ))}
           <header
-            className={`page-heading${contextPage ? " context-page-heading" : todoPage ? " todo-page-heading module-page-heading" : calendarPage ? " calendar-page-heading module-page-heading" : ""}`}
+            className={`page-heading${inboxPage ? " activity-page-heading" : contextPage ? " context-page-heading" : todoPage ? " todo-page-heading module-page-heading" : calendarPage ? " calendar-page-heading module-page-heading" : ""}`}
           >
             <div className="heading-start">
               <Button
@@ -854,7 +864,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               </Button>
               <div className="heading-copy">
                 <h1>
-                  {assistantPage
+                  {inboxPage ? "Activity" : assistantPage
                     ? tr("AI 助手")
                     : statisticsPage
                       ? tr("数据统计")
@@ -869,7 +879,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                               : settingsPage
                                 ? tr("团队设置")
                                 : tr("团队动态")}
-                  {!assistantPage &&
+                  {!inboxPage && !assistantPage &&
                     !contextPage &&
                     !statisticsPage &&
                     !todoPage &&
@@ -882,7 +892,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                     {tr("多人、多 Agent 协同交付")}
                   </span>
                 )}
-                {!assistantPage &&
+                {!inboxPage && !assistantPage &&
                   !contextPage &&
                   !statisticsPage &&
                   !todoPage &&
@@ -895,6 +905,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   )}
               </div>
             </div>
+            {inboxPage && <div id="activity-header-actions" className="top-actions activity-header-actions" />}
             {(todoPage || calendarPage) && (
               <div
                 id={
@@ -909,7 +920,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 className="top-actions context-header-actions"
               />
             )}
-            {!assistantPage &&
+            {!inboxPage && !assistantPage &&
               !contextPage &&
               !statisticsPage &&
               !todoPage &&
@@ -971,7 +982,10 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 </div>
               )}
           </header>
-          {assistantPage ? (
+          {inboxPage ? (
+            meta ? <InboxWorkspace key={`${meta.team.id}:${meta.current_user}:${meta.role}`} meta={meta} />
+              : <PageLoading variant="list" />
+          ) : assistantPage ? (
             <AssistantWorkspace />
           ) : calendarPage ? (
             meta ? (
@@ -1026,13 +1040,16 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           ) : credentialsPage ? (
             <div className="credentials-content">
               {auth.mode === "local-demo" ? (
-                <p className="muted">
-                  {publicDemo
-                    ? tr(
-                        "公开演示不签发凭证。请在自己的 CoFlow 实例中配置 Agent。",
-                      )
-                    : tr("演示模式无需凭证。")}
-                </p>
+                <div>
+                  <p className="muted">
+                    {publicDemo
+                      ? tr("公开演示不签发凭证。请在自己的 CoFlow 实例中配置 Agent。")
+                      : tr("演示模式无需凭证。")}
+                  </p>
+                  <Link href="/cli" className="report-text-link">
+                    {tr("CLI 下载与接入")}
+                  </Link>
+                </div>
               ) : (
                 <TokenManager key={auth.me?.current_team} />
               )}

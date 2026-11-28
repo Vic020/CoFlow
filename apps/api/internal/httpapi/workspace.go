@@ -180,8 +180,46 @@ func registerWorkspace(r *gin.RouterGroup, s *workspace.Service) {
 		}
 		c.JSON(200, gin.H{"ok": true})
 	})
+	r.GET("/api/v1/activity", webMember, func(c *gin.Context) {
+		view := c.DefaultQuery("view", "recent")
+		if view != "recent" && view != "starred" && view != "mine" {
+			fail(c, identity.Invalid("请选择有效的动态筛选"))
+			return
+		}
+		items, err := s.RecentActivity(c.Request.Context(), principal(c), view)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"items": items})
+	})
+	r.GET("/api/v1/activity/follows", webMember, func(c *gin.Context) {
+		items, err := s.ActivityFollows(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"items": items})
+	})
+	r.PUT("/api/v1/activity/follows/:kind/:id", webMember, func(c *gin.Context) {
+		var in struct {
+			Following *bool `json:"following"`
+		}
+		if !decode(c, &in) {
+			return
+		}
+		if in.Following == nil {
+			fail(c, identity.Invalid("请选择要星标的项目、成员或简报"))
+			return
+		}
+		if err := s.SetActivityFollow(c.Request.Context(), principal(c), c.Param("kind"), c.Param("id"), *in.Following); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"following": *in.Following})
+	})
 	r.GET("/api/v1/notifications", webMember, func(c *gin.Context) {
-		v, e := s.Inbox(c.Request.Context(), principal(c))
+		v, e := s.Inbox(c.Request.Context(), principal(c), c.Query("view") == "activity")
 		if e != nil {
 			fail(c, e)
 			return
@@ -200,6 +238,31 @@ func registerWorkspace(r *gin.RouterGroup, s *workspace.Service) {
 			return
 		}
 		c.JSON(200, gin.H{"ok": true})
+	})
+	r.GET("/api/v1/todos/:id/follow", webMember, func(c *gin.Context) {
+		following, err := s.FollowsTodo(c.Request.Context(), principal(c), c.Param("id"))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"following": following})
+	})
+	r.PUT("/api/v1/todos/:id/follow", webMember, func(c *gin.Context) {
+		var in struct {
+			Following *bool `json:"following"`
+		}
+		if !decode(c, &in) {
+			return
+		}
+		if in.Following == nil {
+			fail(c, identity.Invalid("缺少关注状态"))
+			return
+		}
+		if err := s.SetTodoFollow(c.Request.Context(), principal(c), c.Param("id"), *in.Following); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"following": *in.Following})
 	})
 	r.GET("/api/v1/reads", webMember, func(c *gin.Context) {
 		v, e := s.Reads(c.Request.Context(), principal(c))

@@ -20,6 +20,63 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 	aiLimit := assistantLimiter()
 	g := r.Group("/api/v1/assistant", sessionOnly)
 	s := &assistant.Service{Slots: make(chan struct{}, 3), Identity: cfg.Identity, Pool: cfg.Identity.Pool, Workspace: ws, Repo: repo, Key: cfg.AIEncryptionKey, Client: cfg.AIClient}
+	g.GET("/behavior", func(c *gin.Context) {
+		v, err := s.Behavior(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, v)
+	})
+	g.PATCH("/behavior", func(c *gin.Context) {
+		var v assistant.Behavior
+		if !decode(c, &v) {
+			return
+		}
+		out, err := s.SaveBehavior(c.Request.Context(), principal(c), v)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, out)
+	})
+	g.GET("/conversations/:id/share", func(c *gin.Context) {
+		id, err := s.ConversationShareID(c.Request.Context(), principal(c), c.Param("id"))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"id": id})
+	})
+	g.POST("/conversations/:id/share", func(c *gin.Context) {
+		var in struct {
+			Revision int `json:"revision"`
+		}
+		if !decode(c, &in) {
+			return
+		}
+		v, err := s.ShareConversation(c.Request.Context(), principal(c), c.Param("id"), in.Revision)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(201, v)
+	})
+	g.DELETE("/conversations/:id/share", func(c *gin.Context) {
+		if err := s.RevokeConversationShare(c.Request.Context(), principal(c), c.Param("id")); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
+	})
+	g.GET("/shares/:id", func(c *gin.Context) {
+		v, err := s.SharedConversation(c.Request.Context(), principal(c), c.Param("id"))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, v)
+	})
 	g.POST("/context-auto", aiLimit, func(c *gin.Context) {
 		var in assistant.ContextAutoInput
 		if !decode(c, &in) {
@@ -395,6 +452,25 @@ func registerAssistant(r *gin.RouterGroup, cfg Config, ws *workspace.Service, re
 			return
 		}
 		c.JSON(200, v)
+	})
+	g.GET("/approvals", func(c *gin.Context) {
+		items, err := s.Approvals(c.Request.Context(), principal(c))
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"items": items})
+	})
+	g.DELETE("/approvals", func(c *gin.Context) {
+		var in assistant.Approval
+		if !decode(c, &in) {
+			return
+		}
+		if err := s.RevokeApproval(c.Request.Context(), principal(c), in); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"ok": true})
 	})
 	g.POST("/actions/:id", func(c *gin.Context) {
 		var in struct {

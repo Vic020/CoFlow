@@ -2,7 +2,10 @@
 
 import { useI18n } from "@/components/i18n-provider";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, KeyRound, Loader2, Plus } from "lucide-react";
+import { Check, ClipboardCheck, Copy, KeyRound, Loader2, Plus, Terminal } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CLIRequestReview } from "./cli-request-review";
+import { CLIDeviceApproval } from "./cli-device-approval";
 import { useAuth } from "@/components/auth-gate";
 import {
   Dialog,
@@ -28,6 +31,11 @@ const isActive = (token: Token) =>
 export function TokenManager() {
   const { t: tr, date: formatDate } = useI18n();
   const { me, credential, setCredential, refreshTokens } = useAuth();
+
+  const router = useRouter();
+  const params = useSearchParams();
+  const selected = params.get("tab");
+  const tab = selected === "review" || selected === "tokens" ? selected : "connect";
 
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Codex");
@@ -191,7 +199,29 @@ export function TokenManager() {
     }
   }
   return (
-    <section className="credentials-manager">
+    <section className="team-settings-page credentials-settings-page">
+      <nav className="settings-categories" aria-label={tr("Agent 凭证")}>
+        {([
+          ["connect", "连接 CLI", Terminal],
+          ["review", "审查 CLI 请求", ClipboardCheck],
+          ["tokens", "我的凭证", KeyRound],
+        ] as const).map(([value, label, Icon]) => (
+          <button type="button" key={value} aria-current={tab === value ? "page" : undefined}
+            onClick={() => router.replace(`/credentials?tab=${value}`, { scroll: false })}>
+            <Icon size={15} />
+            {tr(label)}
+          </button>
+        ))}
+      </nav>
+      <div className="settings-panel credentials-manager">
+        {tab === "connect" && <CLIDeviceApproval onRefresh={load} />}
+        {tab === "review" && (
+          <div className="credentials-review-panel">
+            <h2>{tr("审查 CLI 请求")}</h2>
+            <CLIRequestReview />
+          </div>
+        )}
+        <div hidden={tab !== "tokens"}>
       <form className="token-form credentials-create" onSubmit={create}>
         <label>
           {tr("名称")}
@@ -336,7 +366,7 @@ export function TokenManager() {
               const active = isActive(t);
               const capability = credentialCapabilities(t.scopes);
               const upgrade =
-                active &&
+                active && !t.prefix.startsWith("cf_cli_") &&
                 !capability.collaboration &&
                 (capability.reports || capability.todos);
               return (
@@ -475,6 +505,8 @@ export function TokenManager() {
           </Button>
         </div>
       </details>
+        </div>
+      </div>
     </section>
   );
 }

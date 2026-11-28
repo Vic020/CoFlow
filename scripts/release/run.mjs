@@ -288,6 +288,9 @@ try {
             ],
             { cwd: root, timeout: 180000 },
           );
+          if (paths.includes("apps/cli/Cargo.toml"))
+            command("cargo", ["test", "--locked", "--manifest-path", "apps/cli/Cargo.toml"],
+              { cwd: root, timeout: 300000 });
           result = { verified: true };
         } else if (stage === "push") {
           git("push", "origin", sha + ":refs/heads/main");

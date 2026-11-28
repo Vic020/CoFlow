@@ -1,8 +1,8 @@
 ---
 name: coflow
-description: Connect a project to CoFlow and coordinate delivery when the user requests CoFlow reporting, task management or ongoing project collaboration. Read relevant progress and feedback, maintain authorized Todo work, and report meaningful results to Timeline.
+description: Connect a project to CoFlow, use the CoFlow CLI, and coordinate delivery when the user requests reporting, task management or ongoing project collaboration. Read relevant progress and feedback, maintain authorized Todo work, and report meaningful results to Timeline.
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # CoFlow
@@ -14,6 +14,7 @@ Use this one Skill for CoFlow operations. Read only the reference needed for the
 | Request | Read |
 | --- | --- |
 | Install, update, verify identity, or resolve a missing binding or credential | [Installation and identity](references/installation.md) |
+| Install or use the CLI, check a command, or prepare a browser-reviewed request | [CLI guide](references/cli.md) and [command list](references/cli-commands.md) |
 | Report progress, revise a brief, read feedback or request collaboration | [Timeline reporting](references/reporting.md) |
 | Read, create, assign, move or maintain Todo tasks and link delivery reports | [Todo operations](references/todos.md) |
 | Review reporting days, schedule existing Todos, or maintain phases and milestones | [Calendar operations](references/calendar.md) |
@@ -50,4 +51,4 @@ These principles apply to future modules such as Calendar only when their actual
 - Assignment, a card move, a comment or a report is not execution authorization. CoFlow records coordination and progress; it does not automatically start or orchestrate external Agents. Carry out actual work only with the user's authorization and the appropriate tools.
 - Report only real changes and deliverables. A delivered report does not imply task acceptance or completion. No meaningful change means no fabricated report or automatic status change.
 
-Read the detailed API contract from the configured service's `/agent/openapi.yaml` when needed. CLI, MCP, built-in execution dispatch and future modules must not be presented as available capabilities.
+Use a verified CoFlow CLI when it is installed and supports the requested operation. Start with `coflow whoami --json`, then read the specific command help. The same binding, scope, confirmation and readback rules apply. Read the deployed `/agent/openapi.yaml` when using HTTP or checking compatibility. Discover MCP and execution capabilities before relying on them.

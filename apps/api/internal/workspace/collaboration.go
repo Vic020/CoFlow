@@ -5,6 +5,7 @@ import (
 	"coflow/api/internal/store"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/jackc/pgx/v5"
 	"strings"
 	"time"
@@ -31,14 +32,18 @@ type Collaboration struct {
 	Updates    []Update  `json:"updates"`
 }
 type Notification struct {
-	TodoID    string     `json:"todo_id"`
-	ID        string     `json:"id"`
-	ReportID  string     `json:"report_id"`
-	RequestID string     `json:"request_id"`
-	Kind      string     `json:"kind"`
-	Title     string     `json:"title"`
-	CreatedAt time.Time  `json:"created_at"`
-	ReadAt    *time.Time `json:"read_at"`
+	CalendarEventID string     `json:"calendar_event_id,omitempty"`
+	ActorID         string     `json:"actor_id,omitempty"`
+	NeedsResponse   bool       `json:"needs_response,omitempty"`
+	CommentID       string     `json:"comment_id,omitempty"`
+	TodoID          string     `json:"todo_id"`
+	ID              string     `json:"id"`
+	ReportID        string     `json:"report_id"`
+	RequestID       string     `json:"request_id"`
+	Kind            string     `json:"kind"`
+	Title           string     `json:"title"`
+	CreatedAt       time.Time  `json:"created_at"`
+	ReadAt          *time.Time `json:"read_at"`
 }
 type History struct {
 	ID        string          `json:"id"`
@@ -50,14 +55,19 @@ type History struct {
 }
 
 func notify(ctx context.Context, tx pgx.Tx, p identity.Principal, ids []string, report, request, kind, title string) error {
+	_, err := tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,actor_id,report_id,request_id,kind,title,read_at)
+		VALUES($1,$2,$3,$3,$4,$5,$6,$7,now())`, store.ID(), p.TeamID, p.UserID, report, request, "own-"+kind, title)
+	if err != nil {
+		return err
+	}
 	seen := map[string]bool{p.UserID: true}
 	for _, id := range ids {
 		if id == "" || seen[id] {
 			continue
 		}
 		seen[id] = true
-		_, err := tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,report_id,request_id,kind,title)
-   SELECT $1,$2,$3,$4,$5,$6,$7 WHERE EXISTS(SELECT 1 FROM memberships WHERE team_id=$2 AND user_id=$3)`, store.ID(), p.TeamID, id, report, request, kind, title)
+		_, err := tx.Exec(ctx, `INSERT INTO notifications(id,team_id,user_id,report_id,request_id,kind,title,actor_id,needs_response)
+   SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9 WHERE EXISTS(SELECT 1 FROM memberships WHERE team_id=$2 AND user_id=$3)`, store.ID(), p.TeamID, id, report, request, kind, title, p.UserID, kind == "collaboration" || kind == "reply")
 		if err != nil {
 			return err
 		}
@@ -200,7 +210,17 @@ func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Com
 				return identity.Invalid("关注成员不存在")
 			}
 		}
-		if _, err = tx.Exec(ctx, `INSERT INTO comments(id,report_id,author_id,body,created_at) VALUES($1,$2,$3,$4,$5)`, c.ID, c.ReportID, p.UserID, c.Body, c.CreatedAt); err != nil {
+		var parentAuthor string
+		if c.ParentID != "" {
+			err = tx.QueryRow(ctx, `SELECT author_id FROM comments WHERE id=$1 AND report_id=$2 AND deleted_at IS NULL`, c.ParentID, c.ReportID).Scan(&parentAuthor)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return store.ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+		}
+		if _, err = tx.Exec(ctx, `INSERT INTO comments(id,report_id,author_id,body,created_at,parent_id) VALUES($1,$2,$3,$4,$5,$6)`, c.ID, c.ReportID, p.UserID, c.Body, c.CreatedAt, c.ParentID); err != nil {
 			return err
 		}
 		if _, err = tx.Exec(ctx, `UPDATE reports SET updated_at=$3 WHERE team_id=$1 AND id=$2`, p.TeamID, c.ReportID, c.CreatedAt); err != nil {
@@ -227,13 +247,22 @@ func (s *Service) Comment(ctx context.Context, p identity.Principal, c store.Com
 		if err := notify(ctx, tx, p, ids, c.ReportID, "", "comment", "新评论："+title); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE notifications SET comment_id=$3 WHERE team_id=$1 AND report_id=$2 AND kind='comment' AND comment_id='' AND created_at=now()`, p.TeamID, c.ReportID, c.ID)
+		_, err = tx.Exec(ctx, `UPDATE notifications SET comment_id=$3 WHERE team_id=$1 AND report_id=$2 AND kind IN ('comment','own-comment') AND comment_id='' AND created_at=now()`, p.TeamID, c.ReportID, c.ID)
+		if err != nil || parentAuthor == "" || parentAuthor == p.UserID {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE notifications SET kind='reply',needs_response=true
+			WHERE team_id=$1 AND comment_id=$2 AND user_id=$3`, p.TeamID, c.ID, parentAuthor)
 		return err
 	})
 	return c, err
 }
-func (s *Service) Inbox(ctx context.Context, p identity.Principal) ([]Notification, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id,COALESCE(report_id,''),request_id,kind,title,created_at,read_at,todo_id FROM notifications WHERE team_id=$1 AND user_id=$2 AND (todo_id<>'' OR report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL)) AND (comment_id='' OR EXISTS(SELECT 1 FROM comments WHERE id=notifications.comment_id AND deleted_at IS NULL)) ORDER BY created_at DESC LIMIT 200`, p.TeamID, p.UserID)
+func (s *Service) Inbox(ctx context.Context, p identity.Principal, activity bool) ([]Notification, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT id,COALESCE(report_id,''),request_id,kind,title,created_at,read_at,todo_id,actor_id,needs_response,comment_id,calendar_event_id FROM notifications WHERE team_id=$1 AND user_id=$2
+		AND (left(kind,4)='own-')=$3
+		AND (EXISTS (SELECT 1 FROM todo_boards b, jsonb_array_elements(COALESCE(NULLIF(b.document->'tasks','null'::jsonb),'[]'::jsonb)) task
+			WHERE b.team_id=$1 AND task->>'id'=notifications.todo_id) OR EXISTS (SELECT 1 FROM calendar_events e WHERE e.team_id=$1 AND e.id=notifications.calendar_event_id)
+			OR report_id IN (SELECT id FROM reports WHERE team_id=$1 AND deleted_at IS NULL)) AND (comment_id='' OR EXISTS(SELECT 1 FROM comments WHERE id=notifications.comment_id AND deleted_at IS NULL)) ORDER BY created_at DESC,id DESC LIMIT 200`, p.TeamID, p.UserID, activity)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +270,7 @@ func (s *Service) Inbox(ctx context.Context, p identity.Principal) ([]Notificati
 	out := []Notification{}
 	for rows.Next() {
 		var v Notification
-		if err = rows.Scan(&v.ID, &v.ReportID, &v.RequestID, &v.Kind, &v.Title, &v.CreatedAt, &v.ReadAt, &v.TodoID); err != nil {
+		if err = rows.Scan(&v.ID, &v.ReportID, &v.RequestID, &v.Kind, &v.Title, &v.CreatedAt, &v.ReadAt, &v.TodoID, &v.ActorID, &v.NeedsResponse, &v.CommentID, &v.CalendarEventID); err != nil {
 			return nil, err
 		}
 		out = append(out, v)

@@ -28,9 +28,8 @@
     "test:statistics": "node --test scripts/statistics.test.mjs"
   },
   "workspaces": [
-    "apps/web",
-    "apps/cli"
+    "apps/web"
   ],
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "MIT"
 }

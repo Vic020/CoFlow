@@ -982,11 +982,46 @@ input[type="checkbox"] {
   color: #8a959d;
   margin-top: 8px;
 }
-.detail-status {
+.detail-description > .status {
+  margin-inline-start: 10px;
+  vertical-align: middle;
+}
+.report-detail-actions {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin: 22px 0;
+  gap: 5px;
+  margin: 14px -3px;
+  padding: 3px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.report-detail-actions button {
+  gap: 5px;
+}
+.report-detail-actions > button,
+.report-detail-actions > .context-ai-action > button:first-child,
+.report-detail-actions .delete-action button {
+  height: 30px;
+  padding-inline: 8px;
+}
+.report-detail-actions > .context-ai-action,
+.report-detail-actions > .delete-action {
+  flex: none;
+}
+.report-detail-actions .context-ai-action:not([data-busy]):not([data-feedback]) > button:first-child {
+  padding-inline-end: 8px;
+}
+.report-detail-actions .context-ai-action:not([data-busy]):not([data-feedback]) .context-ai-label-size {
+  display: none;
+}
+.report-detail-actions .context-ai-action:not([data-busy]):not([data-feedback]) .context-ai-label > span:last-child {
+  position: static;
+}
+@media (max-width: 640px) {
+  .report-detail-actions .report-secondary-action-label,
+  .report-detail-actions .delete-action-label {
+    display: none;
+  }
 }
 .markdown {
   color: #596870;
@@ -3600,7 +3635,8 @@ input[type="checkbox"] {
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
-.account-popover > button {
+.account-popover > button,
+.account-popover > a {
   display: flex;
   width: 100%;
   align-items: center;
@@ -3612,10 +3648,12 @@ input[type="checkbox"] {
   color: #6d8275;
   cursor: pointer;
 }
-.account-popover > button:hover {
+.account-popover > button:hover,
+.account-popover > a:hover {
   color: #08674f;
 }
-.account-popover > button:focus-visible {
+.account-popover > button:focus-visible,
+.account-popover > a:focus-visible {
   outline: 2px solid #228e71;
   outline-offset: 3px;
 }
@@ -4546,9 +4584,6 @@ input[type="checkbox"] {
 }
 .delete-action button {
   color: #ad6558;
-}
-.detail-status {
-  flex-wrap: wrap;
 }
 .trash-dialog {
   width: min(620px, calc(100vw - 32px));
@@ -5485,12 +5520,34 @@ input[type="checkbox"] {
   text-decoration: none;
   font-size: 19px;
 }
-.docs-brand > span {
-  margin-left: 8px;
-  padding-left: 16px;
-  border-left: 1px solid var(--color-border);
+.docs-header-nav {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 16px;
+  margin-inline-end: auto;
+  padding-inline-start: 16px;
+  border-inline-start: 1px solid var(--color-border);
+}
+.docs-header-nav a {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  padding: 0 4px;
   color: #63706e;
   font-size: 14px;
+}
+.docs-header-nav a:hover,
+.docs-header-nav a[aria-current="page"] {
+  color: var(--primary);
+}
+.docs-header-nav a[aria-current="page"] {
+  border-bottom-color: var(--primary);
+  font-weight: 650;
+}
+@media (max-width: 440px) {
+  .docs-header-nav { gap: 8px; padding-inline-start: 8px; }
+  .docs-workspace-link > span { display: none; }
 }
 .docs-layout {
   display: grid;
@@ -6109,7 +6166,7 @@ input[type="checkbox"] {
 .ai-form-heading strong {font-size:13px;font-weight:550;}
 .ai-form-grid {display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .ai-config-form label {display:flex;flex-direction:column;gap:6px;font-size:12px;color:#728277;}
-.ai-config-form input:not([type=checkbox]),.ai-config-form select,.ai-action-card>input,.ai-action-card>textarea {width:100%;border:1px solid #dce5df;border-radius:7px;padding:9px 10px;color:#223a2c;background:white;font-size:13px;}
+.ai-config-form input:not([type=checkbox]),.ai-config-form select,.ai-config-form textarea,.ai-action-card>input,.ai-action-card>textarea {width:100%;border:1px solid #dce5df;border-radius:7px;padding:9px 10px;color:#223a2c;background:white;font-size:13px;}
 .ai-config-form .ai-checkbox {flex-direction:row;align-items:center;gap:8px;}
 .ai-checkbox input {width:14px;height:14px;accent-color:#168361;}
 .ai-form-actions {display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
@@ -6994,4 +7051,101 @@ input[type="checkbox"] {
   top: calc(100% + 5px);
   bottom: auto;
   z-index: 4;
+}
+
+.cli-guide article h2 {
+  margin: 28px 0 12px;
+}
+.cli-download,
+.cli-guide-commands {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.cli-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px;
+}
+.cli-download > div {
+  flex: 1 1 240px;
+}
+.cli-guide .cli-download p {
+  margin: 4px 0 0;
+}
+.cli-snippet {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f6f8f7;
+}
+.cli-guide .cli-snippet code {
+  background: transparent;
+  padding: 0;
+}
+.cli-guide-commands > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+}
+.cli-guide-commands > div + div {
+  border-top: 1px solid var(--color-border);
+}
+#cli-connection {
+  scroll-margin-top: 24px;
+}
+
+.ai-share-dialog > * + .ai-manager-row, .ai-share-dialog > .ai-share-link, .ai-share-dialog > .ai-share-link + button { margin-top: 12px; }
+.ai-share-link { display: grid; gap: 8px; font-size: 12px; }
+.ai-share-link input { width: 100%; min-width: 0; border: 1px solid var(--color-border); border-radius: 6px; padding: 8px; }
+.ai-share-link button { justify-self: start; }
+.ai-shared-transcript { max-width: 850px; display: grid; gap: 16px; }
+
+.activity-workspace { grid-template-columns: minmax(0, 1fr); }
+.activity-page-heading { gap: 8px; }
+.activity-page-heading .activity-header-actions { width: auto; flex: 0 0 auto; gap: 8px; min-height: 32px; }
+.personal-inbox { min-width: 0; }
+.activity-viewbar { align-items: flex-end; }
+.activity-viewbar .view-tabs { min-width: 0; overflow-x: auto; }
+.activity-viewbar .view-tabs button, .activity-viewbar > button { white-space: nowrap; flex: none; }
+.activity-viewbar .view-tabs button.active::after { bottom: 0; }
+.activity-viewbar > button { margin-bottom: 7px; }
+.personal-inbox-list { margin: 0; padding: 0; list-style: none; }
+.personal-inbox-list li { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--color-border); padding: 0 8px; }
+.personal-inbox-list li.unread { background: #f4f8f6; }
+.personal-inbox-list a { display: flex; align-items: center; gap: 12px; padding: 12px 4px; flex: 1; min-width: 0; color: inherit; }
+.personal-inbox-list a:hover strong { text-decoration: underline; }
+.personal-inbox-list a svg { flex: none; }
+.personal-inbox-list a > span { display: grid; min-width: 0; gap: 4px; overflow-wrap: anywhere; }
+.personal-inbox-list small { color: var(--muted-foreground); }
+
+.ai-approval-options .action-menu-panel { width: min(230px, 70vw); }
+.ai-approval-options .action-menu-panel p { margin: 4px 8px 6px; font-size: 12px; }
+.ai-approval-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+.ai-approval-row small { display: block; overflow-wrap: anywhere; }
+
+.credentials-settings-page .credentials-create {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.credentials-review-panel > h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+.credentials-review-panel pre { overflow-wrap: anywhere; white-space: pre-wrap; }
+.credentials-review-panel textarea { max-width: 100%; }
+.activity-follows { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.activity-follows h3 { font-size: 13px; margin-bottom: 6px; }
+.activity-follows button { display: flex; justify-content: flex-start; max-width: 100%; }
+.activity-follows button[aria-pressed="true"], .personal-inbox-list a > svg.lucide-star, .report-star-button[aria-pressed="true"] { color: #92661b; }
+.ai-toolbar-end .ai-share-trigger { width: auto; white-space: nowrap; flex-shrink: 0; padding-inline: 6px; }
+
+.activity-follows section, .activity-follows .muted { min-width: 0; }
+.activity-follows button { white-space: normal; overflow-wrap: anywhere; text-align: left; height: auto; min-height: 32px; }
+@media (max-width: 480px) {
+  .activity-page-heading .activity-header-actions .loading-status { position: absolute; bottom: -5px; right: 0; }
+  .activity-viewbar .view-tabs { gap: 14px; }
 }

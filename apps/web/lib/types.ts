@@ -48,6 +48,9 @@ export type Collaboration = {
   }[];
 };
 export type Notification = {
+  calendar_event_id?: string;
+  needs_response?: boolean;
+  comment_id?: string;
   todo_id?: string;
   id: string;
   report_id: string;
@@ -59,6 +62,7 @@ export type Notification = {
 };
 export type Link = { title: string; url: string };
 export type Comment = {
+  parent_id?: string;
   deleted_at?: string;
   id: string;
   report_id: string;

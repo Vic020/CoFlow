@@ -24,10 +24,12 @@ import {
   AssistantTools,
   type AssistantToolsPage,
 } from "./assistant-manager";
+import { AssistantShare, SharedAssistantConversation } from "./assistant-share";
 import { useAssistant } from "./assistant-provider";
 import { useAuth } from "./auth-gate";
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
+import { ActionMenu } from "./ui/action-menu";
 import { SelectMenu } from "./ui/select-menu";
 import {
   Dialog,
@@ -41,6 +43,7 @@ import {
   webProviders,
   templateTitle,
   type AIAction,
+  type AIActionDecision,
 } from "@/lib/assistant";
 import { request } from "@/lib/types";
 import { AssistantOperations } from "./assistant-operations";
@@ -60,6 +63,13 @@ export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
     { id: "jobs", label: "定时任务", Icon: CalendarClock },
     { id: "mcp", label: "MCP 连接", Icon: Plug },
   ] as const;
+  const [shareID, setShareID] = useState("");
+  useEffect(() => {
+    if (!compact && !publicDemo) {
+      setShareID(new URLSearchParams(window.location.search).get("share") || "");
+    }
+  }, [compact]);
+  if (shareID && !compact) return <SharedAssistantConversation id={shareID} />;
   if (compact) return <AssistantChat compact />;
   return (
     <div className="ai-full-layout">
@@ -221,6 +231,9 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
           </Button>
         </div>
         <div className="ai-toolbar-end">
+          {ai.current && !ai.busy && ai.turns.length > 0 && (
+            <AssistantShare key={ai.current.id} conversation={ai.current} turns={ai.turns} />
+          )}
           {!publicDemo && (
             <button
               type="button"
@@ -454,11 +467,12 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
                   {tr("联网请求：{0}", { 0: turn.web_requests ?? 0 })}
                 </small>
               )}
-              {(turn.trace?.length || turn.usage) && (
+              {(turn.trace?.length || turn.usage || turn.model_retries) ? (
                 <details className="ai-trace">
                   <summary>
                     {tr("执行记录")}
                     {turn.usage?.known ? ` · ${turn.usage.total} tokens` : ""}
+                    {turn.model_retries ? ` · ${tr("模型重试 {0} 次", { 0: turn.model_retries })}` : ""}
                   </summary>
                   {turn.trace?.map((x, i) => (
                     <p key={i}>
@@ -467,7 +481,7 @@ function AssistantChat({ compact = false }: { compact?: boolean }) {
                   ))}
                   {!turn.usage?.known && <small>{tr("用量未知")}</small>}
                 </details>
-              )}
+              ) : null}
               {turn.actions?.map((action) => (
                 <ActionCard key={action.id} action={action} compact={compact} />
               ))}
@@ -631,6 +645,21 @@ function ActionCard({
     [title, setTitle] = useState(action.payload.title || action.title),
     [body, setBody] = useState(action.payload.body || ""),
     [error, setError] = useState("");
+  const { mode } = useAuth();
+  const canRemember = mode === "team" && (
+    (action.kind === "propose_todo" && !!action.payload.project_id) ||
+    (action.kind === "propose_schedule" && !!action.payload.todo_id) ||
+    (action.kind === "propose_context" && !action.payload.context_id && !!action.payload.knowledge?.project_id)
+  );
+  async function decide(decision: AIActionDecision) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await ai.act(action, decision);
+    } finally {
+      setBusy(false);
+    }
+  }
   const schedule = action.payload.schedule;
   const labels: Record<string, string> = {
     propose_context: "记录到 Context",
@@ -654,7 +683,7 @@ function ActionCard({
           {tr(
             {
               pending: "待确认",
-              done: "已执行",
+              done: action.result?.approval_mode === "saved" ? "已按授权自动执行" : "已执行",
               cancelled: "已取消",
               failed: "执行失败",
             }[action.state],
@@ -775,36 +804,33 @@ function ActionCard({
                 size="sm"
                 variant="ghost"
                 disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await ai.act(action, "cancel");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                onClick={() => void decide("cancel")}
               >
                 {tr("取消")}
               </Button>
               <Button
                 size="sm"
                 disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await ai.act(action, "confirm");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                onClick={() => void decide("confirm")}
               >
                 {busy ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
                   <CheckCheck size={14} />
                 )}{" "}
-                {tr("确认执行")}
+                {tr("仅本次允许")}
               </Button>
+              {canRemember && (
+                <ActionMenu className="ai-approval-options" label={tr("更多批准选项")}>
+                  <button type="button" role="menuitem" disabled={busy} onClick={() => void decide("allow-session")}>
+                    {tr("本会话允许")}
+                  </button>
+                  <button type="button" role="menuitem" disabled={busy} onClick={() => void decide("always-allow")}>
+                    {tr("始终允许")}
+                  </button>
+                  <p className="muted">{tr("仅允许同一项目或任务的同类操作。始终允许适用于当前空间内的后续对话，可在个人 AI 设定撤销。")}</p>
+                </ActionMenu>
+              )}
             </div>
           )}
           {action.decided_at && <small>{date(action.decided_at)}</small>}

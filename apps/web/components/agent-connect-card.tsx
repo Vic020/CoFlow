@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/i18n-provider";
+import Link from "next/link";
 import { Check, Copy, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicDemo, repositoryURL } from "@/lib/runtime";
@@ -29,15 +30,20 @@ export function AgentConnectCard({
             <small>{tr("在自有实例中配置 Skill 与 API")}</small>
           </span>
         </div>
-        <Button size="sm" asChild>
-          <a
-            href={`${repositoryURL}/wiki/Agent-Reporting`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {tr("查看接入指南 ↗")}
-          </a>
-        </Button>
+        <div className="connect-card-actions">
+          <Button size="sm" asChild>
+            <a
+              href={`${repositoryURL}/wiki/Agent-Reporting`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {tr("查看接入指南 ↗")}
+            </a>
+          </Button>
+          <Link href="/cli" className="report-text-link">
+            CLI
+          </Link>
+        </div>
       </section>
     );
   return (
@@ -64,6 +70,9 @@ export function AgentConnectCard({
               ? tr("已复制")
               : tr("复制上报指令")}
         </Button>
+        <Link href="/cli" className="report-text-link">
+          CLI
+        </Link>
       </div>
       {copyError && (
         <p className="connect-card-feedback has-error" role="alert">

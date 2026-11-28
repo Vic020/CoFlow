@@ -1,13 +1,150 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.6.0
+  version: 0.7.0
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
 servers:
 - url: http://127.0.0.1:8080/api/v1
 paths:
+  /oauth/device:
+    post:
+      operationId: startCLIDeviceAuthorization
+      summary: Start OAuth 2.0 device authorization for the first-party CLI
+      description: Team mode only. The user opens verification_uri and enters user_code in their signed-in browser.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id]
+              properties:
+                client_id: {type: string, const: coflow-cli}
+                scope: {type: string, description: Space-delimited Agent scopes. Defaults to module read scopes.}
+                name: {type: string, default: CoFlow CLI}
+                days: {type: integer, minimum: 1, maximum: 30, default: 7}
+                team_id: {type: string, description: Optional expected workspace for authorization.}
+                project_id: {type: string, description: Limit Todo access to the specified project. Mutually exclusive with todo_id.}
+                todo_id: {type: string, description: Limit access to one Todo. Mutually exclusive with project_id.}
+      responses:
+        '200':
+          description: Private device_code, human-readable user_code, verification_uri, expires_in (seconds) and interval (seconds).
+        '400':
+          description: Invalid client, scope or requested lifetime.
+        '429':
+          description: Too many requests.
+  /oauth/token:
+    post:
+      operationId: redeemCLIDeviceAuthorization
+      summary: Exchange an approved device code once
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, grant_type, device_code]
+              properties:
+                client_id: {type: string, const: coflow-cli}
+                grant_type: {type: string, const: 'urn:ietf:params:oauth:grant-type:device_code'}
+                device_code: {type: string, writeOnly: true}
+      responses:
+        '200':
+          description: Bearer access_token, token_type, expires_in, scope, user_id, team_id, grant_id and optional Todo or project restriction. No refresh token.
+        '400':
+          description: authorization_pending, slow_down, access_denied, expired_token, invalid_grant, invalid_client or unsupported_grant_type.
+        '429':
+          description: Too many requests.
+  /cli/device/review:
+    post:
+      operationId: reviewCLIDeviceAuthorization
+      summary: Review CLI access using the active browser session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string, writeOnly: true}
+      responses:
+        '200':
+          description: name, scopes, days, user_id and team_id for confirmation.
+        '403':
+          description: Browser session required.
+        '404':
+          description: Code invalid, decided or expired.
+  /cli/device/decision:
+    post:
+      operationId: decideCLIDeviceAuthorization
+      summary: Allow or deny the reviewed permissions in the current space
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, user_id, team_id, approve]
+              properties:
+                code: {type: string, writeOnly: true}
+                user_id: {type: string}
+                team_id: {type: string}
+                approve: {type: boolean}
+      responses:
+        '200':
+          description: Decision saved.
+        '403':
+          description: Browser session required.
+        '404':
+          description: Code invalid, decided or expired.
+        '409':
+          description: User or space changed since review.
+  /cli/revoke:
+    post:
+      operationId: revokeCLIAccess
+      summary: Revoke the calling CLI access token
+      responses:
+        '200':
+          description: Access revoked.
+        '401':
+          description: Token missing, expired or already revoked.
+        '403':
+          description: CLI-issued Bearer token required.
+  /todo-schedules/batch:
+    post:
+      operationId: changeTodoSchedules
+      summary: Reschedule tasks in one browser-confirmed transaction
+      description: Browser session required. A stale task or missing write permission aborts the entire batch. Reuse the operation ID with identical input to retry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation_id, changes]
+              properties:
+                operation_id: {type: string}
+                changes:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items:
+                    type: object
+                    required: [id, expected_revision, schedule]
+                    properties:
+                      id: {type: string}
+                      expected_revision: {type: integer, minimum: 1}
+                      schedule: {oneOf: [{$ref: '#/components/schemas/Schedule'}, {type: 'null'}]}
+      responses:
+        '200':
+          description: IDs, titles, schedules and revisions after the batch.
+        '403':
+          description: Browser session or task write permission required.
+        '409':
+          description: Task revision changed or operation ID reused with different input.
   /statistics:
     get:
       operationId: readStatistics
@@ -846,6 +983,60 @@ paths:
       responses:
         '200': {description: Saved this member's choice within the current team, after validating access.}
         '404': {$ref: '#/components/responses/Error'}
+  /assistant/behavior:
+    get:
+      summary: Read personal assistant behavior across workspaces
+      responses:
+        '200': {description: Model retry budget, appended system instructions and revision.}
+    patch:
+      summary: Update personal assistant behavior using the current revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model_retries, system_prompt_append, revision]
+              properties:
+                model_retries: {type: integer, minimum: 0, maximum: 5, default: 2}
+                system_prompt_append: {type: string, description: Maximum 6000 UTF-8 bytes. Appended to the system defaults.}
+                revision: {type: integer, minimum: 0}
+      responses:
+        '200': {description: Saved preferences and new revision.}
+        '409': {description: Preferences changed concurrently.}
+  /assistant/conversations/{id}/share:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read the current share ID for a conversation you own
+      responses:
+        '200': {description: Active share ID or empty string.}
+    post:
+      summary: Create or replace a read-only transcript snapshot in the current workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision]
+              properties:
+                revision: {type: integer, minimum: 1}
+      responses:
+        '201': {description: Share ID, title and visible user and assistant text.}
+        '409': {description: Conversation is inaccessible or has a different revision.}
+    delete:
+      summary: Revoke the current share of a conversation you own
+      responses:
+        '200': {description: No active share remains.}
+  /assistant/shares/{id}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read a shared transcript in the active workspace
+      responses:
+        '200': {description: Read-only snapshot of completed turns.}
+        '404': {description: Share has been revoked or is unavailable in the active workspace.}
   /assistant/conversations:
     post:
       operationId: beginAssistantConversation
@@ -1111,7 +1302,7 @@ paths:
     post:
       operationId: confirmAssistantAction
       security: [{sessionCookie: []}]
-      description: Explicitly confirm or cancel an owned action. Go reuses original Todo/Timeline services for object permissions, validation, revisions, history and stable action-derived idempotency. Task changes use the original task/board revisions; reassign resolves verified members, comments do not add implicit mentions. Schedule updates preserve deadline and completion; report status is progress. Repeat confirmations return durable results; cancelled actions never execute. Batch cards are independent actions, not one transaction. An execution validation/conflict failure is returned as state=failed with a safe result.error, not as success.
+      description: Confirm or cancel an owned action. On successful execution, allow-session and always-allow also save approval for the same capability and target in the current conversation or workspace, respectively. Supported targets are a project for Todo creation or pending Context creation, and a task for rescheduling. Only newer proposals from eligible interactive turns use saved approval. Go reuses original services for object permissions, validation, revisions, history and stable action-derived idempotency. Task changes use the original task/board revisions; reassign resolves verified members, comments do not add implicit mentions. Schedule updates preserve deadline and completion; report status is progress. Repeat confirmations return durable results; cancelled actions never execute. Batch cards are independent actions, not one transaction. An execution validation/conflict failure is returned as state=failed with a safe result.error, not as success.
       requestBody:
         required: true
         content:
@@ -1120,12 +1311,40 @@ paths:
               type: object
               required: [decision]
               properties:
-                decision: {type: string, enum: [confirm, cancel]}
+                decision: {type: string, enum: [confirm, cancel, allow-session, always-allow]}
       responses:
         '200': {description: 'Action id, kind, title, payload, state (pending/done/failed/cancelled) and result. Only state=done proves execution.'}
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
         '429': {$ref: '#/components/responses/Error'}
+  /assistant/approvals:
+    get:
+      operationId: listAssistantApprovals
+      security: [{sessionCookie: []}]
+      description: List the current member's saved action approvals in the current workspace.
+      responses:
+        '200':
+          description: Saved action approvals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/AssistantApproval'}
+    delete:
+      operationId: revokeAssistantApproval
+      security: [{sessionCookie: []}]
+      description: Remove an approval owned by the current member; grants already used for execution leave completed actions intact.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AssistantApproval'}
+      responses:
+        '200': {description: The matching approval is absent.}
+        '400': {$ref: '#/components/responses/Error'}
   /calendar/reports:
     get:
       operationId: calendarReports
@@ -2458,11 +2677,48 @@ paths:
       required: true
       schema:
         type: string
+  /activity:
+    get:
+      operationId: recentActivity
+      security: [{sessionCookie: []}]
+      description: Return up to 200 items in the current workspace. Includes recorded Todo, report, discussion, collaboration, calendar and visible Context activity from the last 30 days. The starred view includes directly starred reports even when they have no recent event. Stars are personal to the current member and workspace. Does not mutate notification read state.
+      parameters:
+      - {name: view, in: query, schema: {type: string, enum: [recent, starred, mine], default: recent}}
+      responses:
+        '200': {description: Activity items ordered newest first with source IDs and personal star status.}
+        '400': {$ref: '#/components/responses/Error'}
+  /activity/follows:
+    get:
+      operationId: listActivityFollows
+      security: [{sessionCookie: []}]
+      responses:
+        '200': {description: Personal starred projects, members and reports in the current workspace. Live starred reports include their title.}
+  /activity/follows/{kind}/{id}:
+    put:
+      operationId: setActivityFollow
+      security: [{sessionCookie: []}]
+      parameters:
+      - {name: kind, in: path, required: true, schema: {type: string, enum: [project, member, report]}}
+      - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [following]
+              properties:
+                following: {type: boolean}
+      responses:
+        '200': {description: Updated star state.}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
   /notifications:
     get:
       operationId: listNotifications
-      description: Browser only. Latest 200 notifications for the current user and team; polls every 30 seconds
-        in UI. No external messages.
+      description: Browser only. Latest 200 entries for the signed-in user and active team.
+      parameters:
+      - {name: view, in: query, schema: {type: string, enum: [activity]}, description: Return the user's own recorded actions. Omit for received notifications.}
       responses:
         '200':
           description: Success
@@ -2481,6 +2737,31 @@ paths:
         '404': *id006
       security:
       - sessionCookie: []
+  /todos/{id}/follow:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read the current user's task follow status
+      security:
+      - sessionCookie: []
+      responses:
+        '200': {description: Current following flag.}
+    put:
+      summary: Follow or unfollow a task in the current workspace
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [following]
+              properties:
+                following: {type: boolean}
+      responses:
+        '200': {description: Saved following flag.}
+        '404': {description: Task unavailable.}
   /notifications/read:
     post:
       operationId: markNotificationsRead
@@ -2885,6 +3166,13 @@ components:
               error:
                 type: string
   schemas:
+    AssistantApproval:
+      type: object
+      required: [conversation_scope, capability, target_id]
+      properties:
+        conversation_scope: {type: string, description: Conversation ID or an empty string for workspace-wide approval.}
+        capability: {type: string, enum: [propose_todo, propose_schedule, propose_context]}
+        target_id: {type: string, description: Project ID for Todo or Context creation and task ID for scheduling.}
     AssistantTemplate:
       type: object
       required: [scope, title, instructions, tools]
@@ -3263,6 +3551,11 @@ components:
     Notification:
       type: object
       properties:
+        actor_id: {type: string}
+        todo_id: {type: string}
+        calendar_event_id: {type: string}
+        comment_id: {type: string}
+        needs_response: {type: boolean}
         id: *id007
         report_id: *id007
         request_id: *id007

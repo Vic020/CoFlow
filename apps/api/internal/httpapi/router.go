@@ -28,7 +28,8 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		c.Header("Cache-Control", "no-store")
 		c.Header("Referrer-Policy", "no-referrer")
 		if c.Request.Method != "GET" && c.Request.Method != "HEAD" {
-			if !strings.HasPrefix(c.GetHeader("Content-Type"), "application/json") {
+			oauthForm := (c.Request.URL.Path == "/api/v1/oauth/device" || c.Request.URL.Path == "/api/v1/oauth/token") && cliOAuthForm(c)
+			if !oauthForm && !strings.HasPrefix(c.GetHeader("Content-Type"), "application/json") {
 				c.AbortWithStatusJSON(415, gin.H{"error": "写入请求需使用 application/json"})
 				return
 			}
@@ -47,6 +48,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		c.JSON(200, gin.H{"status": "ok", "mode": map[bool]string{true: "local-demo", false: "team"}[cfg.Demo], "version": version.Current})
 	})
 	registerIdentity(r, cfg)
+	registerCLIDevice(r, cfg)
 	protected := r.Group("")
 	protected.Use(requirePrincipal(cfg))
 	var ws *workspace.Service
@@ -76,6 +78,12 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 			c.JSON(200, gin.H{"agent_capabilities": []string{"todo-review-v1", "todo-blockers-v1", "delegations-v1", "knowledge-v1", "context-wiki-v1", "context-graph-v1", "context-explore-v1", "context-auto-v1"}, "members": store.Members, "projects": store.Projects, "domains": store.Domains, "current_user": "chen", "role": "admin", "mode": "local-demo", "timezone": "Asia/Shanghai", "team": gin.H{"id": "demo", "name": "共创团队"}})
 			return
 		}
+		p := principal(c)
+		if p.LimitedGrant() {
+			c.JSON(200, gin.H{"mode": "team", "current_user": p.UserID, "role": p.Role, "team": gin.H{"id": p.TeamID},
+				"grant_id": p.GrantID, "project_id": p.GrantProject, "todo_id": p.GrantTodo, "scopes": p.Scopes})
+			return
+		}
 		v, err := cfg.Identity.Metadata(c.Request.Context(), principal(c))
 		if err != nil {
 			fail(c, err)
@@ -101,6 +109,10 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		v["projects"] = projects
 		v["domains"] = domains
 		v["catalog"] = catalog
+		if p.Kind == "token" {
+			v["scopes"] = p.Scopes
+			v["grant_id"] = p.GrantID
+		}
 		v["agent_capabilities"] = []string{"changes-v1", "context-v1", "todo-review-v1", "todo-blockers-v1", "delegations-v1", "knowledge-v1", "context-wiki-v1", "context-graph-v1", "context-explore-v1", "context-auto-v1"}
 		c.JSON(200, v)
 	})
@@ -272,6 +284,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 		var input struct {
 			Body     string   `json:"body"`
 			Mentions []string `json:"mentions"`
+			ParentID string   `json:"parent_id"`
 		}
 		if !decode(c, &input) {
 			return
@@ -281,7 +294,7 @@ func NewWithConfig(repo store.Repository, cfg Config) *gin.Engine {
 			c.JSON(400, gin.H{"error": "评论需为 1–12000 字节"})
 			return
 		}
-		comment := store.Comment{ID: store.ID(), ReportID: c.Param("id"), AuthorID: principal(c).UserID, Body: input.Body, CreatedAt: time.Now().UTC()}
+		comment := store.Comment{ParentID: input.ParentID, ID: store.ID(), ReportID: c.Param("id"), AuthorID: principal(c).UserID, Body: input.Body, CreatedAt: time.Now().UTC()}
 		var v store.Comment
 		var err error
 		if len(input.Mentions) > 50 {

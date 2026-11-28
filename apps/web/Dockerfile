@@ -2,7 +2,7 @@ FROM node:24-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
-COPY apps/cli/package.json ./apps/cli/package.json
+COPY apps/cli/commands.json ./apps/cli/commands.json
 RUN npm ci
 COPY apps/web/ ./apps/web/
 COPY scripts/ ./scripts/
