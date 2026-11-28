@@ -154,7 +154,7 @@ func (s *Service) RedeemDevice(ctx context.Context, device string) (map[string]a
 	if teamID == nil || userID == nil {
 		return nil, "access_denied", nil
 	}
-	out, err := s.issueToken(ctx, s.Q.WithTx(tx), Principal{UserID: *userID, TeamID: *teamID}, name, scopes, days, "cf_cli_")
+	out, err := s.issueToken(ctx, s.Q.WithTx(tx), Principal{UserID: *userID, TeamID: *teamID}, name, scopes, stamp(time.Now().Add(time.Duration(days)*24*time.Hour)), "cf_cli_")
 	if err != nil {
 		return nil, "", err
 	}

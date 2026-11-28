@@ -5,7 +5,7 @@ Use the CLI to read and update CoFlow as the authenticated user. It works well f
 ## Install or update
 
 1. Try `command -v coflow`, then `$HOME/.coflow/bin/coflow --version`. Reuse an existing binary that supports the operation.
-2. If asked to install, download the installer from the verified instance's `/agent/install-cli.sh` or the official CoFlow repository. Review the saved script, then run it. It checks the official Release archive and installs to `~/.coflow/bin/coflow` by default. Add that directory to PATH or invoke the binary by its full path.
+2. If asked to install, download the installer from the verified instance's `/agent/install-cli.sh` or the official CoFlow repository. Review the saved script, then run it. It verifies the official Release archive, installs to `~/.coflow/bin/coflow` by default, and sets up PATH for Bash, Zsh, or Fish. Open a new shell or invoke the binary by its full path. Pass `--no-path` to skip shell configuration.
 3. When a matching archive is unavailable, build from the desired CoFlow checkout using `cargo install --path apps/cli --locked --root "$HOME/.coflow"`. Rust is needed for the build.
 4. Run `coflow --version` and `coflow help --json`. Use `coflow update check --json` to look up the latest official stable release. Update the binary and the [Skill bundle](installation.md) separately, preserving the current bindings and credentials.
 

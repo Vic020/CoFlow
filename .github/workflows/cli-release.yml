@@ -6,6 +6,10 @@ on:
         description: Existing stable tag with successful main CI
         required: true
         type: string
+      publish:
+        description: Upload verified archives to the existing GitHub Release
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -67,3 +71,37 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+  publish:
+    if: inputs.publish
+    needs: [verify, package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: coflow-v${{ needs.verify.outputs.version }}-*
+          path: archives
+      - name: Verify and upload release attachments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          gh release view "$tag" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Expected a published stable Release") else empty end'
+          assets=()
+          for platform in linux-amd64 macos-arm64; do
+            name="coflow-$tag-$platform"
+            archive="$name.tar.gz"
+            (
+              cd "archives/$name"
+              read -r digest filename < "$archive.sha256"
+              [[ "$digest" =~ ^[0-9a-f]{64}$ && "$filename" == "$archive" ]]
+              printf '%s  %s\n' "$digest" "$archive" | sha256sum --check
+            )
+            assets+=("archives/$name/$archive" "archives/$name/$archive.sha256")
+          done
+          gh release upload "$tag" "${assets[@]}"
+          gh release view "$tag" --json url,assets

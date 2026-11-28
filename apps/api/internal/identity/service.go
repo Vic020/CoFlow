@@ -456,16 +456,24 @@ func (s *Service) RevokeInvite(ctx context.Context, p Principal, id string) erro
 	}
 	return nil
 }
-func (s *Service) CreateToken(ctx context.Context, p Principal, name string, scopes []string, days int) (map[string]any, error) {
+func (s *Service) CreateToken(ctx context.Context, p Principal, name string, scopes []string, days int, neverExpires bool) (map[string]any, error) {
 	name, err := cleanName(name)
 	if err != nil {
 		return nil, err
 	}
-	if days == 0 {
-		days = 90
-	}
-	if days < 1 || days > 365 {
-		return nil, Invalid("凭证有效期需为 1–365 天")
+	var expiresAt pgtype.Timestamptz
+	if neverExpires {
+		if days != 0 {
+			return nil, Invalid("永久凭证不能同时指定有效天数")
+		}
+	} else {
+		if days == 0 {
+			days = 90
+		}
+		if days < 1 || days > 365 {
+			return nil, Invalid("凭证有效期需为 1–365 天")
+		}
+		expiresAt = stamp(time.Now().Add(time.Duration(days) * 24 * time.Hour))
 	}
 	if len(scopes) == 0 {
 		scopes = []string{"reports:read", "reports:write"}
@@ -474,7 +482,7 @@ func (s *Service) CreateToken(ctx context.Context, p Principal, name string, sco
 	if err != nil {
 		return nil, err
 	}
-	return s.issueToken(ctx, s.Q, p, name, clean, days, "cf_")
+	return s.issueToken(ctx, s.Q, p, name, clean, expiresAt, "cf_")
 }
 
 func validateTokenScopes(scopes []string) ([]string, error) {
@@ -504,9 +512,9 @@ func validateTokenScopes(scopes []string) ([]string, error) {
 	return clean, nil
 }
 
-func (s *Service) issueToken(ctx context.Context, q *db.Queries, p Principal, name string, clean []string, days int, prefix string) (map[string]any, error) {
+func (s *Service) issueToken(ctx context.Context, q *db.Queries, p Principal, name string, clean []string, expiresAt pgtype.Timestamptz, prefix string) (map[string]any, error) {
 	raw := secret(prefix)
-	row, err := q.CreateAgentToken(ctx, db.CreateAgentTokenParams{ID: store.ID(), TeamID: p.TeamID, UserID: p.UserID, Name: name, TokenHash: Hash(raw), Prefix: raw[:11], Scopes: clean, ExpiresAt: stamp(time.Now().Add(time.Duration(days) * 24 * time.Hour))})
+	row, err := q.CreateAgentToken(ctx, db.CreateAgentTokenParams{ID: store.ID(), TeamID: p.TeamID, UserID: p.UserID, Name: name, TokenHash: Hash(raw), Prefix: raw[:11], Scopes: clean, ExpiresAt: expiresAt})
 	if err != nil {
 		return nil, err
 	}

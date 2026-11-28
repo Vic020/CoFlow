@@ -41,7 +41,7 @@ UPDATE invites SET revoked_at=now() WHERE id=$1 AND team_id=$2 AND used_at IS NU
 -- name: CreateAgentToken :one
 INSERT INTO agent_tokens(id,team_id,user_id,name,token_hash,prefix,scopes,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,name,prefix,scopes,expires_at,revoked_at,last_used_at,created_at;
 -- name: TokenIdentity :one
-SELECT agent_tokens.id,agent_tokens.user_id,agent_tokens.team_id,agent_tokens.scopes,memberships.role FROM agent_tokens JOIN memberships ON memberships.team_id=agent_tokens.team_id AND memberships.user_id=agent_tokens.user_id WHERE agent_tokens.token_hash=$1 AND agent_tokens.revoked_at IS NULL AND agent_tokens.expires_at>now();
+SELECT agent_tokens.id,agent_tokens.user_id,agent_tokens.team_id,agent_tokens.scopes,memberships.role FROM agent_tokens JOIN memberships ON memberships.team_id=agent_tokens.team_id AND memberships.user_id=agent_tokens.user_id WHERE agent_tokens.token_hash=$1 AND agent_tokens.revoked_at IS NULL AND (agent_tokens.expires_at IS NULL OR agent_tokens.expires_at>now());
 -- name: TouchAgentToken :exec
 UPDATE agent_tokens SET last_used_at=now() WHERE id=$1;
 -- name: ListAgentTokens :many

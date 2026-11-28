@@ -103,17 +103,20 @@ Follow the Skill for identity checks, reporting and recovery. New progress on a 
 
 export type AgentTokenMetadata = {
   scopes: string[];
-  expires_at: string;
+  expires_at: string | null;
   revoked_at: string | null;
 };
+export function isActiveAgentToken(token: Pick<AgentTokenMetadata, "expires_at" | "revoked_at">, now = Date.now()) {
+  return !token.revoked_at && (token.expires_at === null || Date.parse(token.expires_at) > now);
+}
+
 export function hasActiveReportToken(
   tokens: AgentTokenMetadata[],
   now = Date.now(),
 ) {
   return tokens.some(
     (t) =>
-      !t.revoked_at &&
-      Date.parse(t.expires_at) > now &&
+      isActiveAgentToken(t, now) &&
       t.scopes.includes("reports:write"),
   );
 }

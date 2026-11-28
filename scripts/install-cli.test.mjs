@@ -55,27 +55,41 @@ esac
 `,
     { mode: 0o755 },
   );
-  const run = (...args) =>
+  const runForShell = (shell, ...args) =>
     spawnSync("bash", ["scripts/install-cli.sh", ...args], {
       encoding: "utf8",
       env: {
         ...process.env,
         HOME: fixture,
+        SHELL: shell,
+        ZDOTDIR: fixture,
+        XDG_CONFIG_HOME: join(fixture, ".config"),
         COFLOW_INSTALL_DIR: "",
         PATH: shim + ":" + process.env.PATH,
         QA_ARCHIVE: archive,
         QA_CHECKSUM: checksum,
       },
     });
+  const run = (...args) => runForShell("/bin/bash", ...args);
   const installed = run();
   assert.equal(installed.status, 0, installed.stderr);
   const binary = join(fixture, ".coflow/bin/coflow");
   assert.equal(readFileSync(binary, "utf8"), executable);
-  assert.match(installed.stdout, /export PATH=/);
+  const bashrc = join(fixture, ".bashrc");
+  const startup = readFileSync(bashrc, "utf8");
+  assert.match(startup, /export PATH=/);
+  assert.equal(readFileSync(join(fixture, ".bash_profile"), "utf8"), startup);
+  assert.equal(run().status, 0);
+  assert.equal(readFileSync(bashrc, "utf8"), startup);
+  assert.equal(runForShell("/bin/zsh").status, 0);
+  assert.match(readFileSync(join(fixture, ".zshrc"), "utf8"), /export PATH=/);
+  assert.equal(runForShell("/usr/bin/fish").status, 0);
+  assert.match(readFileSync(join(fixture, ".config/fish/conf.d/coflow-path.fish"), "utf8"), /fish_add_path --path/);
   assert.equal(
-    run("--version", "v1.2.3", "--bin-dir", join(fixture, "custom bin")).status,
+    run("--version", "v1.2.3", "--bin-dir", join(fixture, "custom bin"), "--no-path").status,
     0,
   );
+  assert.equal(readFileSync(bashrc, "utf8"), startup);
   assert.match(run("--version", "v1.2.4").stderr, /no downloadable/);
   writeFileSync(checksum, `${"0".repeat(64)}  ${name}.tar.gz\n`);
   const rejected = run("--version", "v1.2.3");

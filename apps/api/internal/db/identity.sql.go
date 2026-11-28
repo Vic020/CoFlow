@@ -651,7 +651,7 @@ func (q *Queries) TeamProjects(ctx context.Context, teamID string) ([]Project, e
 }
 
 const tokenIdentity = `-- name: TokenIdentity :one
-SELECT agent_tokens.id,agent_tokens.user_id,agent_tokens.team_id,agent_tokens.scopes,memberships.role FROM agent_tokens JOIN memberships ON memberships.team_id=agent_tokens.team_id AND memberships.user_id=agent_tokens.user_id WHERE agent_tokens.token_hash=$1 AND agent_tokens.revoked_at IS NULL AND agent_tokens.expires_at>now()
+SELECT agent_tokens.id,agent_tokens.user_id,agent_tokens.team_id,agent_tokens.scopes,memberships.role FROM agent_tokens JOIN memberships ON memberships.team_id=agent_tokens.team_id AND memberships.user_id=agent_tokens.user_id WHERE agent_tokens.token_hash=$1 AND agent_tokens.revoked_at IS NULL AND (agent_tokens.expires_at IS NULL OR agent_tokens.expires_at>now())
 `
 
 type TokenIdentityRow struct {

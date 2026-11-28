@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CoFlow API
-  version: 0.7.0
+  version: 0.7.1
   description: Team mode uses PostgreSQL accounts, HttpOnly browser sessions and per-member/team Agent Bearer Tokens.
     Explicit local-demo mode is isolated and requires no credentials. The server determines author and team; source_id
     is scoped to that identity.
@@ -2254,7 +2254,7 @@ paths:
     get:
       operationId: listPersonalTokens
       description: Lists only the current member/team tokens, prefixes, scopes, expiry, last-used and revocation
-        state. Never returns credential or hash.
+        state. Permanent credentials have a null expires_at. Never returns credential or hash.
       security:
       - sessionCookie: []
       responses:
@@ -2267,8 +2267,7 @@ paths:
         '429': *id001
     post:
       operationId: createPersonalToken
-      description: Returns credential in full once, plus token metadata. Reports read is required; default scopes
-        read/report. Raw token is never stored.
+      description: Returns credential in full once, plus token metadata. At least one module read scope is required; default scopes are reports:read and reports:write. Report and task read scopes include comments on the respective records. Raw token is never stored.
       security:
       - sessionCookie: []
       responses:
@@ -2306,6 +2305,10 @@ paths:
                   minimum: 1
                   maximum: 365
                   default: 90
+                never_expires:
+                  type: boolean
+                  default: false
+                  description: Issue a personal credential that remains valid until revoked or membership ends. Omit expires_in_days when true.
               required:
               - name
   /tokens/{id}:

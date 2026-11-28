@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Download, Terminal } from "lucide-react";
+import { ArrowRight, Check, Copy, Download, Terminal } from "lucide-react";
+import { useState } from "react";
 import { DocsHeader } from "./docs-header";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import { publicBasePath, publicDemo, repositoryURL } from "@/lib/runtime";
+import { publicDemo, repositoryURL } from "@/lib/runtime";
+
+const installerURL = "https://raw.githubusercontent.com/Vic020/CoFlow/main/scripts/install-cli.sh";
+const installCommand = `curl --disable -fsSL --proto '=https' --proto-redir '=https' ${installerURL} | bash`;
+const cliReference = `${repositoryURL}/blob/main/skills/coflow/references`;
 
 const sections = [
   ["download", "下载与安装"],
@@ -15,6 +20,7 @@ const sections = [
 
 export function CLIGuide() {
   const { t } = useI18n();
+  const [copyStatus, setCopyStatus] = useState<"ready" | "copied" | "failed">("ready");
   return (
     <div className="collaboration-docs">
       <DocsHeader page="cli" />
@@ -51,7 +57,7 @@ export function CLIGuide() {
                   </p>
                 </div>
                 <Button asChild size="sm">
-                  <a href={`${repositoryURL}/releases`}>
+                  <a className="cli-download-button" href={`${repositoryURL}/releases/latest`}>
                     <Download size={15} />
                     {t("查看发布附件")}
                   </a>
@@ -60,22 +66,31 @@ export function CLIGuide() {
               <h3>{t("安装脚本")}</h3>
               <p>
                 {t(
-                  "下载安装脚本后运行。脚本会校验发布包，并把 coflow 安装到 ~/.coflow/bin。",
+                  "脚本校验发布包，安装到 ~/.coflow/bin，并为 Bash、Zsh 或 Fish 配置 PATH。安装后打开一个新终端。",
                 )}
               </p>
               <p>
                 <a
-                  href={`${publicBasePath}/agent/install-cli.sh`}
-                  download="install-cli.sh"
+                  href={`${repositoryURL}/blob/main/scripts/install-cli.sh`}
                 >
-                  {t("下载安装脚本")}
+                  {t("查看安装脚本")}
                 </a>
               </p>
-              <pre className="cli-snippet">
-                <code>
-                  {'bash install-cli.sh\nexport PATH="$HOME/.coflow/bin:$PATH"'}
-                </code>
-              </pre>
+              <div className="cli-snippet cli-install-command">
+                <pre><code>{installCommand}</code></pre>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(installCommand);
+                    setCopyStatus("copied");
+                  } catch {
+                    setCopyStatus("failed");
+                  }
+                }}>
+                  {copyStatus === "copied" ? <Check /> : <Copy />}
+                  {t(copyStatus === "copied" ? "已复制" : "复制")}
+                </Button>
+              </div>
+              {copyStatus === "failed" && <p role="status">{t("请选中内容手动复制。")}</p>}
               <h3>{t("从源码安装")}</h3>
               <p>
                 {t(
@@ -111,7 +126,7 @@ export function CLIGuide() {
                 <p>{t("公开演示仅供浏览。请在自己的 CoFlow 实例中登录。")}</p>
               ) : (
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/credentials#cli-connection">
+                  <Link className="cli-pair-button" href="/credentials?tab=connect#cli-connection">
                     {t("打开 CLI 配对")} <ArrowRight size={14} />
                   </Link>
                 </Button>
@@ -142,11 +157,11 @@ export function CLIGuide() {
                 )}
               </p>
               <p>
-                <a href={`${publicBasePath}/agent/coflow/references/cli.md`}>
+                <a href={`${cliReference}/cli.md`}>
                   {t("查看完整 CLI 使用说明")}
                 </a>
                 {" · "}
-                <a href={`${publicBasePath}/agent/coflow/references/cli-commands.md`}>
+                <a href={`${cliReference}/cli-commands.md`}>
                   {t("CLI 命令表")}
                 </a>
               </p>

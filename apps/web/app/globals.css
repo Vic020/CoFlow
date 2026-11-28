@@ -3235,7 +3235,7 @@ input[type="checkbox"] {
 }
 .credentials-create {
   display: grid;
-  grid-template-columns: minmax(160px, 1.5fr) minmax(130px, 1fr) 100px auto;
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 155px);
   gap: 14px;
   align-items: end;
   margin-top: 0;
@@ -3243,7 +3243,8 @@ input[type="checkbox"] {
   border-bottom: 1px solid #e7ede9;
 }
 .credentials-create > button {
-  justify-self: stretch;
+  grid-column: 1 / -1;
+  justify-self: end;
   min-height: 39px;
 }
 .credentials-list-heading {
@@ -3303,7 +3304,13 @@ input[type="checkbox"] {
   font-size: 11px;
   color: #718078;
 }
-.credential-scope-list { overflow-wrap: anywhere; }
+.credential-scope-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.credential-scope-list > span {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--muted);
+  overflow-wrap: anywhere;
+}
 .credential-upgrade { display: block; margin-top: 5px; color: #98620b; }
 .credential-guidance { color: #718078; font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
 .credential-row-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
@@ -3367,16 +3374,6 @@ input[type="checkbox"] {
   margin-top: 14px;
 }
 @media (max-width: 760px) {
-  .credentials-create {
-    grid-template-columns: 1fr 1fr;
-    gap: 14px 10px;
-  }
-  .credentials-create > label:first-child {
-    grid-column: 1 / -1;
-  }
-  .credentials-create > button {
-    grid-column: 1 / -1;
-  }
   .credential-row {
     grid-template-columns: 30px minmax(0, 1fr) auto;
     gap: 10px;
@@ -7074,6 +7071,24 @@ input[type="checkbox"] {
 .cli-guide .cli-download p {
   margin: 4px 0 0;
 }
+.cli-guide .cli-download-button {
+  color: #fff;
+  text-decoration: none;
+}
+.cli-guide .cli-pair-button {
+  text-decoration: none;
+}
+.cli-install-command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cli-install-command pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  white-space: inherit;
+}
 .cli-snippet {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -7130,9 +7145,94 @@ input[type="checkbox"] {
 .ai-approval-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
 .ai-approval-row small { display: block; overflow-wrap: anywhere; }
 
-.credentials-settings-page .credentials-create {
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 12px;
+.credential-scope-fields {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.credential-scope-fields legend {
+  margin-bottom: 7px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+.credential-scope-matrix {
+  table-layout: fixed;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+.credential-scope-matrix thead th {
+  padding-block: 8px;
+  background: var(--muted);
+  font-weight: 500;
+}
+.credential-scope-matrix thead th:first-child {
+  border-top-left-radius: 7px;
+}
+.credential-scope-matrix thead th:last-child {
+  border-top-right-radius: 7px;
+}
+.credential-scope-matrix tbody tr:hover {
+  background: var(--muted);
+}
+.credential-scope-matrix tbody tr > * {
+  border-top: 1px solid var(--color-border);
+}
+.credential-scope-matrix th:first-child {
+  padding-inline: 12px 4px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.credential-scope-matrix th:not(:first-child) {
+  width: clamp(42px, 13%, 80px);
+}
+.credential-scope-matrix th[scope="row"] {
+  padding-block: 8px;
+  font-weight: 550;
+}
+.credential-scope-matrix th small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+}
+.credential-scope-matrix td {
+  text-align: center;
+}
+.token-form .credential-scope-option {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  cursor: pointer;
+}
+.token-form .credential-scope-option input {
+  appearance: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #087f64;
+  cursor: inherit;
+}
+.token-form .credential-scope-option input:focus-visible {
+  outline: 2px solid #087f64;
+  outline-offset: 2px;
+}
+.credential-scope-unavailable, .credential-scope-help {
+  color: var(--muted-foreground);
+}
+.credential-scope-unavailable {
+  display: inline-block;
+  padding-inline: 4px;
+  font-size: 11px;
+}
+.credential-scope-help {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .credentials-review-panel > h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
 .credentials-review-panel pre { overflow-wrap: anywhere; white-space: pre-wrap; }

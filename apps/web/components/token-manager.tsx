@@ -15,19 +15,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAgentPrompt } from "@/lib/agent-prompt";
-import { credentialCapabilities } from "@/lib/report-prompt";
+import { credentialCapabilities, isActiveAgentToken as isActive } from "@/lib/report-prompt";
 import { Meta, request } from "@/lib/types";
 type Token = {
   id: string;
   name: string;
   prefix: string;
   scopes: string[];
-  expires_at: string;
+  expires_at: string | null;
   revoked_at: string | null;
   last_used_at: string | null;
 };
-const isActive = (token: Token) =>
-  !token.revoked_at && Date.parse(token.expires_at) > Date.now();
+
+const permissionModules = [
+  { label: "Timeline 简报", detail: "发布、更新简报", read: "reports:read", write: "reports:write" },
+  { label: "Todo 任务", detail: "新建、更新、归档任务", read: "todos:read", write: "todos:write", writeNeedsRead: true },
+  { label: "Calendar 日历", detail: "新建、更新、归档日历节点", read: "calendar:read", write: "calendar:write", writeNeedsRead: true },
+  { label: "Context 知识", detail: "新建、更新、归档知识", read: "context:read", write: "context:write", writeNeedsRead: true },
+  { label: "评论与协作", detail: "发表评论、处理协作请求", read: null, write: "comments:write" },
+] as const;
+type PermissionModule = (typeof permissionModules)[number];
+const permissionActions = [["read", "读取"], ["write", "写入"]] as const;
+const collaborationScopes = ["reports:read", "reports:write", "todos:read", "todos:write"];
+
 export function TokenManager() {
   const { t: tr, date: formatDate } = useI18n();
   const { me, credential, setCredential, refreshTokens } = useAuth();
@@ -40,7 +50,8 @@ export function TokenManager() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Codex");
   const [days, setDays] = useState("90");
-  const [scope, setScope] = useState("report");
+  const [scopes, setScopes] = useState(["reports:read", "reports:write"]);
+  const hasReadScope = permissionModules.some(({ read }) => read && scopes.includes(read));
   const [issuedTaskAccess, setIssuedTaskAccess] = useState(false);
   const [issuedScopes, setIssuedScopes] = useState<string[] | undefined>();
   const [replaceExisting, setReplaceExisting] = useState(false);
@@ -54,6 +65,7 @@ export function TokenManager() {
   const [error, setError] = useState("");
   const [issued, setIssued] = useState("");
   const mounted = useRef(false);
+  const permissionStart = useRef<HTMLInputElement>(null);
   function closeSecret() {
     setIssued("");
     setCredential("");
@@ -86,42 +98,28 @@ export function TokenManager() {
   useEffect(() => {
     void load();
   }, [load]);
+  function toggleScope(module: PermissionModule, action: "read" | "write", checked: boolean) {
+    const scope = module[action];
+    if (!scope) return;
+    const needsRead = "writeNeedsRead" in module;
+    setScopes((previous) => {
+      if (!checked) {
+        return previous.filter((value) =>
+          value !== scope && !(needsRead && action === "read" && value === module.write),
+        );
+      }
+      const next = new Set(previous);
+      if (needsRead && action === "write") next.add(module.read);
+      next.add(scope);
+      return [...next];
+    });
+  }
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !name.trim() || !hasReadScope) return;
     setBusy(true);
     setError("");
     try {
-      const scopes =
-        scope === "context-read"
-          ? ["context:read"]
-          : scope === "context"
-            ? ["context:read", "context:write"]
-            : scope === "calendar"
-              ? ["calendar:read", "calendar:write"]
-              : scope === "calendar-read"
-                ? ["calendar:read"]
-                : scope === "todo"
-                  ? ["todos:read", "todos:write", "comments:write"]
-                  : scope === "all"
-                    ? [
-                        "reports:read",
-                        "reports:write",
-                        "todos:read",
-                        "todos:write",
-                        "comments:write",
-                        "calendar:read",
-                        "calendar:write",
-                        "context:read",
-                        "context:write",
-                      ]
-                    : scope === "todo-read"
-                      ? ["todos:read"]
-                      : scope === "read"
-                        ? ["reports:read"]
-                        : scope === "comment"
-                          ? ["reports:read", "reports:write", "comments:write"]
-                          : ["reports:read", "reports:write"];
       const v = await request<{
         credential: string;
       }>("/tokens", {
@@ -129,16 +127,14 @@ export function TokenManager() {
         body: JSON.stringify({
           name: name.trim(),
           scopes,
-          expires_in_days: Number(days),
+          ...(days === "never" ? { never_expires: true } : { expires_in_days: Number(days) }),
         }),
       });
       if (!mounted.current) return;
       setCredential(v.credential);
       setIssuedScopes(scopes);
       setReplaceExisting(false);
-      setIssuedTaskAccess(
-        scope === "todo" || scope === "todo-read" || scope === "all",
-      );
+      setIssuedTaskAccess(scopes.includes("todos:read"));
       setIssued(v.credential);
       await load();
     } catch (e) {
@@ -235,25 +231,6 @@ export function TokenManager() {
           />
         </label>
         <label>
-          {tr("权限")}
-          <select
-            value={scope}
-            onChange={(e) => setScope(e.target.value)}
-            disabled={busy}
-          >
-            <option value="todo">{tr("读取与管理任务")}</option>
-            <option value="todo-read">{tr("只读任务")}</option>
-            <option value="context-read">{tr("Context 只读")}</option>
-            <option value="context">{tr("Context 读写")}</option>
-            <option value="all">{tr("上报、任务、日历与评论")}</option>
-            <option value="calendar">{tr("读取与管理日历节点")}</option>
-            <option value="calendar-read">{tr("只读日历节点")}</option>
-            <option value="report">{tr("读取与上报")}</option>
-            <option value="comment">{tr("读取、上报与评论")}</option>
-            <option value="read">{tr("只读")}</option>
-          </select>
-        </label>
-        <label>
           {tr("有效期")}
           <select
             value={days}
@@ -267,9 +244,55 @@ export function TokenManager() {
                 })}
               </option>
             ))}
+            <option value="never">{tr("永久")}</option>
           </select>
         </label>
-        <Button type="submit" disabled={busy || !name.trim()}>
+        <fieldset className="credential-scope-fields" disabled={busy} aria-describedby="credential-scope-help">
+          <legend>{tr("权限")}</legend>
+          <table className="credential-scope-matrix">
+            <thead>
+              <tr>
+                <th scope="col">{tr("模块")}</th>
+                <th scope="col">{tr("读取")}</th>
+                <th scope="col">{tr("写入")}</th>
+                <th scope="col">{tr("删除")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {permissionModules.map((module) => (
+                <tr key={module.write}>
+                  <th scope="row">
+                    {tr(module.label)}
+                    <small>{tr(module.detail)}</small>
+                  </th>
+                  {permissionActions.map(([action, label]) => {
+                    const scope = module[action];
+                    return (
+                      <td key={action}>
+                        {scope ? (
+                          <label className="credential-scope-option">
+                            <input
+                              ref={scope === "reports:read" ? permissionStart : undefined}
+                              type="checkbox"
+                              aria-label={tr("{module} · {action}", { module: tr(module.label), action: tr(label) })}
+                              checked={scopes.includes(scope)}
+                              onChange={(e) => toggleScope(module, action, e.target.checked)}
+                            />
+                          </label>
+                        ) : <span className="credential-scope-unavailable">{tr("复用简报或任务的读取权限")}</span>}
+                      </td>
+                    );
+                  })}
+                  <td><span className="credential-scope-unavailable" aria-label={tr("不可授权")}>—</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p id="credential-scope-help" className="credential-scope-help">
+            {tr("至少选择一项读取权限。Todo、Calendar 和 Context 的写入需要同模块的读取权限。删除操作只能通过网页执行。")}
+          </p>
+        </fieldset>
+        <Button type="submit" disabled={busy || !name.trim() || !hasReadScope}>
           {busy ? <Loader2 className="animate-spin" /> : <Plus />}
           {tr("创建凭证")}
         </Button>
@@ -381,22 +404,17 @@ export function TokenManager() {
                     <code>{t.prefix}…</code>
                   </div>
                   <div className="credential-permissions">
-                    <span>
-                      {tr(
-                        capability.collaboration
-                          ? "任务与简报读写"
-                          : capability.reports
-                            ? "上报读写"
-                            : capability.todos
-                              ? "任务读写"
-                              : capability.calendar
-                                ? "日历读写"
-                                : "读取与其他权限",
-                      )}
-                    </span>
-                    <small className="credential-scope-list">
-                      {t.scopes.join(" · ")}
-                    </small>
+                    <div className="credential-scope-list">
+                      {t.scopes.map((scope) => {
+                        const module = permissionModules.find(({ read, write }) => scope === read || scope === write);
+                        return <span key={scope} title={scope}>
+                          {module ? tr("{module} · {action}", {
+                            module: tr(module.label),
+                            action: scope === module.read ? tr("读取") : tr("写入"),
+                          }) : scope}
+                        </span>;
+                      })}
+                    </div>
                     {upgrade && (
                       <span className="credential-upgrade">
                         {tr("联动任务与简报时建议升级")}
@@ -419,7 +437,7 @@ export function TokenManager() {
                         ? tr("已过期")
                         : tr("有效")}
                     <small>
-                      {tr("{0} 到期", { 0: formatDate(t.expires_at) })}
+                      {t.expires_at === null ? tr("永久") : tr("{0} 到期", { 0: formatDate(t.expires_at) })}
                     </small>
                   </div>
                   {active ? (
@@ -430,13 +448,9 @@ export function TokenManager() {
                           variant="outline"
                           disabled={busy}
                           onClick={() => {
-                            setScope("all");
+                            setScopes([...new Set([...t.scopes, ...collaborationScopes])]);
                             setName(t.name);
-                            document
-                              .querySelector<HTMLSelectElement>(
-                                ".credentials-create select",
-                              )
-                              ?.focus();
+                            permissionStart.current?.focus();
                           }}
                         >
                           {tr("配置协作凭证")}

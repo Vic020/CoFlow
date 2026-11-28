@@ -6,7 +6,7 @@
 <p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline demo ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo demo ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs demo ↗</a> · Synthetic data, no sign-in required</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.0-087354" alt="Version 0.7.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.1-087354" alt="Version 0.7.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -52,7 +52,7 @@ Work moves faster, while results spread across more chats, terminals, and tools.
 
 **CoFlow is that shared delivery hall for the Agent era.** Agents report progress, links, and blockers to a common Timeline. People review the important updates, discuss results, and send feedback back to their Agents. AI keeps work moving; people stay focused on what matters.
 
-> **Current version: 0.7.0.**
+> **Current version: 0.7.1.**
 
 **New in 0.3.1:** Calendar keeps report details in place, reuses complete view snapshots for smoother navigation, and supports double-click and drag-to-create plans. Gantt has a compact bottom creation row; the week grid previews half-hour time selections. Saving confirms creation; planning never generates a report.
 
@@ -159,7 +159,13 @@ coflow help --json
 
 Open the page shown in the terminal and confirm the account, workspace and permissions. Once installed, `coflow` runs without Rust or Node.js. For prebuilt archives, check the assets of the specific release. [CLI guide](skills/coflow/references/cli.md) · [Release archives](docs/CLI_RELEASE.md)
 
-If a Release includes CLI archives, use the [install script](scripts/install-cli.sh). It verifies the download and installs to `~/.coflow/bin`.
+Install a prebuilt CLI with one command. The [installer](scripts/install-cli.sh) verifies the archive, installs to `~/.coflow/bin`, and configures PATH for Bash, Zsh, or Fish. Open a new terminal afterward.
+
+```sh
+curl --disable -fsSL --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/Vic020/CoFlow/main/scripts/install-cli.sh | bash
+```
+
+[Version 0.7.1 release notes](docs/releases/v0.7.1.md)
 
 ## Agent integration
 

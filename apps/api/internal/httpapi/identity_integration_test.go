@@ -103,6 +103,34 @@ func identityFixture(t *testing.T) (*store.Postgres, *identity.Service) {
 	}
 	return repo, identity.New(repo.Pool())
 }
+func TestPermanentPersonalToken(t *testing.T) {
+	repo, s := identityFixture(t)
+	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})
+	owner := &authClient{t: t, h: h}
+	owner.call("POST", "/api/v1/auth/bootstrap", map[string]any{
+		"email": "owner@example.test", "name": "Owner", "password": "synthetic-token-owner", "team_name": "Team",
+	}, 201)
+	owner.call("POST", "/api/v1/tokens", map[string]any{
+		"name": "Conflicting lifetime", "never_expires": true, "expires_in_days": 7,
+	}, 400)
+	timed := owner.call("POST", "/api/v1/tokens", map[string]any{"name": "Default lifetime"}, 201)
+	if timed["token"].(map[string]any)["expires_at"] == nil {
+		t.Fatal("default credential must expire")
+	}
+	permanent := owner.call("POST", "/api/v1/tokens", map[string]any{
+		"name": "Permanent", "never_expires": true, "scopes": []string{"reports:read"},
+	}, 201)
+	meta := permanent["token"].(map[string]any)
+	if meta["expires_at"] != nil {
+		t.Fatal("permanent credential must have a null expiration")
+	}
+	agent := &authClient{t: t, h: h, token: permanent["credential"].(string)}
+	agent.call("GET", "/api/v1/meta", nil, 200)
+	agent.call("POST", "/api/v1/reports", nil, 403)
+	owner.call("DELETE", "/api/v1/tokens/"+meta["id"].(string), nil, 200)
+	agent.call("GET", "/api/v1/meta", nil, 401)
+}
+
 func TestPostgresIdentityAndAgentFlow(t *testing.T) {
 	repo, s := identityFixture(t)
 	h := NewWithConfig(repo, Config{Identity: s, BootstrapToken: testBootstrapToken})

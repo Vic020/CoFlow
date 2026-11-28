@@ -392,14 +392,15 @@ func registerIdentity(r *gin.Engine, cfg Config) {
 	})
 	own.POST("/tokens", func(c *gin.Context) {
 		var v struct {
-			Name   string   `json:"name"`
-			Scopes []string `json:"scopes"`
-			Days   int      `json:"expires_in_days"`
+			Name         string   `json:"name"`
+			Scopes       []string `json:"scopes"`
+			Days         int      `json:"expires_in_days"`
+			NeverExpires bool     `json:"never_expires"`
 		}
 		if !decode(c, &v) {
 			return
 		}
-		row, err := s.CreateToken(c.Request.Context(), principal(c), v.Name, v.Scopes, v.Days)
+		row, err := s.CreateToken(c.Request.Context(), principal(c), v.Name, v.Scopes, v.Days, v.NeverExpires)
 		if err != nil {
 			fail(c, err)
 			return

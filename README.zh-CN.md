@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 <p align="center"><a href="https://vic020.github.io/CoFlow/">Timeline 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/todo/">Todo 演示 ↗</a> · <a href="https://vic020.github.io/CoFlow/docs/">Docs 演示 ↗</a> · 纯静态、虚拟数据，无需登录</p>
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.0-087354" alt="Version 0.7.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.7.1-087354" alt="Version 0.7.1" /></a>
   <img src="https://img.shields.io/badge/status-early_self_hosted-e5a53e" alt="Early self-hosted release" />
 </p>
 <p align="center">
@@ -54,7 +54,7 @@ AI 配置在表单内先验证再保存；仅改名称或默认项可沿用验�
 
 **自 0.5.3 起：** 首轮回复前即可查看新会话，未完成输入保留供手动重试；模板项目／领域／成员参数匹配现有选项，使用模板后直接发起新会话，见 [AI 助手说明](docs/ASSISTANT_V0.4.md)。
 
-> **当前版本：0.7.0。**
+> **当前版本：0.7.1。**
 
 **0.3.1 新增：** 日历内弹窗阅读、评论与编辑简报，切换日期复用视图缓存；双击与拖选可预填节点排期。甘特提供紧凑底部创建行，周历高亮半小时时间选区；确认保存才创建，计划不自动生成简报。
 
@@ -161,7 +161,13 @@ coflow help --json
 
 打开终端给出的网页，在网页核对账号、空间和权限。安装后的 `coflow` 可独立运行。预编译包以具体版本的 Release 附件为准。[CLI 使用指南](skills/coflow/references/cli.md) · [CLI 打包与发布](docs/CLI_RELEASE.md)
 
-如果 Release 已提供 CLI 安装包，可使用[安装脚本](scripts/install-cli.sh)。脚本会校验下载内容并安装到 `~/.coflow/bin`。
+一条命令即可安装预编译的 CLI。[安装脚本](scripts/install-cli.sh)校验下载内容，安装到 `~/.coflow/bin`，并为 Bash、Zsh 或 Fish 配置 PATH。安装后打开新终端。
+
+```sh
+curl --disable -fsSL --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/Vic020/CoFlow/main/scripts/install-cli.sh | bash
+```
+
+[0.7.1 发布说明](docs/releases/v0.7.1.md)
 
 ## Agent 接入
 
@@ -218,7 +224,7 @@ CoFlow/
 ├── scripts/          # 资源同步与版本一致性检查
 ├── docs/             # 产品定义、开发指南、协议与预览图
 ├── CHANGELOG.md      # 更新日志
-├── VERSION           # 当前版本：0.7.0
+├── VERSION           # 当前版本：0.7.1
 └── compose.yaml      # PostgreSQL 开发环境
 ```
 
